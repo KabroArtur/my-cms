@@ -18,14 +18,34 @@ interface PageRepository
     public function paginate(int $perPage = 15): LengthAwarePaginator;
 
     /**
+     * Репозиторий возвращает корзину страниц для административного интерфейса.
+     */
+    public function paginateTrashed(int $perPage = 15): LengthAwarePaginator;
+
+    /**
      * Репозиторий ищет страницу по идентификатору.
      */
     public function findById(int $id): ?Page;
 
     /**
+     * Репозиторий ищет страницу в корзине по идентификатору.
+     */
+    public function findTrashedById(int $id): ?Page;
+
+    /**
      * Репозиторий ищет страницу по slug.
      */
     public function findBySlug(string $slug): ?Page;
+
+    /**
+     * Репозиторий ищет домашнюю страницу публичного сайта.
+     */
+    public function findHomePage(): ?Page;
+
+    /**
+     * Репозиторий ищет публичную опубликованную страницу по slug.
+     */
+    public function findPublicBySlug(string $slug): ?Page;
 
     /**
      * Репозиторий создает новую страницу.
@@ -41,4 +61,14 @@ interface PageRepository
      * Репозиторий удаляет существующую страницу.
      */
     public function delete(Page $page): void;
+
+    /**
+     * Репозиторий восстанавливает страницу из корзины.
+     */
+    public function restore(Page $page): Page;
+
+    /**
+     * Репозиторий удаляет страницу безвозвратно.
+     */
+    public function forceDelete(Page $page): void;
 }

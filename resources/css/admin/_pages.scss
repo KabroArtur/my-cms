@@ -7,6 +7,49 @@
     gap: 20px;
 }
 
+.admin-page-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.admin-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.admin-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.admin-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 10px;
+}
+
+.admin-stack {
+    display: grid;
+    gap: 16px;
+}
+
+.users-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.users-toolbar__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .page-form-fieldset {
     border: 0;
     padding: 0;
@@ -24,11 +67,71 @@
     width: 100%;
 }
 
+.page-editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+    gap: 20px;
+}
+
+.page-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.page-title-link {
+    color: var(--admin-color-text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.page-title-link:hover {
+    text-decoration: underline;
+}
+
+.admin-editor {
+    min-height: 320px;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.page-home-toggle {
+    align-content: start;
+}
+
+.page-preview-box {
+    padding: 14px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-md);
+    background: var(--admin-color-surface-muted);
+}
+
+.page-preview-box__value {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
 @media (max-width: 1080px) {
     .admin-grid,
     .pages-grid,
     .users-grid,
     .roles-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-kpi-grid,
+    .admin-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-editor-grid,
+    .page-meta-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .users-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

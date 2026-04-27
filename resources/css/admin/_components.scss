@@ -46,6 +46,11 @@
     cursor: pointer;
 }
 
+.button-base:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .button-primary {
     background: var(--admin-color-primary);
     border-color: var(--admin-color-primary);
@@ -56,6 +61,23 @@
     color: var(--admin-color-danger);
     border-color: var(--admin-color-danger-border);
     background: var(--admin-color-danger-bg);
+}
+
+.button-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1px solid var(--admin-color-border-strong);
+    border-radius: var(--admin-radius-sm);
+    background: var(--admin-color-surface);
+    color: var(--admin-color-text);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.button-link:hover {
+    background: var(--admin-color-surface-muted);
 }
 
 .data-table {
@@ -73,4 +95,28 @@
 .data-table th {
     text-align: left;
     background: var(--admin-color-surface-muted);
+}
+
+.admin-stat-card {
+    padding: 18px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-lg);
+    background: var(--admin-color-surface);
+    box-shadow: var(--admin-shadow-card);
+}
+
+.admin-stat-card__label {
+    margin: 0 0 10px;
+    color: var(--admin-color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-stat-card__value {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 30px;
+    line-height: 1;
 }

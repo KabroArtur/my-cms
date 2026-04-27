@@ -3,8 +3,8 @@
 namespace App\Core\Pages\Models;
 
 use App\Core\Pages\Enums\PageStatus;
+use App\Core\Pages\Enums\PageVisibility;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'title',
     'slug',
     'status',
+    'visibility',
     'excerpt',
     'content',
     'template',
@@ -42,6 +43,7 @@ class Page extends Model
     {
         return [
             'status' => PageStatus::class,
+            'visibility' => PageVisibility::class,
             'is_home' => 'boolean',
             'published_at' => 'datetime',
         ];

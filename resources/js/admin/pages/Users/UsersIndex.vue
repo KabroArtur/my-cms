@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AdminBadge from '../../components/ui/AdminBadge.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
@@ -145,6 +146,13 @@ onMounted(async () => {
         title="Пользователи"
         description="Простой список пользователей, ролей и разрешений административной системы."
     >
+        <template #actions>
+            <div class="users-toolbar__actions">
+                <RouterLink to="/admin/roles" class="button-link">
+                    Доступы и роли
+                </RouterLink>
+            </div>
+        </template>
 
         <div class="users-grid">
             <AdminCard>
@@ -207,6 +215,13 @@ onMounted(async () => {
             </AdminCard>
 
             <AdminCard>
+                <div class="users-toolbar">
+                    <div>
+                        <h2>Список пользователей</h2>
+                        <p class="muted">Управление доступами вынесено в отдельный экран, но вход в него находится прямо здесь.</p>
+                    </div>
+                </div>
+
                 <p v-if="loading" class="muted">Загрузка пользователей...</p>
                 <p v-else-if="errorMessage && users.length === 0" class="error-text">{{ errorMessage }}</p>
                 <p v-else-if="users.length === 0" class="muted">Пользователи пока не найдены.</p>

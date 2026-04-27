@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\Pages;
 
 use App\Core\Pages\Enums\PageStatus;
+use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Models\Page;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -37,11 +38,13 @@ class UpdatePageRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('pages', 'slug')->ignore($pageId)],
             'status' => ['nullable', Rule::enum(PageStatus::class)],
+            'visibility' => ['nullable', Rule::enum(PageVisibility::class)],
             'excerpt' => ['nullable', 'string'],
             'content' => ['nullable', 'string'],
             'template' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string'],
+            'published_at' => ['nullable', 'date', 'required_if:status,scheduled'],
             'parent_id' => ['nullable', 'integer', 'exists:pages,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_home' => ['nullable', 'boolean'],

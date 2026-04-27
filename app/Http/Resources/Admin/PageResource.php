@@ -23,6 +23,7 @@ class PageResource extends JsonResource
             'title' => $this->title,
             'slug' => $this->slug,
             'status' => $this->status?->value ?? $this->status,
+            'visibility' => $this->visibility?->value ?? $this->visibility,
             'excerpt' => $this->excerpt,
             'content' => $this->content,
             'template' => $this->template,
@@ -32,6 +33,7 @@ class PageResource extends JsonResource
             'sort_order' => $this->sort_order,
             'is_home' => $this->is_home,
             'published_at' => $this->published_at?->toISOString(),
+            'deleted_at' => $this->deleted_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
     }

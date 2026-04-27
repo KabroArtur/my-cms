@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AdminBadge from '../../components/ui/AdminBadge.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
@@ -106,10 +107,15 @@ onMounted(loadRoles)
 
 <template>
     <AdminPage
-        eyebrow="Roles"
-        title="Роли"
-        description="Список ролей и связанных с ними разрешений административной системы."
+        eyebrow="Access"
+        title="Доступы"
+        description="Экран ролей и прав открыт как внутренний раздел из страницы пользователей, а не как отдельный пункт общего меню."
     >
+        <template #actions>
+            <RouterLink to="/admin/users" class="button-link">
+                К пользователям
+            </RouterLink>
+        </template>
 
         <div class="roles-grid">
             <AdminCard>

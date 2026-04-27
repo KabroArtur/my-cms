@@ -15,6 +15,18 @@ export async function fetchPages() {
     return response.data
 }
 
+export async function fetchPage(id) {
+    const response = await axios.get(`/admin/api/pages/${id}`)
+
+    return response.data
+}
+
+export async function fetchTrashedPages() {
+    const response = await axios.get('/admin/api/pages-trash')
+
+    return response.data
+}
+
 export async function createPage(payload) {
     const response = await axios.post('/admin/api/pages', payload)
 
@@ -29,4 +41,14 @@ export async function updatePage(id, payload) {
 
 export async function deletePage(id) {
     await axios.delete(`/admin/api/pages/${id}`)
+}
+
+export async function restorePage(id) {
+    const response = await axios.post(`/admin/api/pages/${id}/restore`)
+
+    return response.data
+}
+
+export async function permanentlyDeletePage(id) {
+    await axios.delete(`/admin/api/pages/${id}/force`)
 }

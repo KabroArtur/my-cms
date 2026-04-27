@@ -3,6 +3,8 @@
 namespace App\Core\Pages\Data;
 
 use App\Core\Pages\Enums\PageStatus;
+use App\Core\Pages\Enums\PageVisibility;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -15,6 +17,7 @@ readonly class PageData
         public string $title,
         public string $slug,
         public PageStatus $status,
+        public PageVisibility $visibility,
         public ?string $excerpt = null,
         public ?string $content = null,
         public ?string $template = null,
@@ -23,6 +26,7 @@ readonly class PageData
         public ?int $parentId = null,
         public int $sortOrder = 0,
         public bool $isHome = false,
+        public ?Carbon $publishedAt = null,
     ) {
     }
 
@@ -40,6 +44,9 @@ readonly class PageData
             status: isset($attributes['status'])
                 ? PageStatus::from((string) $attributes['status'])
                 : PageStatus::Draft,
+            visibility: isset($attributes['visibility'])
+                ? PageVisibility::from((string) $attributes['visibility'])
+                : PageVisibility::Public,
             excerpt: self::nullableString($attributes['excerpt'] ?? null),
             content: self::nullableString($attributes['content'] ?? null),
             template: self::nullableString($attributes['template'] ?? null),
@@ -48,6 +55,7 @@ readonly class PageData
             parentId: isset($attributes['parent_id']) ? (int) $attributes['parent_id'] : null,
             sortOrder: isset($attributes['sort_order']) ? (int) $attributes['sort_order'] : 0,
             isHome: (bool) ($attributes['is_home'] ?? false),
+            publishedAt: self::nullableDate($attributes['published_at'] ?? null),
         );
     }
 
@@ -59,10 +67,17 @@ readonly class PageData
      */
     public function toArray(): array
     {
+        $publishedAt = match ($this->status) {
+            PageStatus::Published => $this->publishedAt ?? now(),
+            PageStatus::Scheduled => $this->publishedAt,
+            default => null,
+        };
+
         return [
             'title' => $this->title,
             'slug' => $this->slug,
             'status' => $this->status->value,
+            'visibility' => $this->visibility->value,
             'excerpt' => $this->excerpt,
             'content' => $this->content,
             'template' => $this->template,
@@ -71,7 +86,7 @@ readonly class PageData
             'parent_id' => $this->parentId,
             'sort_order' => $this->sortOrder,
             'is_home' => $this->isHome,
-            'published_at' => $this->status === PageStatus::Published ? now() : null,
+            'published_at' => $publishedAt,
         ];
     }
 
@@ -83,5 +98,15 @@ readonly class PageData
         $value = is_string($value) ? trim($value) : $value;
 
         return $value === '' ? null : $value;
+    }
+
+    /**
+     * DTO приводит дату публикации к объекту Carbon.
+     */
+    protected static function nullableDate(mixed $value): ?Carbon
+    {
+        $value = self::nullableString($value);
+
+        return $value === null ? null : Carbon::parse($value);
     }
 }

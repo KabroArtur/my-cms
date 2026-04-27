@@ -1,69 +1,18 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
-import { createPage, deletePage, fetchPages, updatePage } from '../../api/pages'
+import { deletePage, fetchPages, fetchTrashedPages, permanentlyDeletePage, restorePage } from '../../api/pages'
 
 const loading = ref(true)
-const saving = ref(false)
 const errorMessage = ref('')
-const validationErrors = ref({})
 const pages = ref([])
-const editingId = ref(null)
-const slugLocked = ref(false)
+const trashedPages = ref([])
 
-const form = reactive({
-    title: '',
-    slug: '',
-    status: 'draft',
-    template: '',
-    excerpt: '',
-})
-
-function normalizeSlug(value) {
-    return String(value)
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^\p{L}\p{N}-]+/gu, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-}
-
-function syncSlugFromTitle() {
-    if (slugLocked.value) {
-        return
-    }
-
-    form.slug = normalizeSlug(form.title)
-}
-
-function handleSlugInput() {
-    slugLocked.value = form.slug.trim() !== ''
-}
-
-function resetForm() {
-    editingId.value = null
-    slugLocked.value = false
-    form.title = ''
-    form.slug = ''
-    form.status = 'draft'
-    form.template = ''
-    form.excerpt = ''
-    validationErrors.value = {}
-}
-
-function startEdit(page) {
-    editingId.value = page.id
-    slugLocked.value = true
-    form.title = page.title ?? ''
-    form.slug = page.slug ?? ''
-    form.status = page.status ?? 'draft'
-    form.template = page.template ?? ''
-    form.excerpt = page.excerpt ?? ''
-    errorMessage.value = ''
-    validationErrors.value = {}
+function resolvePublicUrl(page) {
+    return page.is_home ? '/' : `/${page.slug}`
 }
 
 async function loadPages() {
@@ -71,8 +20,13 @@ async function loadPages() {
     errorMessage.value = ''
 
     try {
-        const payload = await fetchPages()
+        const [payload, trashedPayload] = await Promise.all([
+            fetchPages(),
+            fetchTrashedPages(),
+        ])
+
         pages.value = payload.data ?? []
+        trashedPages.value = trashedPayload.data ?? []
     } catch (error) {
         errorMessage.value = 'Не удалось загрузить страницы.'
         console.error(error)
@@ -81,42 +35,8 @@ async function loadPages() {
     }
 }
 
-async function submitForm() {
-    saving.value = true
-    errorMessage.value = ''
-    validationErrors.value = {}
-
-    try {
-        if (editingId.value) {
-            const payload = await updatePage(editingId.value, form)
-            const index = pages.value.findIndex((page) => page.id === editingId.value)
-
-            if (index !== -1) {
-                pages.value[index] = payload.data
-            }
-        } else {
-            const payload = await createPage(form)
-            pages.value.unshift(payload.data)
-        }
-
-        resetForm()
-    } catch (error) {
-        if (error.response?.status === 422) {
-            validationErrors.value = error.response.data.errors ?? {}
-        } else {
-            errorMessage.value = editingId.value
-                ? 'Не удалось обновить страницу.'
-                : 'Не удалось создать страницу.'
-        }
-
-        console.error(error)
-    } finally {
-        saving.value = false
-    }
-}
-
 async function removePage(page) {
-    const confirmed = window.confirm(`Удалить страницу "${page.title}"?`)
+    const confirmed = window.confirm(`Переместить страницу "${page.title}" в корзину?`)
 
     if (!confirmed) {
         return
@@ -127,12 +47,43 @@ async function removePage(page) {
     try {
         await deletePage(page.id)
         pages.value = pages.value.filter((item) => item.id !== page.id)
-
-        if (editingId.value === page.id) {
-            resetForm()
-        }
+        trashedPages.value.unshift({
+            ...page,
+            deleted_at: new Date().toISOString(),
+        })
     } catch (error) {
-        errorMessage.value = 'Не удалось удалить страницу.'
+        errorMessage.value = 'Не удалось переместить страницу в корзину.'
+        console.error(error)
+    }
+}
+
+async function restoreTrashedPage(page) {
+    errorMessage.value = ''
+
+    try {
+        const payload = await restorePage(page.id)
+        trashedPages.value = trashedPages.value.filter((item) => item.id !== page.id)
+        pages.value.unshift(payload.data)
+    } catch (error) {
+        errorMessage.value = 'Не удалось восстановить страницу.'
+        console.error(error)
+    }
+}
+
+async function forceRemovePage(page) {
+    const confirmed = window.confirm(`Удалить страницу "${page.title}" навсегда?`)
+
+    if (!confirmed) {
+        return
+    }
+
+    errorMessage.value = ''
+
+    try {
+        await permanentlyDeletePage(page.id)
+        trashedPages.value = trashedPages.value.filter((item) => item.id !== page.id)
+    } catch (error) {
+        errorMessage.value = 'Не удалось удалить страницу навсегда.'
         console.error(error)
     }
 }
@@ -144,105 +95,15 @@ onMounted(loadPages)
     <AdminPage
         eyebrow="Pages"
         title="Страницы"
-        description="Простой контентный раздел для создания, редактирования и удаления страниц CMS."
+        description="Список страниц с переходом в отдельную карточку редактирования."
     >
-        <div class="pages-grid">
-            <AdminCard>
-                <fieldset class="page-form-fieldset">
-                    <legend>{{ editingId ? 'Edit page' : 'Create page' }}</legend>
+        <template #actions>
+            <RouterLink to="/admin/pages/create" class="button-link">
+                Новая страница
+            </RouterLink>
+        </template>
 
-                    <form @submit.prevent="submitForm">
-                        <table class="data-table form-table">
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <label for="page-title">Title</label>
-                                    </td>
-                                    <td>
-                                        <input id="page-title" v-model="form.title" class="admin-input" type="text" placeholder="Например, О компании" @input="syncSlugFromTitle">
-                                    </td>
-                                    <td>
-                                        <small v-if="validationErrors.title">{{ validationErrors.title[0] }}</small>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>
-                                        <label for="page-slug">Slug</label>
-                                    </td>
-                                    <td>
-                                        <input id="page-slug" v-model="form.slug" class="admin-input" type="text" placeholder="about-company" @input="handleSlugInput">
-                                    </td>
-                                    <td>
-                                        <small v-if="validationErrors.slug">{{ validationErrors.slug[0] }}</small>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>
-                                        <label for="page-status">Status</label>
-                                    </td>
-                                    <td>
-                                        <select id="page-status" v-model="form.status" class="admin-select">
-                                            <option value="draft">Черновик</option>
-                                            <option value="published">Опубликована</option>
-                                            <option value="archived">Архив</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <small v-if="validationErrors.status">{{ validationErrors.status[0] }}</small>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>
-                                        <label for="page-template">Template</label>
-                                    </td>
-                                    <td>
-                                        <input id="page-template" v-model="form.template" class="admin-input" type="text" placeholder="default">
-                                    </td>
-                                    <td>
-                                        <small v-if="validationErrors.template">{{ validationErrors.template[0] }}</small>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>
-                                        <label for="page-excerpt">Excerpt</label>
-                                    </td>
-                                    <td>
-                                        <textarea id="page-excerpt" v-model="form.excerpt" class="admin-textarea" rows="4" cols="40" placeholder="Короткое описание страницы"></textarea>
-                                    </td>
-                                    <td>
-                                        <small v-if="validationErrors.excerpt">{{ validationErrors.excerpt[0] }}</small>
-                                    </td>
-                                </tr>
-
-                                <tr v-if="errorMessage">
-                                    <td colspan="3">
-                                        <strong>{{ errorMessage }}</strong>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="3">
-                                        <div class="admin-actions-row">
-                                            <AdminButton type="submit" variant="primary" :disabled="saving">
-                                                {{ saving ? 'Сохранение...' : (editingId ? 'Сохранить страницу' : 'Создать страницу') }}
-                                            </AdminButton>
-
-                                            <AdminButton v-if="editingId" type="button" @click="resetForm">
-                                                Отмена
-                                            </AdminButton>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </form>
-                </fieldset>
-            </AdminCard>
-
+        <div class="admin-page-grid">
             <AdminCard>
                 <p v-if="loading" class="muted">Загрузка страниц...</p>
                 <p v-else-if="pages.length === 0" class="muted">Страницы пока не созданы.</p>
@@ -252,8 +113,12 @@ onMounted(loadPages)
                         <tr>
                             <th>ID</th>
                             <th>Title</th>
+                            <th>URL</th>
+                            <th>Description</th>
                             <th>Slug</th>
                             <th>Status</th>
+                            <th>Date</th>
+                            <th>Visibility</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -261,17 +126,69 @@ onMounted(loadPages)
                     <tbody>
                         <tr v-for="page in pages" :key="page.id">
                             <td>{{ page.id }}</td>
-                            <td>{{ page.title }}</td>
+                            <td>
+                                <RouterLink :to="`/admin/pages/${page.id}`" class="page-title-link">
+                                    {{ page.title }}
+                                </RouterLink>
+                            </td>
+                            <td>
+                                <span v-if="page.is_home">/</span>
+                                <span v-else>/{{ page.slug }}</span>
+                            </td>
+                            <td>{{ page.excerpt || '—' }}</td>
                             <td>{{ page.slug }}</td>
                             <td>{{ page.status }}</td>
+                            <td>{{ page.published_at ? new Date(page.published_at).toLocaleString('ru-RU') : '—' }}</td>
+                            <td>{{ page.visibility }}</td>
                             <td>
                                 <div class="admin-actions-row">
-                                    <AdminButton type="button" @click="startEdit(page)">
-                                        Edit
-                                    </AdminButton>
+                                    <a :href="resolvePublicUrl(page)" class="button-link" target="_blank" rel="noopener">
+                                        Перейти
+                                    </a>
+
+                                    <RouterLink :to="`/admin/pages/${page.id}`" class="button-link">
+                                        Открыть
+                                    </RouterLink>
 
                                     <AdminButton type="button" variant="danger" @click="removePage(page)">
-                                        Delete
+                                        В корзину
+                                    </AdminButton>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </AdminCard>
+
+            <AdminCard>
+                <h2>Корзина</h2>
+                <p v-if="trashedPages.length === 0" class="muted">Удалённых страниц пока нет.</p>
+
+                <table v-else class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Slug</th>
+                            <th>Удалена</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr v-for="page in trashedPages" :key="page.id">
+                            <td>{{ page.id }}</td>
+                            <td>{{ page.title }}</td>
+                            <td>{{ page.slug }}</td>
+                            <td>{{ page.deleted_at ? new Date(page.deleted_at).toLocaleString('ru-RU') : '—' }}</td>
+                            <td>
+                                <div class="admin-actions-row">
+                                    <AdminButton type="button" @click="restoreTrashedPage(page)">
+                                        Восстановить
+                                    </AdminButton>
+
+                                    <AdminButton type="button" variant="danger" @click="forceRemovePage(page)">
+                                        Удалить навсегда
                                     </AdminButton>
                                 </div>
                             </td>

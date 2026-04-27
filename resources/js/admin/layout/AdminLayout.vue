@@ -15,7 +15,6 @@ const links = computed(() => {
         { to: '/admin', label: 'Dashboard', visible: true },
         { to: '/admin/pages', label: 'Pages', visible: permissions.has('pages.access') },
         { to: '/admin/users', label: 'Users', visible: permissions.has('users.access') },
-        { to: '/admin/roles', label: 'Roles', visible: permissions.has('roles.access') },
         { to: '/admin/media', label: 'Media', visible: permissions.has('media.access') },
         { to: '/admin/settings', label: 'Settings', visible: permissions.has('settings.access') },
     ].filter((link) => link.visible)

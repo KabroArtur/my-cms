@@ -34,6 +34,26 @@ class PageController extends Controller
     }
 
     /**
+     * Контроллер возвращает корзину страниц для админки.
+     */
+    public function trash(PageRepository $pages): AnonymousResourceCollection
+    {
+        Gate::authorize('viewAny', Page::class);
+
+        return PageResource::collection($pages->paginateTrashed());
+    }
+
+    /**
+     * Контроллер отдает одну страницу для детального экрана админки.
+     */
+    public function show(Page $page): PageResource
+    {
+        Gate::authorize('viewAny', Page::class);
+
+        return PageResource::make($page);
+    }
+
+    /**
      * Контроллер создает новую страницу через доменный action.
      */
     public function store(StorePageRequest $request, CreatePageAction $createPage): JsonResponse
@@ -63,6 +83,36 @@ class PageController extends Controller
         $this->authorize('delete', $page);
 
         $deletePage->handle($page);
+
+        return response()->noContent();
+    }
+
+    /**
+     * Контроллер восстанавливает страницу из корзины.
+     */
+    public function restore(int $page, PageRepository $pages): PageResource
+    {
+        $trashedPage = $pages->findTrashedById($page);
+
+        abort_if($trashedPage === null, 404);
+
+        $this->authorize('update', $trashedPage);
+
+        return PageResource::make($pages->restore($trashedPage));
+    }
+
+    /**
+     * Контроллер удаляет страницу из корзины безвозвратно.
+     */
+    public function forceDelete(int $page, PageRepository $pages): Response
+    {
+        $trashedPage = $pages->findTrashedById($page);
+
+        abort_if($trashedPage === null, 404);
+
+        $this->authorize('delete', $trashedPage);
+
+        $pages->forceDelete($trashedPage);
 
         return response()->noContent();
     }

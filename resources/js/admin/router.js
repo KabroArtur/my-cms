@@ -16,6 +16,16 @@ const routes = [
                 component: () => import('./pages/Pages/PagesIndex.vue'),
             },
             {
+                path: 'pages/create',
+                name: 'page-create',
+                component: () => import('./pages/Pages/PageEditor.vue'),
+            },
+            {
+                path: 'pages/:id',
+                name: 'page-edit',
+                component: () => import('./pages/Pages/PageEditor.vue'),
+            },
+            {
                 path: 'users',
                 name: 'users',
                 component: () => import('./pages/Users/UsersIndex.vue'),
