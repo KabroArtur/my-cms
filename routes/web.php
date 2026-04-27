@@ -1,7 +1,34 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\Admin\PageController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/admin/{any?}', function () {
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+});
+
+Route::middleware('auth')->post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'create'])->name('two-factor.challenge');
+    Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])->name('two-factor.store');
+    Route::post('/two-factor-challenge/resend', [TwoFactorChallengeController::class, 'resend'])->name('two-factor.resend');
+});
+
+Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')->group(function () {
+    Route::get('/me', [AdminSessionController::class, 'show']);
+    Route::get('/pages', [PageController::class, 'index']);
+    Route::post('/pages', [PageController::class, 'store']);
+    Route::put('/pages/{page}', [PageController::class, 'update']);
+    Route::delete('/pages/{page}', [PageController::class, 'destroy']);
+});
+
+Route::middleware(['auth', 'admin.access', 'two_factor'])->get('/admin/{any?}', function () {
     return view('admin');
 })->where('any', '.*');
+
+Route::redirect('/', '/admin/pages');

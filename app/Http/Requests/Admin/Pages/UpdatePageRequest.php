@@ -1,0 +1,50 @@
+<?php
+
+namespace App\Http\Requests\Admin\Pages;
+
+use App\Core\Pages\Enums\PageStatus;
+use App\Core\Pages\Models\Page;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
+
+/**
+ * Запрос валидирует обновление страницы в административной зоне.
+ * Он учитывает текущую запись при проверке уникальности slug.
+ */
+class UpdatePageRequest extends FormRequest
+{
+    /**
+     * Запрос проверяет базовое право на изменение страницы.
+     */
+    public function authorize(): bool
+    {
+        $page = $this->route('page');
+
+        return $page instanceof Page && Gate::allows('update', $page);
+    }
+
+    /**
+     * Запрос описывает правила обновления страницы.
+     *
+     * @return array<string, array<int, mixed>|string>
+     */
+    public function rules(): array
+    {
+        $pageId = $this->route('page');
+
+        return [
+            'title' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique('pages', 'slug')->ignore($pageId)],
+            'status' => ['nullable', Rule::enum(PageStatus::class)],
+            'excerpt' => ['nullable', 'string'],
+            'content' => ['nullable', 'string'],
+            'template' => ['nullable', 'string', 'max:255'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string'],
+            'parent_id' => ['nullable', 'integer', 'exists:pages,id'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'is_home' => ['nullable', 'boolean'],
+        ];
+    }
+}
