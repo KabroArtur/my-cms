@@ -1,58 +1,272 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# My CMS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Проект представляет собой CMS на Laravel + Vue + Vite.
 
-## About Laravel
+Сейчас в проекте уже есть:
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- базовый Core-слой CMS;
+- модуль Pages с созданием, редактированием и удалением страниц;
+- роли и разрешения;
+- простая авторизация в административную зону;
+- подготовленная инфраструктура под 2FA, которая сейчас выключена.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Что нужно установить
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Для локального запуска нужны:
 
-## Learning Laravel
+- PHP 8.3+;
+- Composer;
+- Node.js 20+;
+- npm;
+- MySQL;
+- Git;
+- Herd или другая локальная среда для Laravel.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Как установить Git
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### macOS
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Если установлен Homebrew:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+brew install git
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Проверка:
 
-## Contributing
+```bash
+git --version
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Если Git не установлен, macOS также может предложить установить Command Line Tools автоматически.
 
-## Code of Conduct
+## Первый запуск проекта
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 1. Клонировать проект
 
-## Security Vulnerabilities
+```bash
+git clone <repository-url>
+cd my-cms
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 2. Установить PHP-зависимости
 
-## License
+```bash
+composer install
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 3. Установить frontend-зависимости
+
+```bash
+npm install
+```
+
+### 4. Создать `.env`
+
+Если файла нет:
+
+```bash
+cp .env.example .env
+```
+
+### 5. Сгенерировать ключ приложения
+
+```bash
+php artisan key:generate
+```
+
+### 6. Настроить базу данных
+
+Пример настроек в `.env`:
+
+```env
+APP_NAME="My CMS"
+APP_URL=http://my-cms.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=my_cms
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### 7. Применить миграции и сиды
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+### 8. Запустить frontend
+
+```bash
+npm run dev
+```
+
+### 9. Открыть проект
+
+Если используется Herd:
+
+```text
+http://my-cms.test
+```
+
+Страница входа:
+
+```text
+http://my-cms.test/login
+```
+
+Админка:
+
+```text
+http://my-cms.test/admin/pages
+```
+
+## Данные администратора
+
+После `php artisan db:seed` создается базовый администратор:
+
+- логин: `admin`
+- пароль: `admin`
+
+## Как запускать проект дальше
+
+### Backend
+
+Если проект уже обслуживается через Herd, отдельный `php artisan serve` не нужен.
+
+### Frontend
+
+Для разработки:
+
+```bash
+npm run dev
+```
+
+Для production-сборки:
+
+```bash
+npm run build
+```
+
+## Доступные полезные команды
+
+Очистить конфиг:
+
+```bash
+php artisan config:clear
+```
+
+Показать подключенные Core-модули:
+
+```bash
+php artisan cms:core
+```
+
+Проверить маршруты:
+
+```bash
+php artisan route:list
+```
+
+Проверить сборку frontend:
+
+```bash
+npm run build
+```
+
+## Как работать с Git
+
+### Первый раз настроить имя и почту
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+Проверка:
+
+```bash
+git config --global --list
+```
+
+### Посмотреть изменения
+
+```bash
+git status
+git diff
+```
+
+### Добавить изменения в коммит
+
+```bash
+git add .
+```
+
+Или добавить конкретный файл:
+
+```bash
+git add README.md
+```
+
+### Создать коммит
+
+```bash
+git commit -m "update pages module"
+```
+
+### Отправить обновления в GitHub
+
+Если ветка уже привязана:
+
+```bash
+git push
+```
+
+Если это первый push для ветки:
+
+```bash
+git push -u origin main
+```
+
+Если ветка называется не `main`, нужно подставить свое имя ветки.
+
+### Быстрый сценарий заливки обновлений
+
+```bash
+git status
+git add .
+git commit -m "update cms"
+git push
+```
+
+## Если после `git clone` проект не запускается
+
+Нужно проверить:
+
+- установлен ли Composer;
+- установлен ли Node.js;
+- создан ли `.env`;
+- создана ли база `my_cms`;
+- выполнены ли `php artisan migrate` и `php artisan db:seed`;
+- запущен ли `npm run dev`.
+
+## Состояние авторизации
+
+Сейчас в проекте работает:
+
+- вход по логину и паролю;
+- роли и разрешения;
+- защита административной зоны.
+
+2FA в проекте подготовлен, но сейчас глобально отключен через конфиг.
+
+## Что важно помнить
+
+- `npm start` в этом проекте не используется;
+- для frontend нужен `npm run dev`;
+- для сборки нужен `npm run build`;
+- для входа в админку нужен `admin / admin`;
+- пароль хранится в базе в виде хеша, а не в открытом виде.
