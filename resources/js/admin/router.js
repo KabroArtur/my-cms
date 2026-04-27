@@ -16,6 +16,16 @@ const routes = [
                 component: () => import('./pages/Pages/PagesIndex.vue'),
             },
             {
+                path: 'users',
+                name: 'users',
+                component: () => import('./pages/Users/UsersIndex.vue'),
+            },
+            {
+                path: 'roles',
+                name: 'roles',
+                component: () => import('./pages/Roles/RolesIndex.vue'),
+            },
+            {
                 path: 'media',
                 name: 'media',
                 component: () => import('./pages/Media/MediaLibrary.vue'),

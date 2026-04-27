@@ -1,0 +1,34 @@
+.admin-grid,
+.pages-grid,
+.users-grid,
+.roles-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    gap: 20px;
+}
+
+.page-form-fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.page-form-fieldset legend {
+    margin-bottom: 12px;
+    font-weight: 700;
+}
+
+.form-table .admin-input,
+.form-table .admin-select,
+.form-table .admin-textarea {
+    width: 100%;
+}
+
+@media (max-width: 1080px) {
+    .admin-grid,
+    .pages-grid,
+    .users-grid,
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
+}

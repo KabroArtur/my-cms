@@ -1,0 +1,73 @@
+body {
+    background: var(--admin-color-bg);
+    color: var(--admin-color-text);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+    margin-top: 0;
+}
+
+.eyebrow {
+    margin: 0;
+    color: var(--admin-color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.muted {
+    margin: 0;
+    color: var(--admin-color-text-muted);
+}
+
+.error-text {
+    margin: 0;
+    color: var(--admin-color-danger);
+}
+
+.admin-form-stack {
+    display: grid;
+    gap: 14px;
+}
+
+.admin-form-label {
+    display: grid;
+    gap: var(--admin-space-2);
+}
+
+.admin-input,
+.admin-select,
+.admin-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--admin-color-border-strong);
+    border-radius: var(--admin-radius-sm);
+    font: inherit;
+    background: var(--admin-color-surface);
+}
+
+.admin-fieldset {
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-md);
+    padding: var(--admin-space-3);
+}
+
+.admin-choice {
+    display: flex;
+    gap: var(--admin-space-2);
+    align-items: center;
+    margin-bottom: var(--admin-space-2);
+}
+
+.admin-actions-row {
+    display: flex;
+    gap: var(--admin-space-2);
+    flex-wrap: wrap;
+}

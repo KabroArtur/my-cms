@@ -13,24 +13,11 @@ return [
     */
 
     'permissions' => [
-        'pages.view',
-        'pages.create',
-        'pages.update',
-        'pages.delete',
-        'users.view',
-        'users.create',
-        'users.update',
-        'users.delete',
-        'roles.view',
-        'roles.create',
-        'roles.update',
-        'roles.delete',
-        'settings.view',
-        'settings.update',
-        'media.view',
-        'media.create',
-        'media.update',
-        'media.delete',
+        'pages.access',
+        'users.access',
+        'roles.access',
+        'settings.access',
+        'media.access',
     ],
 
     /*
@@ -51,12 +38,8 @@ return [
         'editor' => [
             'name' => 'Editor',
             'permissions' => [
-                'pages.view',
-                'pages.create',
-                'pages.update',
-                'media.view',
-                'media.create',
-                'media.update',
+                'pages.access',
+                'media.access',
             ],
         ],
     ],

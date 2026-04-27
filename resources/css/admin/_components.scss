@@ -1,0 +1,76 @@
+.panel-stack {
+    display: grid;
+    gap: 20px;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.panel-header h1 {
+    margin: 4px 0 8px;
+    font-size: 30px;
+}
+
+.panel-card {
+    padding: 18px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-lg);
+    background: var(--admin-color-surface);
+    box-shadow: var(--admin-shadow-card);
+}
+
+.badge {
+    display: inline-flex;
+    margin: 2px 6px 2px 0;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--admin-color-info-bg);
+    color: var(--admin-color-info-text);
+    font-size: 12px;
+}
+
+.badge-soft {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.button-base {
+    padding: 8px 12px;
+    border-radius: var(--admin-radius-sm);
+    border: 1px solid var(--admin-color-border-strong);
+    background: var(--admin-color-surface);
+    cursor: pointer;
+}
+
+.button-primary {
+    background: var(--admin-color-primary);
+    border-color: var(--admin-color-primary);
+    color: var(--admin-color-primary-contrast);
+}
+
+.button-danger {
+    color: var(--admin-color-danger);
+    border-color: var(--admin-color-danger-border);
+    background: var(--admin-color-danger-bg);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    border: 1px solid var(--admin-color-border);
+    padding: 10px 12px;
+    vertical-align: top;
+}
+
+.data-table th {
+    text-align: left;
+    background: var(--admin-color-surface-muted);
+}

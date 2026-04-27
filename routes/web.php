@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Admin\PageController;
@@ -21,6 +23,13 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')->group(function () {
     Route::get('/me', [AdminSessionController::class, 'show']);
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::post('/roles', [RoleController::class, 'store']);
+    Route::put('/roles/{role}', [RoleController::class, 'update']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::put('/users/{user}', [UserController::class, 'update']);
+    Route::delete('/users/{user}', [UserController::class, 'destroy']);
     Route::get('/pages', [PageController::class, 'index']);
     Route::post('/pages', [PageController::class, 'store']);
     Route::put('/pages/{page}', [PageController::class, 'update']);

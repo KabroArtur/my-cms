@@ -13,9 +13,11 @@ const links = computed(() => {
 
     return [
         { to: '/admin', label: 'Dashboard', visible: true },
-        { to: '/admin/pages', label: 'Pages', visible: permissions.has('pages.view') },
-        { to: '/admin/media', label: 'Media', visible: permissions.has('media.view') },
-        { to: '/admin/settings', label: 'Settings', visible: permissions.has('settings.view') },
+        { to: '/admin/pages', label: 'Pages', visible: permissions.has('pages.access') },
+        { to: '/admin/users', label: 'Users', visible: permissions.has('users.access') },
+        { to: '/admin/roles', label: 'Roles', visible: permissions.has('roles.access') },
+        { to: '/admin/media', label: 'Media', visible: permissions.has('media.access') },
+        { to: '/admin/settings', label: 'Settings', visible: permissions.has('settings.access') },
     ].filter((link) => link.visible)
 })
 
@@ -49,31 +51,37 @@ onMounted(loadCurrentUser)
 </script>
 
 <template>
-    <div>
-        <header>
-            <p>CMS</p>
+    <div class="admin-shell">
+        <header class="admin-header">
+            <div>
+                <p class="eyebrow">CMS</p>
+                <h1 class="admin-title">Admin Panel</h1>
+            </div>
 
-            <p v-if="loading">Загрузка пользователя...</p>
-            <p v-else-if="user">{{ user.username }} | {{ user.roles.join(', ') }}</p>
+            <div class="admin-header__meta">
+                <p v-if="loading" class="muted">Загрузка пользователя...</p>
+                <p v-else-if="user" class="muted">{{ user.username }} | {{ user.roles.join(', ') }}</p>
 
-            <p v-if="errorMessage"><strong>{{ errorMessage }}</strong></p>
+                <p v-if="errorMessage" class="error-text"><strong>{{ errorMessage }}</strong></p>
 
-            <button type="button" @click="handleLogout">
-                [ Logout ]
-            </button>
+                <button type="button" class="button-link" @click="handleLogout">
+                    Logout
+                </button>
+            </div>
         </header>
 
-        <nav>
+        <nav class="admin-nav">
             <RouterLink
                 v-for="link in links"
                 :key="link.to"
                 :to="link.to"
+                class="nav-link"
             >
                 {{ link.label }}
             </RouterLink>
         </nav>
 
-        <main>
+        <main class="admin-content">
             <router-view />
         </main>
     </div>

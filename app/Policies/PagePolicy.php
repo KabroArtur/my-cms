@@ -16,7 +16,7 @@ class PagePolicy
      */
     public function viewAny(?User $user): bool
     {
-        return $this->allows($user, 'pages.view');
+        return $this->allows($user, 'pages.access');
     }
 
     /**
@@ -24,7 +24,7 @@ class PagePolicy
      */
     public function create(?User $user): bool
     {
-        return $this->allows($user, 'pages.create');
+        return $this->allows($user, 'pages.access');
     }
 
     /**
@@ -32,7 +32,7 @@ class PagePolicy
      */
     public function update(?User $user, Page $page): bool
     {
-        return $this->allows($user, 'pages.update');
+        return $this->allows($user, 'pages.access');
     }
 
     /**
@@ -40,7 +40,7 @@ class PagePolicy
      */
     public function delete(?User $user, Page $page): bool
     {
-        return $this->allows($user, 'pages.delete');
+        return $this->allows($user, 'pages.access');
     }
 
     /**

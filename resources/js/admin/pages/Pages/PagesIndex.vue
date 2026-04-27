@@ -1,5 +1,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import AdminButton from '../../components/ui/AdminButton.vue'
+import AdminCard from '../../components/ui/AdminCard.vue'
+import AdminPage from '../../components/ui/AdminPage.vue'
 import { createPage, deletePage, fetchPages, updatePage } from '../../api/pages'
 
 const loading = ref(true)
@@ -138,23 +141,25 @@ onMounted(loadPages)
 </script>
 
 <template>
-    <section>
-        <h1>Pages</h1>
-
-        <div>
-            <section>
-                <fieldset>
+    <AdminPage
+        eyebrow="Pages"
+        title="Страницы"
+        description="Простой контентный раздел для создания, редактирования и удаления страниц CMS."
+    >
+        <div class="pages-grid">
+            <AdminCard>
+                <fieldset class="page-form-fieldset">
                     <legend>{{ editingId ? 'Edit page' : 'Create page' }}</legend>
 
                     <form @submit.prevent="submitForm">
-                        <table border="1" cellpadding="8" cellspacing="0">
+                        <table class="data-table form-table">
                             <tbody>
                                 <tr>
                                     <td>
                                         <label for="page-title">Title</label>
                                     </td>
                                     <td>
-                                        <input id="page-title" v-model="form.title" type="text" placeholder="Например, О компании" @input="syncSlugFromTitle">
+                                        <input id="page-title" v-model="form.title" class="admin-input" type="text" placeholder="Например, О компании" @input="syncSlugFromTitle">
                                     </td>
                                     <td>
                                         <small v-if="validationErrors.title">{{ validationErrors.title[0] }}</small>
@@ -166,7 +171,7 @@ onMounted(loadPages)
                                         <label for="page-slug">Slug</label>
                                     </td>
                                     <td>
-                                        <input id="page-slug" v-model="form.slug" type="text" placeholder="about-company" @input="handleSlugInput">
+                                        <input id="page-slug" v-model="form.slug" class="admin-input" type="text" placeholder="about-company" @input="handleSlugInput">
                                     </td>
                                     <td>
                                         <small v-if="validationErrors.slug">{{ validationErrors.slug[0] }}</small>
@@ -178,7 +183,7 @@ onMounted(loadPages)
                                         <label for="page-status">Status</label>
                                     </td>
                                     <td>
-                                        <select id="page-status" v-model="form.status">
+                                        <select id="page-status" v-model="form.status" class="admin-select">
                                             <option value="draft">Черновик</option>
                                             <option value="published">Опубликована</option>
                                             <option value="archived">Архив</option>
@@ -194,7 +199,7 @@ onMounted(loadPages)
                                         <label for="page-template">Template</label>
                                     </td>
                                     <td>
-                                        <input id="page-template" v-model="form.template" type="text" placeholder="default">
+                                        <input id="page-template" v-model="form.template" class="admin-input" type="text" placeholder="default">
                                     </td>
                                     <td>
                                         <small v-if="validationErrors.template">{{ validationErrors.template[0] }}</small>
@@ -206,7 +211,7 @@ onMounted(loadPages)
                                         <label for="page-excerpt">Excerpt</label>
                                     </td>
                                     <td>
-                                        <textarea id="page-excerpt" v-model="form.excerpt" rows="4" cols="40" placeholder="Короткое описание страницы"></textarea>
+                                        <textarea id="page-excerpt" v-model="form.excerpt" class="admin-textarea" rows="4" cols="40" placeholder="Короткое описание страницы"></textarea>
                                     </td>
                                     <td>
                                         <small v-if="validationErrors.excerpt">{{ validationErrors.excerpt[0] }}</small>
@@ -221,26 +226,28 @@ onMounted(loadPages)
 
                                 <tr>
                                     <td colspan="3">
-                                        <button type="submit" :disabled="saving">
-                                            [ {{ saving ? 'Сохранение...' : (editingId ? 'Сохранить страницу' : 'Создать страницу') }} ]
-                                        </button>
+                                        <div class="admin-actions-row">
+                                            <AdminButton type="submit" variant="primary" :disabled="saving">
+                                                {{ saving ? 'Сохранение...' : (editingId ? 'Сохранить страницу' : 'Создать страницу') }}
+                                            </AdminButton>
 
-                                        <button v-if="editingId" type="button" @click="resetForm">
-                                            [ Отмена ]
-                                        </button>
+                                            <AdminButton v-if="editingId" type="button" @click="resetForm">
+                                                Отмена
+                                            </AdminButton>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </form>
                 </fieldset>
-            </section>
+            </AdminCard>
 
-            <section>
-                <p v-if="loading">Загрузка страниц...</p>
-                <p v-else-if="pages.length === 0">Страницы пока не созданы.</p>
+            <AdminCard>
+                <p v-if="loading" class="muted">Загрузка страниц...</p>
+                <p v-else-if="pages.length === 0" class="muted">Страницы пока не созданы.</p>
 
-                <table v-else border="1" cellpadding="8" cellspacing="0">
+                <table v-else class="data-table">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -258,18 +265,20 @@ onMounted(loadPages)
                             <td>{{ page.slug }}</td>
                             <td>{{ page.status }}</td>
                             <td>
-                                <button type="button" @click="startEdit(page)">
-                                    [ Edit ]
-                                </button>
+                                <div class="admin-actions-row">
+                                    <AdminButton type="button" @click="startEdit(page)">
+                                        Edit
+                                    </AdminButton>
 
-                                <button type="button" @click="removePage(page)">
-                                    [ Delete ]
-                                </button>
+                                    <AdminButton type="button" variant="danger" @click="removePage(page)">
+                                        Delete
+                                    </AdminButton>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
                 </table>
-            </section>
+            </AdminCard>
         </div>
-    </section>
+    </AdminPage>
 </template>
