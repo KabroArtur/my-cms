@@ -2,6 +2,8 @@
 
 Проект представляет собой CMS на Laravel + Vue + Vite.
 
+Frontend-слой админки теперь использует единый SCSS entry и централизованную структуру стилей.
+
 Сейчас в проекте уже есть:
 
 - базовый Core-слой CMS;
@@ -18,6 +20,7 @@
 - Composer;
 - Node.js 20+;
 - npm;
+- Sass runtime для Vite устанавливается через `npm install` автоматически;
 - MySQL;
 - Git;
 - Herd или другая локальная среда для Laravel.
@@ -60,6 +63,8 @@ composer install
 ```bash
 npm install
 ```
+
+После установки будут доступны зависимости для Vue, Vite, Tailwind и SCSS-сборки.
 
 ### 4. Создать `.env`
 
@@ -150,6 +155,24 @@ npm run dev
 ```bash
 npm run build
 ```
+
+Для проекта используется единый entry-файл стилей:
+
+```text
+resources/css/app.scss
+```
+
+SCSS-слой админки разложен по partial-файлам:
+
+```text
+resources/css/admin/_tokens.scss
+resources/css/admin/_base.scss
+resources/css/admin/_layout.scss
+resources/css/admin/_components.scss
+resources/css/admin/_pages.scss
+```
+
+Во Vue-компонентах админки локальные `style scoped` не используются: стили держатся централизованно в SCSS-файлах.
 
 ## Доступные полезные команды
 
