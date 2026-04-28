@@ -243,89 +243,47 @@
         }
     </style>
 </head>
-<body>
-    @php
-        // Единый стиль использования макросов в теме:
-        // 1) Получаем данные без директив и без строковых "магических" параметров.
-        // 2) Все кастомизации рендера храним в одном массиве menuOptions.
-        // 3) Здесь же видно, куда добавлять классы, атрибуты и before/after обертки.
-        $menu = $cms->menu($page);
-
-        $menuOptions = [
-            // Тег и класс корневого контейнера меню.
-            'root_tag' => 'div',
-            'root_class' => 'editorial-nav__list',
-            'root_attributes' => [
-                'data-nav' => 'main',
-            ],
-
-            // Тег и классы пункта меню.
-            'item_tag' => 'div',
-            'item_class' => 'editorial-nav__group',
-            'item_class_current' => 'is-current',
-            'item_class_ancestor' => 'is-ancestor',
-            'item_attributes' => [],
-
-            // Тег и классы ссылки пункта.
-            'link_tag' => 'a',
-            'link_class' => 'editorial-nav__link',
-            'link_attributes' => [
-                // Пример: 'target' => '_blank',
-            ],
-
-            // Тег и классы контейнера вложенных пунктов.
-            'children_tag' => 'div',
-            'children_class' => 'editorial-nav__children',
-            'children_attributes' => [],
-
-            // Before/after хуки:
-            // Поддерживают токены {title}, {url}, {id}, {path}.
-            // Пример: '<span class="before">•</span>'
-            'before_root' => '',
-            'after_root' => '',
-            'before_item' => '',
-            'after_item' => '',
-            'before_link' => '',
-            'after_link' => '',
-            'before_children' => '',
-            'after_children' => '',
-        ];
-    @endphp
+<body {!! cms_body_attrs(['class' => 'editorial-body']) !!}>
 
     <main class="editorial-shell">
         <div class="editorial-topbar">
-            <span><strong>{{ $settings['site_name'] ?? 'CMS Site' }}</strong></span>
+            <span><strong>{{ cms_site_name() }}</strong></span>
             <span>Editorial theme</span>
         </div>
 
-        <div class="editorial-nav" aria-label="Site navigation">
-            @if ($menu !== [])
-                @include('theme::partials.navigation-tree', ['items' => $menu, 'menuOptions' => $menuOptions])
-            @endif
-        </div>
+        {!! cms_menu('main', [
+            'container' => 'nav',
+            'container_class' => 'editorial-nav editorial-nav__list',
+            'container_attrs' => ['aria-label' => 'Site navigation', 'data-nav' => 'main'],
+            'list' => false,
+            'item_tag' => 'div',
+            'item_class' => 'editorial-nav__group',
+            'active_class' => 'is-current',
+            'ancestor_class' => 'is-ancestor',
+            'link_class' => 'editorial-nav__link',
+            'children_tag' => 'div',
+            'children_class' => 'editorial-nav__children',
+        ]) !!}
 
         <section class="editorial-grid">
             <div>
                 <header class="editorial-hero">
-                    <p class="editorial-kicker">{{ $page->template ?? ($settings['site_theme'] ?? 'editorial') }}</p>
-                    <h1 class="editorial-title">{{ $page->title ?? 'Home' }}</h1>
+                    <p class="editorial-kicker">{{ cms_template(cms_setting('site_theme', 'editorial')) }}</p>
+                    <h1 class="editorial-title">{{ cms_title('Home') }}</h1>
 
-                    @if ($page->excerpt)
-                        <p class="editorial-excerpt">{{ $page->excerpt }}</p>
+                    @if (cms_has_field('excerpt'))
+                        <p class="editorial-excerpt">{{ cms_excerpt() }}</p>
                     @endif
                 </header>
 
-                @if ($page->featuredMedia && $featuredMediaUrl)
+                @if (cms_has_image('featured_image'))
                     <figure class="editorial-featured-media" style="margin: 24px 0 0;">
-                        <img src="{{ $featuredMediaUrl }}" alt="{{ $page->featuredMedia->alt_text ?: $page->featuredMedia->original_name }}">
-                        @if ($page->featuredMedia->caption)
-                            <figcaption>{{ $page->featuredMedia->caption }}</figcaption>
-                        @endif
+                        {!! cms_image('featured_image', ['size' => cms_setting('site_featured_media_variant', 'original')]) !!}
                     </figure>
                 @endif
 
                 <article class="editorial-content">
-                    {!! $page->content ?: nl2br(e($page->excerpt ?? 'Контент страницы пока не заполнен.')) !!}
+                    {!! cms_content(new \Illuminate\Support\HtmlString(nl2br(e(cms_excerpt('Контент страницы пока не заполнен.'))))) !!}
                 </article>
             </div>
 
@@ -335,15 +293,15 @@
                     <dl class="editorial-meta-list">
                         <div class="editorial-meta-row">
                             <dt>Путь</dt>
-                            <dd>{{ $page->is_home ? '/' : '/'.$page->path }}</dd>
+                            <dd>{{ cms_is_home() ? '/' : '/'.cms_path() }}</dd>
                         </div>
                         <div class="editorial-meta-row">
                             <dt>Статус</dt>
-                            <dd>{{ $page->status?->value ?? $page->status }}</dd>
+                            <dd>{{ cms_status() }}</dd>
                         </div>
                         <div class="editorial-meta-row">
                             <dt>Опубликовано</dt>
-                            <dd>{{ optional($page->published_at)->format(($settings['date_format'] ?? 'd.m.Y').' '.($settings['time_format'] ?? 'H:i')) ?? 'not scheduled' }}</dd>
+                            <dd>{{ cms_date() ?: 'not scheduled' }}</dd>
                         </div>
                     </dl>
                 </section>
@@ -356,8 +314,10 @@
         </section>
 
         <footer class="editorial-footer">
-            <p>{{ $settings['site_name'] ?? 'CMS Site' }}. Публичный шаблон: Editorial Theme.</p>
+            <p>{{ cms_site_name() }}. Публичный шаблон: Editorial Theme.</p>
         </footer>
     </main>
+
+    {!! cms_footer() !!}
 </body>
 </html>

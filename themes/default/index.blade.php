@@ -168,80 +168,56 @@
         }
     </style>
 </head>
-<body>
-    @php
-        $menu = $cms->menu($page);
-
-        $menuOptions = [
-            'root_tag' => 'ul',
-            'root_class' => 'site-nav__tree',
-            'root_attributes' => [],
-
-            'item_tag' => 'li',
-            'item_class' => 'site-nav__item',
-            'item_class_current' => 'is-current',
-            'item_class_ancestor' => 'is-ancestor',
-            'item_attributes' => [],
-
-            'link_tag' => 'a',
-            'link_class' => 'site-nav__link',
-            'link_attributes' => [],
-
-            'children_tag' => 'ul',
-            'children_class' => 'site-nav__children',
-            'children_attributes' => [],
-
-            'before_root' => '',
-            'after_root' => '',
-            'before_item' => '',
-            'after_item' => '',
-            'before_link' => '',
-            'after_link' => '',
-            'before_children' => '',
-            'after_children' => '',
-        ];
-    @endphp
+<body {!! cms_body_attrs(['class' => 'site-body']) !!}>
 
     <main class="site-shell">
         <header class="site-header">
-            <p class="site-kicker">{{ $settings['site_name'] ?? 'CMS Site' }} / {{ $page->template ?? ($settings['site_theme'] ?? 'default') }}</p>
-            <h1 class="site-title">{{ $page->title ?? 'Home' }}</h1>
+            <p class="site-kicker">{{ cms_site_name() }} / {{ cms_template(cms_setting('site_theme', 'default')) }}</p>
+            <h1 class="site-title">{{ cms_title('Home') }}</h1>
 
-            @if ($page->excerpt)
-                <p class="site-excerpt">{{ $page->excerpt }}</p>
+            @if (cms_has_field('excerpt'))
+                <p class="site-excerpt">{{ cms_excerpt() }}</p>
             @endif
         </header>
 
         <nav class="site-nav" aria-label="Site navigation">
             <h2>Страницы сайта</h2>
-
-            @if ($menu !== [])
-                @include('theme::partials.navigation-tree', ['items' => $menu, 'menuOptions' => $menuOptions])
-            @endif
+            {!! cms_menu('main', [
+                'container' => null,
+                'list' => true,
+                'list_tag' => 'ul',
+                'list_class' => 'site-nav__tree',
+                'item_tag' => 'li',
+                'item_class' => 'site-nav__item',
+                'active_class' => 'is-current',
+                'ancestor_class' => 'is-ancestor',
+                'link_class' => 'site-nav__link',
+                'children_tag' => 'ul',
+                'children_class' => 'site-nav__children',
+            ]) !!}
         </nav>
 
         <div class="site-meta">
-            <span>Slug: /{{ $page->slug }}</span>
-            <span>Status: {{ $page->status?->value ?? $page->status }}</span>
-            <span>Published: {{ optional($page->published_at)->format(($settings['date_format'] ?? 'd.m.Y').' '.($settings['time_format'] ?? 'H:i')) ?? 'not scheduled' }}</span>
+            <span>Slug: /{{ cms_slug() }}</span>
+            <span>Status: {{ cms_status() }}</span>
+            <span>Published: {{ cms_date() ?: 'not scheduled' }}</span>
         </div>
 
-        @if ($page->featuredMedia && $featuredMediaUrl)
+        @if (cms_has_image('featured_image'))
             <figure class="site-featured-media">
-                <img src="{{ $featuredMediaUrl }}" alt="{{ $page->featuredMedia->alt_text ?: $page->featuredMedia->original_name }}">
-                @if ($page->featuredMedia->caption)
-                    <figcaption style="padding: 12px 16px; color: var(--site-muted); font-size: 14px;">{{ $page->featuredMedia->caption }}</figcaption>
-                @endif
+                {!! cms_image('featured_image', ['size' => cms_setting('site_featured_media_variant', 'original')]) !!}
             </figure>
         @endif
 
         <article class="site-content">
-            {!! $page->content ?: nl2br(e($page->excerpt ?? 'Контент страницы пока не заполнен.')) !!}
+            {!! cms_content(new \Illuminate\Support\HtmlString(nl2br(e(cms_excerpt('Контент страницы пока не заполнен.'))))) !!}
         </article>
 
         <footer class="site-footer">
-            <p>{{ $settings['site_name'] ?? 'CMS Site' }}. Страница рендерится из CMS через тему по slug.</p>
+            <p>{{ cms_site_name() }}. Страница рендерится из CMS через тему по slug.</p>
         </footer>
     </main>
+
+    {!! cms_footer() !!}
 </body>
 </html>

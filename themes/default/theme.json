@@ -2,5 +2,5 @@
   "name": "Default Theme",
   "slug": "default",
   "version": "1.0.0",
-  "entry": "theme.blade.php"
+  "entry": "index.blade.php"
 }

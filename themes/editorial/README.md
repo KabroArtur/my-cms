@@ -12,9 +12,7 @@
 
 ## 2. Где что находится
 
-- Главный шаблон темы: themes/editorial/theme.blade.php
-- Рендер корня меню: themes/editorial/partials/navigation-tree.blade.php
-- Рендер пункта меню: themes/editorial/partials/navigation-item.blade.php
+- Главный шаблон темы: themes/editorial/index.blade.php
 - Источник данных макросов: app/Core/Themes/Services/ThemeRuntime.php
 - Blade-директивы (если нужны): app/Core/Themes/ThemesModule.php
 
@@ -145,7 +143,7 @@
 
 ## 7. Как устроен рендер меню сейчас
 
-В themes/editorial/theme.blade.php:
+В themes/editorial/index.blade.php:
 
 1) Получаем данные:
 
@@ -153,17 +151,13 @@
 @php($menu = $cms->menu($page))
 ```
 
-2) Описываем поведение рендера через menuOptions.
+2) Передаем опции прямо в cms_menu(...), без промежуточных partial-файлов.
 
-3) Вызываем общий partial:
-
-```php
-@include('theme::partials.navigation-tree', ['items' => $menu, 'menuOptions' => $menuOptions])
-```
+3) Рендерим меню одной командой.
 
 ## 8. menuOptions: что за что отвечает
 
-Конфиг menuOptions делится на блоки.
+Конфиг опций в cms_menu(...) делится на блоки.
 
 ### 8.1. Корневой контейнер
 
@@ -319,41 +313,21 @@ $menuOptions = [
 
 ```php
 @php
-  $menu = $cms->menu($page);
-
-  $menuOptions = [
-    'root_tag' => 'div',
-    'root_class' => 'editorial-nav__list',
-    'root_attributes' => [],
-
-    'item_tag' => 'div',
-    'item_class' => 'editorial-nav__group',
-    'item_class_current' => 'is-current',
-    'item_class_ancestor' => 'is-ancestor',
-    'item_attributes' => [],
-
-    'link_tag' => 'a',
-    'link_class' => 'editorial-nav__link',
-    'link_attributes' => [],
-
-    'children_tag' => 'div',
-    'children_class' => 'editorial-nav__children',
-    'children_attributes' => [],
-
-    'before_root' => '',
-    'after_root' => '',
-    'before_item' => '',
-    'after_item' => '',
-    'before_link' => '',
-    'after_link' => '',
-    'before_children' => '',
-    'after_children' => '',
-  ];
+  // Меню сразу рендерится из макроса.
 @endphp
 
-@if ($menu !== [])
-  @include('theme::partials.navigation-tree', ['items' => $menu, 'menuOptions' => $menuOptions])
-@endif
+{!! cms_menu('main', [
+  'container' => 'nav',
+  'container_class' => 'editorial-nav editorial-nav__list',
+  'list' => false,
+  'item_tag' => 'div',
+  'item_class' => 'editorial-nav__group',
+  'active_class' => 'is-current',
+  'ancestor_class' => 'is-ancestor',
+  'link_class' => 'editorial-nav__link',
+  'children_tag' => 'div',
+  'children_class' => 'editorial-nav__children',
+]) !!}
 ```
 
 ## 15. Blade-директивы (если очень нужно)

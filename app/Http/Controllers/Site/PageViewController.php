@@ -58,18 +58,13 @@ class PageViewController extends Controller
         /** @var View $view */
         $themeSettings = $this->settings->publicPayload();
         $themePath = $this->settings->themeViewPath();
-        $featuredMediaVariant = $themeSettings['site_featured_media_variant'] ?? 'original';
-        $featuredMediaUrl = $page->featuredMedia
-            ? ($featuredMediaVariant === 'original' ? $page->featuredMedia->url() : ($page->featuredMedia->variantUrl($featuredMediaVariant) ?? $page->featuredMedia->url()))
-            : null;
 
         view()->replaceNamespace('theme', dirname($themePath));
 
         $view = view()->file($themePath, [
             'page' => $page,
             'settings' => $themeSettings,
-            'featuredMediaUrl' => $featuredMediaUrl,
-            'cms' => $this->cms,
+            'cms' => $this->cms->usePage($page),
         ]);
 
         return response($view);

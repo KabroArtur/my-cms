@@ -1,0 +1,1315 @@
+Архитектура макросов для CMS на Laravel + Vue + Blade
+Главная идея
+CMS должна работать ближе к WordPress + ACF.
+Тема сама пишет HTML-разметку через Blade.
+CMS дает удобные макросы для вывода:
+данных страницы
+кастомных полей
+картинок
+меню
+повторителей
+настроек сайта
+SEO
+хлебных крошек
+форм
+переводов
+условий
+списков страниц
+записей блога
+медиа
+То есть тема не собирается через JSON layout.
+Тема остается обычным Blade-файлом.
+Пример:
+<section class="hero">
+    <h1>{{ cms_title() }}</h1>
+    <p>{{ cms_field('hero_text') }}</p>
+
+    <a href="{{ cms_field('hero_button_url') }}" class="btn">
+        {{ cms_field('hero_button_text') }}
+    </a>
+</section>
+1. Пример theme.blade.php
+<!doctype html>
+
+    <section class="hero {{ cms_field('hero_modifier', 'hero--default') }}">
+        <div class="container">
+
+            @if(cms_has_field('hero_label'))
+                <div class="hero__label">
+                    {{ cms_field('hero_label') }}
+                </div>
+            @endif
+
+            <h1 class="hero__title">
+                {{ cms_title() }}
+            </h1>
+
+            @if(cms_has_field('hero_text'))
+                <p class="hero__text">
+                    {{ cms_field('hero_text') }}
+                </p>
+            @endif
+
+            @if(cms_has_field('hero_button_text'))
+                <a href="{{ cms_field('hero_button_url', '#') }}" class="hero__button">
+                    {{ cms_field('hero_button_text') }}
+                </a>
+            @endif
+
+            @if(cms_has_image('hero_image'))
+                {!! cms_image('hero_image', [
+                    'class' => 'hero__image',
+                    'size' => 'large',
+                    'loading' => 'eager',
+                ]) !!}
+            @endif
+
+        </div>
+    </section>
+
+    <section class="content-section">
+        <div class="container">
+            {!! cms_content() !!}
+        </div>
+    </section>
+
+    @if(cms_has_repeater('benefits'))
+        <section class="benefits">
+            <div class="container">
+                <h2>{{ cms_field('benefits_title', 'Преимущества') }}</h2>
+
+                <div class="benefits__grid">
+                    @foreach(cms_repeater('benefits') as $item)
+                        <article class="benefit-card">
+                            @if($item->hasImage('icon'))
+                                {!! $item->image('icon', ['class' => 'benefit-card__icon']) !!}
+                            @endif
+
+                            <h3>{{ $item->field('title') }}</h3>
+
+                            @if($item->hasField('text'))
+                                <p>{{ $item->field('text') }}</p>
+                            @endif
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        {{ cms_site_name() }} © {{ cms_year() }}
+    </div>
+</footer>
+
+{!! cms_footer() !!}
+
+</body>
+</html>
+2. Основные группы макросов
+Система должна быть разделена на группы.
+cms_page_*       Данные текущей страницы
+cms_field_*      Кастомные поля страницы
+cms_image_*      Картинки и медиа
+cms_repeater_*   Повторители
+cms_menu_*       Меню
+cms_site_*       Настройки сайта
+cms_seo_*        SEO
+cms_breadcrumbs  Хлебные крошки
+cms_posts_*      Записи блога
+cms_pages_*      Списки страниц
+cms_url_*        URL и роутинг
+cms_lang_*       Языки
+cms_form_*       Формы
+cms_if_*         Условия
+Но в шаблоне лучше использовать короткие имена:
+{{ cms_title() }}
+{{ cms_field('subtitle') }}
+{!! cms_menu('main') !!}
+3. Макросы страницы
+cms_title()
+Выводит заголовок текущей страницы.
+<h1>{{ cms_title() }}</h1>
+Аналог WordPress:
+the_title()
+cms_content()
+Выводит основной контент страницы.
+<article>
+    {!! cms_content() !!}
+</article>
+Важно:
+cms_content() должен возвращать безопасный HTML после санитайза.
+cms_excerpt()
+Краткое описание страницы.
+<p>{{ cms_excerpt() }}</p>
+cms_slug()
+Slug текущей страницы.
+<body class="page-{{ cms_slug() }}">
+cms_url()
+URL текущей страницы.
+<a href="{{ cms_url() }}">Открыть</a>
+cms_path()
+Путь страницы без домена.
+{{ cms_path() }}
+cms_template()
+Текущий шаблон страницы.
+{{ cms_template() }}
+cms_status()
+Статус страницы.
+{{ cms_status() }}
+cms_date()
+Дата публикации.
+{{ cms_date('d.m.Y') }}
+cms_updated_date()
+Дата обновления.
+{{ cms_updated_date('d.m.Y') }}
+4. Кастомные поля
+Кастомные поля должны быть встроены в ядро CMS.
+В админке у страницы можно создавать поля:
+hero_title
+hero_text
+hero_image
+button_text
+button_url
+benefits
+faq
+rating
+author
+В Blade они выводятся так:
+{{ cms_field('hero_text') }}
+cms_field($key, $default = null)
+Основной макрос для вывода значения кастомного поля.
+{{ cms_field('hero_title') }}
+{{ cms_field('hero_title', cms_title()) }}
+{{ cms_field('button_text', 'Подробнее') }}
+cms_has_field($key)
+Проверяет, заполнено ли поле.
+@if(cms_has_field('subtitle'))
+    <p>{{ cms_field('subtitle') }}</p>
+@endif
+cms_field_raw($key)
+Выводит сырое значение поля.
+Использовать редко.
+{!! cms_field_raw('custom_html') !!}
+cms_field_html($key)
+Выводит HTML-поле после санитайза.
+{!! cms_field_html('description') !!}
+cms_field_bool($key)
+Для checkbox / toggle.
+@if(cms_field_bool('show_sidebar'))
+    <aside>...</aside>
+@endif
+cms_field_number($key, $default = 0)
+{{ cms_field_number('rating', 0) }}
+cms_field_array($key)
+Для массивов.
+@foreach(cms_field_array('tags') as $tag)
+    <span>{{ $tag }}</span>
+@endforeach
+5. Типы кастомных полей в админке
+В админке нужно дать набор типов.
+text
+textarea
+richtext
+number
+checkbox
+select
+radio
+image
+file
+url
+email
+color
+date
+datetime
+repeater
+group
+relation
+html
+code
+text
+Однострочный текст.
+{{ cms_field('hero_title') }}
+textarea
+Многострочный текст.
+{{ cms_field('hero_text') }}
+richtext
+HTML-редактор.
+{!! cms_field_html('description') !!}
+image
+Картинка.
+{!! cms_image('hero_image') !!}
+repeater
+Повторитель.
+@foreach(cms_repeater('benefits') as $item)
+    {{ $item->field('title') }}
+@endforeach
+group
+Группа полей.
+@php($hero = cms_group('hero'))
+
+<h1>{{ $hero->field('title') }}</h1>
+<p>{{ $hero->field('text') }}</p>
+6. Группы полей
+cms_group($key)
+@php($hero = cms_group('hero'))
+
+<section class="hero">
+    <h1>{{ $hero->field('title') }}</h1>
+    <p>{{ $hero->field('text') }}</p>
+</section>
+Если поле hero хранит:
+{
+  "title": "Главный заголовок",
+  "text": "Описание",
+  "button_text": "Подробнее",
+  "button_url": "/about"
+}
+7. Повторители
+cms_repeater($key)
+Для списков, карточек, FAQ, преимуществ, шагов.
+@foreach(cms_repeater('faq') as $item)
+    <div class="faq-item">
+        <h3>{{ $item->field('question') }}</h3>
+        <p>{{ $item->field('answer') }}</p>
+    </div>
+@endforeach
+cms_has_repeater($key)
+@if(cms_has_repeater('faq'))
+    ...
+@endif
+Методы элемента repeater
+{{ $item->field('title') }}
+{{ $item->field('text', 'Default text') }}
+
+@if($item->hasField('text'))
+@endif
+
+{!! $item->image('icon', ['class' => 'icon']) !!}
+{{ $item->imageUrl('icon', 'medium') }}
+{{ $item->imageAlt('icon') }}
+
+{{ $item->url('link') }}
+{{ $item->bool('is_active') }}
+{{ $item->number('rating') }}
+8. Картинки и медиа
+cms_image($key, $options = [])
+Выводит готовый img.
+{!! cms_image('hero_image', [
+    'class' => 'hero__image',
+    'size' => 'large',
+    'loading' => 'eager',
+]) !!}
+cms_image_url($key, $size = 'full')
+<img src="{{ cms_image_url('hero_image', 'large') }}" alt="">
+cms_image_alt($key)
+<img src="{{ cms_image_url('hero_image') }}" alt="{{ cms_image_alt('hero_image') }}">
+cms_has_image($key)
+@if(cms_has_image('hero_image'))
+    {!! cms_image('hero_image') !!}
+@endif
+cms_picture($key, $options = [])
+Для responsive images.
+{!! cms_picture('hero_image', [
+    'class' => 'hero-picture',
+    'sizes' => '(max-width: 768px) 100vw, 1200px',
+    'sources' => ['webp', 'jpg'],
+]) !!}
+cms_file_url($key)
+<a href="{{ cms_file_url('price_pdf') }}" download>
+    Скачать PDF
+</a>
+9. Меню
+cms_menu($location, $options = [])
+{!! cms_menu('main') !!}
+Расширенный вариант:
+{!! cms_menu('main', [
+    'container' => 'nav',
+    'container_class' => 'main-nav',
+    'list' => false,
+    'item_tag' => 'div',
+    'item_class' => 'main-nav__item',
+    'link_class' => 'main-nav__link',
+    'active_class' => 'is-active',
+    'ancestor_class' => 'is-ancestor',
+    'children_class' => 'main-nav__children',
+    'depth' => 2,
+]) !!}
+Опции меню
+[
+    'container' => 'nav',
+    'container_class' => '',
+    'container_attrs' => [],
+
+    'list' => true,
+    'list_tag' => 'ul',
+    'list_class' => '',
+
+    'item_tag' => 'li',
+    'item_class' => '',
+    'active_class' => 'is-active',
+    'ancestor_class' => 'is-ancestor',
+
+    'link_class' => '',
+    'link_attrs' => [],
+
+    'children_tag' => 'ul',
+    'children_class' => '',
+
+    'depth' => null,
+    'fallback' => false,
+]
+10. Настройки сайта
+cms_site_name()
+{{ cms_site_name() }}
+cms_setting($key, $default = null)
+{{ cms_setting('phone') }}
+{{ cms_setting('email') }}
+{{ cms_setting('address') }}
+cms_has_setting($key)
+@if(cms_has_setting('phone'))
+    <a href="tel:{{ cms_setting('phone') }}">
+        {{ cms_setting('phone') }}
+    </a>
+@endif
+cms_setting_image($key, $options = [])
+{!! cms_setting_image('logo', ['class' => 'logo']) !!}
+11. SEO макросы
+cms_head()
+Выводит:
+title
+meta description
+canonical
+robots
+Open Graph
+Twitter Card
+favicon
+подключенные стили темы
+<head>
+    {!! cms_head() !!}
+</head>
+cms_meta_title()
+<title>{{ cms_meta_title() }}</title>
+cms_meta_description()
+<meta name="description" content="{{ cms_meta_description() }}">
+cms_canonical_url()
+<link rel="canonical" href="{{ cms_canonical_url() }}">
+cms_robots()
+<meta name="robots" content="{{ cms_robots() }}">
+12. Хлебные крошки
+cms_breadcrumbs($options = [])
+{!! cms_breadcrumbs([
+    'container' => 'nav',
+    'container_class' => 'breadcrumbs',
+    'item_class' => 'breadcrumbs__item',
+    'link_class' => 'breadcrumbs__link',
+]) !!}
+13. Списки страниц
+cms_pages($options = [])
+@foreach(cms_pages(['parent' => cms_id(), 'limit' => 6]) as $child)
+    <a href="{{ $child->url }}">
+        {{ $child->title }}
+    </a>
+@endforeach
+Опции
+[
+    'parent' => null,
+    'template' => null,
+    'status' => 'published',
+    'limit' => null,
+    'order_by' => 'menu_order',
+    'order' => 'asc',
+]
+14. Записи блога
+Если модуль блога установлен.
+cms_posts($options = [])
+@foreach(cms_posts(['limit' => 3]) as $post)
+    <article>
+        <h2>{{ $post->title }}</h2>
+        <p>{{ $post->excerpt }}</p>
+        <a href="{{ $post->url }}">Подробнее</a>
+    </article>
+@endforeach
+cms_categories()
+@foreach(cms_categories() as $category)
+    <a href="{{ $category->url }}">
+        {{ $category->title }}
+    </a>
+@endforeach
+15. URL макросы
+cms_home_url()
+<a href="{{ cms_home_url() }}">Главная</a>
+cms_asset($path)
+Для ассетов темы.
+<link rel="stylesheet" href="{{ cms_asset('css/app.css') }}">
+<script src="{{ cms_asset('js/app.js') }}"></script>
+cms_url($path = null)
+{{ cms_url('/about') }}
+16. Языки
+cms_lang()
+<html lang="{{ cms_lang() }}">
+cms_languages()
+@foreach(cms_languages() as $lang)
+    <a href="{{ $lang->url }}" class="{{ $lang->active ? 'is-active' : '' }}">
+        {{ $lang->code }}
+    </a>
+@endforeach
+cms_translate($key, $default = null)
+{{ cms_translate('buttons.read_more', 'Read more') }}
+Короткий alias:
+{{ cms_t('buttons.read_more', 'Read more') }}
+17. Формы
+cms_form($key, $options = [])
+{!! cms_form('contact', [
+    'class' => 'contact-form'
+]) !!}
+18. Условия
+Условия лучше делать обычным Blade через helper.
+@if(cms_has_field('hero_text'))
+@endif
+
+@if(cms_is_home())
+@endif
+
+@if(cms_is_template('landing'))
+@endif
+cms_is_home()
+@if(cms_is_home())
+    ...
+@endif
+cms_is_page($slug)
+@if(cms_is_page('about'))
+    ...
+@endif
+cms_is_template($template)
+@if(cms_is_template('landing'))
+    ...
+@endif
+19. Макросы классов и атрибутов
+Чтобы удобно добавлять body class, page class, активные классы.
+cms_body_attrs()
+<body {!! cms_body_attrs() !!}>
+Вернет:
+class="page page-home template-landing" data-page-id="1"
+cms_body_class($extra = null)
+<body class="{{ cms_body_class('custom-class') }}">
+cms_attr($attrs)
+Безопасно собирает HTML атрибуты.
+<div {!! cms_attr([
+    'class' => 'card',
+    'data-id' => cms_id(),
+    'hidden' => false,
+]) !!}></div>
+cms_class($classes)
+Безопасно собирает классы.
+<div class="{{ cms_class([
+    'card',
+    'card--active' => cms_field_bool('active'),
+]) }}"></div>
+20. Кастомные макросы внутри админки
+В админке пользователь может создавать кастомные поля.
+Например:
+hero_title
+hero_text
+hero_image
+bonus_amount
+rating
+faq
+pros
+cons
+В шаблоне они вызываются так:
+{{ cms_field('bonus_amount') }}
+{{ cms_field_number('rating') }}
+{!! cms_image('hero_image') !!}
+21. Предустановленные поля для страниц
+Каждая страница должна иметь базовые поля:
+title
+slug
+path
+content
+excerpt
+status
+template
+parent_id
+menu_order
+featured_image
+meta_title
+meta_description
+canonical_url
+robots
+published_at
+created_at
+updated_at
+22. Дополнительные кастомные поля
+Кастомные поля хранятся отдельно.
+Пример:
+{
+  "hero_title": "Big title",
+  "hero_text": "Text here",
+  "hero_image": 15,
+  "button_text": "Play now",
+  "button_url": "/go",
+  "rating": 4.8,
+  "faq": [
+    {
+      "question": "Question 1",
+      "answer": "Answer 1"
+    }
+  ]
+}
+23. Как тема объявляет нужные поля
+У темы должен быть файл конфигурации.
+Например:
+themes/editorial/theme.json
+{
+  "name": "Editorial",
+  "version": "1.0.0",
+  "templates": {
+    "home": {
+      "label": "Главная",
+      "view": "home.blade.php",
+      "fields": [
+        "hero",
+        "benefits",
+        "faq"
+      ]
+    },
+    "page": {
+      "label": "Обычная страница",
+      "view": "page.blade.php",
+      "fields": [
+        "hero",
+        "content_blocks"
+      ]
+    }
+  }
+}
+24. Field groups
+Отдельно создать группы полей.
+themes/editorial/fields/hero.json
+{
+  "key": "hero",
+  "label": "Hero section",
+  "fields": [
+    {
+      "key": "hero_label",
+      "label": "Label",
+      "type": "text"
+    },
+    {
+      "key": "hero_text",
+      "label": "Text",
+      "type": "textarea"
+    },
+    {
+      "key": "hero_image",
+      "label": "Image",
+      "type": "image"
+    },
+    {
+      "key": "hero_button_text",
+      "label": "Button text",
+      "type": "text"
+    },
+    {
+      "key": "hero_button_url",
+      "label": "Button URL",
+      "type": "url"
+    }
+  ]
+}
+25. Как это выглядит для разработчика темы
+Разработчик создает:
+themes/editorial/
+
+  theme.json
+
+  views/
+    page.blade.php
+    home.blade.php
+    blog.blade.php
+
+  fields/
+    hero.json
+    benefits.json
+    faq.json
+
+  assets/
+    css/app.css
+    js/app.js
+В Blade пишет обычную верстку:
+<section class="hero">
+    <h1>{{ cms_field('hero_title', cms_title()) }}</h1>
+    <p>{{ cms_field('hero_text') }}</p>
+    {!! cms_image('hero_image') !!}
+</section>
+26. Что должна делать админка
+Админка должна:
+читать theme.json
+понимать доступные шаблоны
+понимать какие field groups нужны шаблону
+выводить поля в форме редактирования страницы
+сохранять значения полей
+давать редактору подсказки по макросам
+показывать список доступных макросов для текущего шаблона
+
+Архитектура макросов для CMS на Laravel + Vue + Blade
+Главная идея
+CMS должна работать ближе к WordPress + ACF.
+Тема сама пишет HTML-разметку через Blade.
+CMS дает удобные макросы для вывода:
+данных страницы
+кастомных полей
+картинок
+меню
+повторителей
+настроек сайта
+SEO
+хлебных крошек
+форм
+переводов
+условий
+списков страниц
+записей блога
+медиа
+То есть тема не собирается через JSON layout.
+Тема остается обычным Blade-файлом.
+Пример:
+<section class="hero">
+    <h1>{{ cms_title() }}</h1>
+    <p>{{ cms_field('hero_text') }}</p>
+
+    <a href="{{ cms_field('hero_button_url') }}" class="btn">
+        {{ cms_field('hero_button_text') }}
+    </a>
+</section>
+1. Пример theme.blade.php
+<!doctype html>
+
+    <section class="hero {{ cms_field('hero_modifier', 'hero--default') }}">
+        <div class="container">
+
+            @if(cms_has_field('hero_label'))
+                <div class="hero__label">
+                    {{ cms_field('hero_label') }}
+                </div>
+            @endif
+
+            <h1 class="hero__title">
+                {{ cms_title() }}
+            </h1>
+
+            @if(cms_has_field('hero_text'))
+                <p class="hero__text">
+                    {{ cms_field('hero_text') }}
+                </p>
+            @endif
+
+            @if(cms_has_field('hero_button_text'))
+                <a href="{{ cms_field('hero_button_url', '#') }}" class="hero__button">
+                    {{ cms_field('hero_button_text') }}
+                </a>
+            @endif
+
+            @if(cms_has_image('hero_image'))
+                {!! cms_image('hero_image', [
+                    'class' => 'hero__image',
+                    'size' => 'large',
+                    'loading' => 'eager',
+                ]) !!}
+            @endif
+
+        </div>
+    </section>
+
+    <section class="content-section">
+        <div class="container">
+            {!! cms_content() !!}
+        </div>
+    </section>
+
+    @if(cms_has_repeater('benefits'))
+        <section class="benefits">
+            <div class="container">
+                <h2>{{ cms_field('benefits_title', 'Преимущества') }}</h2>
+
+                <div class="benefits__grid">
+                    @foreach(cms_repeater('benefits') as $item)
+                        <article class="benefit-card">
+                            @if($item->hasImage('icon'))
+                                {!! $item->image('icon', ['class' => 'benefit-card__icon']) !!}
+                            @endif
+
+                            <h3>{{ $item->field('title') }}</h3>
+
+                            @if($item->hasField('text'))
+                                <p>{{ $item->field('text') }}</p>
+                            @endif
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        {{ cms_site_name() }} © {{ cms_year() }}
+    </div>
+</footer>
+
+{!! cms_footer() !!}
+
+</body>
+</html>
+2. Основные группы макросов
+Система должна быть разделена на группы.
+cms_page_*       Данные текущей страницы
+cms_field_*      Кастомные поля страницы
+cms_image_*      Картинки и медиа
+cms_repeater_*   Повторители
+cms_menu_*       Меню
+cms_site_*       Настройки сайта
+cms_seo_*        SEO
+cms_breadcrumbs  Хлебные крошки
+cms_posts_*      Записи блога
+cms_pages_*      Списки страниц
+cms_url_*        URL и роутинг
+cms_lang_*       Языки
+cms_form_*       Формы
+cms_if_*         Условия
+Но в шаблоне лучше использовать короткие имена:
+{{ cms_title() }}
+{{ cms_field('subtitle') }}
+{!! cms_menu('main') !!}
+3. Макросы страницы
+cms_title()
+Выводит заголовок текущей страницы.
+<h1>{{ cms_title() }}</h1>
+Аналог WordPress:
+the_title()
+cms_content()
+Выводит основной контент страницы.
+<article>
+    {!! cms_content() !!}
+</article>
+Важно:
+cms_content() должен возвращать безопасный HTML после санитайза.
+cms_excerpt()
+Краткое описание страницы.
+<p>{{ cms_excerpt() }}</p>
+cms_slug()
+Slug текущей страницы.
+<body class="page-{{ cms_slug() }}">
+cms_url()
+URL текущей страницы.
+<a href="{{ cms_url() }}">Открыть</a>
+cms_path()
+Путь страницы без домена.
+{{ cms_path() }}
+cms_template()
+Текущий шаблон страницы.
+{{ cms_template() }}
+cms_status()
+Статус страницы.
+{{ cms_status() }}
+cms_date()
+Дата публикации.
+{{ cms_date('d.m.Y') }}
+cms_updated_date()
+Дата обновления.
+{{ cms_updated_date('d.m.Y') }}
+4. Кастомные поля
+Кастомные поля должны быть встроены в ядро CMS.
+В админке у страницы можно создавать поля:
+hero_title
+hero_text
+hero_image
+button_text
+button_url
+benefits
+faq
+rating
+author
+В Blade они выводятся так:
+{{ cms_field('hero_text') }}
+cms_field($key, $default = null)
+Основной макрос для вывода значения кастомного поля.
+{{ cms_field('hero_title') }}
+{{ cms_field('hero_title', cms_title()) }}
+{{ cms_field('button_text', 'Подробнее') }}
+cms_has_field($key)
+Проверяет, заполнено ли поле.
+@if(cms_has_field('subtitle'))
+    <p>{{ cms_field('subtitle') }}</p>
+@endif
+cms_field_raw($key)
+Выводит сырое значение поля.
+Использовать редко.
+{!! cms_field_raw('custom_html') !!}
+cms_field_html($key)
+Выводит HTML-поле после санитайза.
+{!! cms_field_html('description') !!}
+cms_field_bool($key)
+Для checkbox / toggle.
+@if(cms_field_bool('show_sidebar'))
+    <aside>...</aside>
+@endif
+cms_field_number($key, $default = 0)
+{{ cms_field_number('rating', 0) }}
+cms_field_array($key)
+Для массивов.
+@foreach(cms_field_array('tags') as $tag)
+    <span>{{ $tag }}</span>
+@endforeach
+5. Типы кастомных полей в админке
+В админке нужно дать набор типов.
+text
+textarea
+richtext
+number
+checkbox
+select
+radio
+image
+file
+url
+email
+color
+date
+datetime
+repeater
+group
+relation
+html
+code
+text
+Однострочный текст.
+{{ cms_field('hero_title') }}
+textarea
+Многострочный текст.
+{{ cms_field('hero_text') }}
+richtext
+HTML-редактор.
+{!! cms_field_html('description') !!}
+image
+Картинка.
+{!! cms_image('hero_image') !!}
+repeater
+Повторитель.
+@foreach(cms_repeater('benefits') as $item)
+    {{ $item->field('title') }}
+@endforeach
+group
+Группа полей.
+@php($hero = cms_group('hero'))
+
+<h1>{{ $hero->field('title') }}</h1>
+<p>{{ $hero->field('text') }}</p>
+6. Группы полей
+cms_group($key)
+@php($hero = cms_group('hero'))
+
+<section class="hero">
+    <h1>{{ $hero->field('title') }}</h1>
+    <p>{{ $hero->field('text') }}</p>
+</section>
+Если поле hero хранит:
+{
+  "title": "Главный заголовок",
+  "text": "Описание",
+  "button_text": "Подробнее",
+  "button_url": "/about"
+}
+7. Повторители
+cms_repeater($key)
+Для списков, карточек, FAQ, преимуществ, шагов.
+@foreach(cms_repeater('faq') as $item)
+    <div class="faq-item">
+        <h3>{{ $item->field('question') }}</h3>
+        <p>{{ $item->field('answer') }}</p>
+    </div>
+@endforeach
+cms_has_repeater($key)
+@if(cms_has_repeater('faq'))
+    ...
+@endif
+Методы элемента repeater
+{{ $item->field('title') }}
+{{ $item->field('text', 'Default text') }}
+
+@if($item->hasField('text'))
+@endif
+
+{!! $item->image('icon', ['class' => 'icon']) !!}
+{{ $item->imageUrl('icon', 'medium') }}
+{{ $item->imageAlt('icon') }}
+
+{{ $item->url('link') }}
+{{ $item->bool('is_active') }}
+{{ $item->number('rating') }}
+8. Картинки и медиа
+cms_image($key, $options = [])
+Выводит готовый img.
+{!! cms_image('hero_image', [
+    'class' => 'hero__image',
+    'size' => 'large',
+    'loading' => 'eager',
+]) !!}
+cms_image_url($key, $size = 'full')
+<img src="{{ cms_image_url('hero_image', 'large') }}" alt="">
+cms_image_alt($key)
+<img src="{{ cms_image_url('hero_image') }}" alt="{{ cms_image_alt('hero_image') }}">
+cms_has_image($key)
+@if(cms_has_image('hero_image'))
+    {!! cms_image('hero_image') !!}
+@endif
+cms_picture($key, $options = [])
+Для responsive images.
+{!! cms_picture('hero_image', [
+    'class' => 'hero-picture',
+    'sizes' => '(max-width: 768px) 100vw, 1200px',
+    'sources' => ['webp', 'jpg'],
+]) !!}
+cms_file_url($key)
+<a href="{{ cms_file_url('price_pdf') }}" download>
+    Скачать PDF
+</a>
+9. Меню
+cms_menu($location, $options = [])
+{!! cms_menu('main') !!}
+Расширенный вариант:
+{!! cms_menu('main', [
+    'container' => 'nav',
+    'container_class' => 'main-nav',
+    'list' => false,
+    'item_tag' => 'div',
+    'item_class' => 'main-nav__item',
+    'link_class' => 'main-nav__link',
+    'active_class' => 'is-active',
+    'ancestor_class' => 'is-ancestor',
+    'children_class' => 'main-nav__children',
+    'depth' => 2,
+]) !!}
+Опции меню
+[
+    'container' => 'nav',
+    'container_class' => '',
+    'container_attrs' => [],
+
+    'list' => true,
+    'list_tag' => 'ul',
+    'list_class' => '',
+
+    'item_tag' => 'li',
+    'item_class' => '',
+    'active_class' => 'is-active',
+    'ancestor_class' => 'is-ancestor',
+
+    'link_class' => '',
+    'link_attrs' => [],
+
+    'children_tag' => 'ul',
+    'children_class' => '',
+
+    'depth' => null,
+    'fallback' => false,
+]
+10. Настройки сайта
+cms_site_name()
+{{ cms_site_name() }}
+cms_setting($key, $default = null)
+{{ cms_setting('phone') }}
+{{ cms_setting('email') }}
+{{ cms_setting('address') }}
+cms_has_setting($key)
+@if(cms_has_setting('phone'))
+    <a href="tel:{{ cms_setting('phone') }}">
+        {{ cms_setting('phone') }}
+    </a>
+@endif
+cms_setting_image($key, $options = [])
+{!! cms_setting_image('logo', ['class' => 'logo']) !!}
+11. SEO макросы
+cms_head()
+Выводит:
+title
+meta description
+canonical
+robots
+Open Graph
+Twitter Card
+favicon
+подключенные стили темы
+<head>
+    {!! cms_head() !!}
+</head>
+cms_meta_title()
+<title>{{ cms_meta_title() }}</title>
+cms_meta_description()
+<meta name="description" content="{{ cms_meta_description() }}">
+cms_canonical_url()
+<link rel="canonical" href="{{ cms_canonical_url() }}">
+cms_robots()
+<meta name="robots" content="{{ cms_robots() }}">
+12. Хлебные крошки
+cms_breadcrumbs($options = [])
+{!! cms_breadcrumbs([
+    'container' => 'nav',
+    'container_class' => 'breadcrumbs',
+    'item_class' => 'breadcrumbs__item',
+    'link_class' => 'breadcrumbs__link',
+]) !!}
+13. Списки страниц
+cms_pages($options = [])
+@foreach(cms_pages(['parent' => cms_id(), 'limit' => 6]) as $child)
+    <a href="{{ $child->url }}">
+        {{ $child->title }}
+    </a>
+@endforeach
+Опции
+[
+    'parent' => null,
+    'template' => null,
+    'status' => 'published',
+    'limit' => null,
+    'order_by' => 'menu_order',
+    'order' => 'asc',
+]
+14. Записи блога
+Если модуль блога установлен.
+cms_posts($options = [])
+@foreach(cms_posts(['limit' => 3]) as $post)
+    <article>
+        <h2>{{ $post->title }}</h2>
+        <p>{{ $post->excerpt }}</p>
+        <a href="{{ $post->url }}">Подробнее</a>
+    </article>
+@endforeach
+cms_categories()
+@foreach(cms_categories() as $category)
+    <a href="{{ $category->url }}">
+        {{ $category->title }}
+    </a>
+@endforeach
+15. URL макросы
+cms_home_url()
+<a href="{{ cms_home_url() }}">Главная</a>
+cms_asset($path)
+Для ассетов темы.
+<link rel="stylesheet" href="{{ cms_asset('css/app.css') }}">
+<script src="{{ cms_asset('js/app.js') }}"></script>
+cms_url($path = null)
+{{ cms_url('/about') }}
+16. Языки
+cms_lang()
+<html lang="{{ cms_lang() }}">
+cms_languages()
+@foreach(cms_languages() as $lang)
+    <a href="{{ $lang->url }}" class="{{ $lang->active ? 'is-active' : '' }}">
+        {{ $lang->code }}
+    </a>
+@endforeach
+cms_translate($key, $default = null)
+{{ cms_translate('buttons.read_more', 'Read more') }}
+Короткий alias:
+{{ cms_t('buttons.read_more', 'Read more') }}
+17. Формы
+cms_form($key, $options = [])
+{!! cms_form('contact', [
+    'class' => 'contact-form'
+]) !!}
+18. Условия
+Условия лучше делать обычным Blade через helper.
+@if(cms_has_field('hero_text'))
+@endif
+
+@if(cms_is_home())
+@endif
+
+@if(cms_is_template('landing'))
+@endif
+cms_is_home()
+@if(cms_is_home())
+    ...
+@endif
+cms_is_page($slug)
+@if(cms_is_page('about'))
+    ...
+@endif
+cms_is_template($template)
+@if(cms_is_template('landing'))
+    ...
+@endif
+19. Макросы классов и атрибутов
+Чтобы удобно добавлять body class, page class, активные классы.
+cms_body_attrs()
+<body {!! cms_body_attrs() !!}>
+Вернет:
+class="page page-home template-landing" data-page-id="1"
+cms_body_class($extra = null)
+<body class="{{ cms_body_class('custom-class') }}">
+cms_attr($attrs)
+Безопасно собирает HTML атрибуты.
+<div {!! cms_attr([
+    'class' => 'card',
+    'data-id' => cms_id(),
+    'hidden' => false,
+]) !!}></div>
+cms_class($classes)
+Безопасно собирает классы.
+<div class="{{ cms_class([
+    'card',
+    'card--active' => cms_field_bool('active'),
+]) }}"></div>
+20. Кастомные макросы внутри админки
+В админке пользователь может создавать кастомные поля.
+Например:
+hero_title
+hero_text
+hero_image
+bonus_amount
+rating
+faq
+pros
+cons
+В шаблоне они вызываются так:
+{{ cms_field('bonus_amount') }}
+{{ cms_field_number('rating') }}
+{!! cms_image('hero_image') !!}
+21. Предустановленные поля для страниц
+Каждая страница должна иметь базовые поля:
+title
+slug
+path
+content
+excerpt
+status
+template
+parent_id
+menu_order
+featured_image
+meta_title
+meta_description
+canonical_url
+robots
+published_at
+created_at
+updated_at
+22. Дополнительные кастомные поля
+Кастомные поля хранятся отдельно.
+Пример:
+{
+  "hero_title": "Big title",
+  "hero_text": "Text here",
+  "hero_image": 15,
+  "button_text": "Play now",
+  "button_url": "/go",
+  "rating": 4.8,
+  "faq": [
+    {
+      "question": "Question 1",
+      "answer": "Answer 1"
+    }
+  ]
+}
+23. Как тема объявляет нужные поля
+У темы должен быть файл конфигурации.
+Например:
+themes/editorial/theme.json
+{
+  "name": "Editorial",
+  "version": "1.0.0",
+  "templates": {
+    "home": {
+      "label": "Главная",
+      "view": "home.blade.php",
+      "fields": [
+        "hero",
+        "benefits",
+        "faq"
+      ]
+    },
+    "page": {
+      "label": "Обычная страница",
+      "view": "page.blade.php",
+      "fields": [
+        "hero",
+        "content_blocks"
+      ]
+    }
+  }
+}
+24. Field groups
+Отдельно создать группы полей.
+themes/editorial/fields/hero.json
+{
+  "key": "hero",
+  "label": "Hero section",
+  "fields": [
+    {
+      "key": "hero_label",
+      "label": "Label",
+      "type": "text"
+    },
+    {
+      "key": "hero_text",
+      "label": "Text",
+      "type": "textarea"
+    },
+    {
+      "key": "hero_image",
+      "label": "Image",
+      "type": "image"
+    },
+    {
+      "key": "hero_button_text",
+      "label": "Button text",
+      "type": "text"
+    },
+    {
+      "key": "hero_button_url",
+      "label": "Button URL",
+      "type": "url"
+    }
+  ]
+}
+25. Как это выглядит для разработчика темы
+Разработчик создает:
+themes/editorial/
+
+  theme.json
+
+  views/
+    page.blade.php
+    home.blade.php
+    blog.blade.php
+
+  fields/
+    hero.json
+    benefits.json
+    faq.json
+
+  assets/
+    css/app.css
+    js/app.js
+В Blade пишет обычную верстку:
+<section class="hero">
+    <h1>{{ cms_field('hero_title', cms_title()) }}</h1>
+    <p>{{ cms_field('hero_text') }}</p>
+    {!! cms_image('hero_image') !!}
+</section>
+26. Что должна делать админка
+Админка должна:
+читать theme.json
+понимать доступные шаблоны
+понимать какие field groups нужны шаблону
+выводить поля в форме редактирования страницы
+сохранять значения полей
+давать редактору подсказки по макросам
+показывать список доступных макросов для текущего шаблона

@@ -74,9 +74,17 @@ class SettingsManager
         $this->storeValue('home_page_id', $pageId);
     }
 
-    public function themeViewPath(string $view = 'theme.blade.php'): string
+    public function themeViewPath(string $view = 'index.blade.php'): string
     {
-        return base_path('themes/'.$this->activeTheme().'/'.$view);
+        $themePath = base_path('themes/'.$this->activeTheme());
+
+        if ($view !== 'index.blade.php') {
+            return $themePath.'/'.$view;
+        }
+
+        $entry = $this->resolveThemeEntry($themePath);
+
+        return $themePath.'/'.$entry;
     }
 
     public function activeTheme(): string
@@ -211,11 +219,6 @@ class SettingsManager
         return collect($directories)
             ->map(function (string $path): ?array {
                 $slug = basename($path);
-                $entryPath = $path.'/theme.blade.php';
-
-                if (! is_file($entryPath)) {
-                    return null;
-                }
 
                 $metadata = [];
                 $metadataPath = $path.'/theme.json';
@@ -228,10 +231,18 @@ class SettingsManager
                     }
                 }
 
+                $entry = $this->resolveThemeEntry($path, $metadata);
+                $entryPath = $path.'/'.$entry;
+
+                if (! is_file($entryPath)) {
+                    return null;
+                }
+
                 return [
                     'slug' => $slug,
                     'name' => (string) ($metadata['name'] ?? ucfirst(str_replace(['-', '_'], ' ', $slug))),
                     'description' => (string) ($metadata['description'] ?? ''),
+                    'entry' => $entry,
                 ];
             })
             ->filter()
@@ -242,6 +253,21 @@ class SettingsManager
     protected function resolveTheme(string $theme): string
     {
         return in_array($theme, $this->availableThemes(), true) ? $theme : 'default';
+    }
+
+    protected function resolveThemeEntry(string $themePath, array $metadata = []): string
+    {
+        $entry = $metadata['entry'] ?? null;
+
+        if (is_string($entry) && $entry !== '' && is_file($themePath.'/'.$entry)) {
+            return $entry;
+        }
+
+        if (is_file($themePath.'/index.blade.php')) {
+            return 'index.blade.php';
+        }
+
+        return 'theme.blade.php';
     }
 
     protected function resolvePalette(string $palette): string
