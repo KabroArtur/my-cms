@@ -35,6 +35,29 @@ class Page extends Model
     use SoftDeletes;
 
     /**
+     * Аксессор собирает полный публичный путь страницы из цепочки родителей.
+     */
+    public function getPathAttribute(): string
+    {
+        if ($this->is_home) {
+            return '';
+        }
+
+        $segments = [];
+        $currentPage = $this;
+
+        while ($currentPage !== null) {
+            if (! $currentPage->is_home && $currentPage->slug !== '') {
+                array_unshift($segments, $currentPage->slug);
+            }
+
+            $currentPage = $currentPage->parent;
+        }
+
+        return implode('/', $segments);
+    }
+
+    /**
      * Модель приводит поля к доменным типам.
      *
      * @return array<string, string>

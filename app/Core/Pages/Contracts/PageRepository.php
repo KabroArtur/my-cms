@@ -5,6 +5,7 @@ namespace App\Core\Pages\Contracts;
 use App\Core\Pages\Data\PageData;
 use App\Core\Pages\Models\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * Репозиторий задает единый вход к хранилищу страниц.
@@ -21,6 +22,13 @@ interface PageRepository
      * Репозиторий возвращает корзину страниц для административного интерфейса.
      */
     public function paginateTrashed(int $perPage = 15): LengthAwarePaginator;
+
+    /**
+     * Репозиторий возвращает все страницы для построения дерева.
+     *
+     * @return Collection<int, Page>
+     */
+    public function all(): Collection;
 
     /**
      * Репозиторий ищет страницу по идентификатору.
@@ -71,4 +79,11 @@ interface PageRepository
      * Репозиторий удаляет страницу безвозвратно.
      */
     public function forceDelete(Page $page): void;
+
+    /**
+     * Репозиторий сохраняет полное дерево страниц.
+     *
+     * @param array<int, array{id:int, parent_id:int|null, sort_order:int}> $nodes
+     */
+    public function syncTree(array $nodes): void;
 }

@@ -38,8 +38,8 @@ async function loadCurrentUser() {
 async function handleLogout() {
     try {
         await logout()
-        await router.push('/login')
-        window.location.href = '/login'
+        await router.push('/admin/login')
+        window.location.href = '/admin/login'
     } catch (error) {
         errorMessage.value = 'Не удалось завершить сессию.'
         console.error(error)

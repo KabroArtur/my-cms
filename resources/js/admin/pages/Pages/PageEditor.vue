@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
-import { createPage, fetchPage, updatePage } from '../../api/pages'
+import { createPage, fetchPage, fetchPageTree, updatePage } from '../../api/pages'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,10 +14,12 @@ const saving = ref(false)
 const errorMessage = ref('')
 const validationErrors = ref({})
 const slugLocked = ref(false)
+const allPages = ref([])
 
 const form = reactive({
     title: '',
     slug: '',
+    parent_id: '',
     excerpt: '',
     status: 'draft',
     visibility: 'public',
@@ -32,12 +34,24 @@ const form = reactive({
 const isCreateMode = computed(() => route.name === 'page-create')
 const pageId = computed(() => route.params.id)
 const pageTitle = computed(() => isCreateMode.value ? 'Новая страница' : `Страница #${pageId.value}`)
+const availableParents = computed(() => allPages.value.filter((page) => String(page.id) !== String(pageId.value)))
+const resolvedParent = computed(() => availableParents.value.find((page) => String(page.id) === String(form.parent_id)) ?? null)
 const publicUrl = computed(() => {
     if (form.is_home) {
         return '/'
     }
 
-    return form.slug ? `/${form.slug}` : '—'
+    const segments = []
+
+    if (resolvedParent.value?.path) {
+        segments.push(resolvedParent.value.path)
+    }
+
+    if (form.slug) {
+        segments.push(form.slug)
+    }
+
+    return segments.length > 0 ? `/${segments.join('/')}` : '—'
 })
 const canOpenPublicPage = computed(() => form.is_home || form.slug.trim() !== '')
 
@@ -52,6 +66,22 @@ const transliterationMap = {
     Є: 'Ye', є: 'ye', Ґ: 'G', ґ: 'g',
 }
 
+function formatDateTimeLocalValue(value) {
+    if (!value) {
+        return ''
+    }
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) {
+        return ''
+    }
+
+    const timezoneOffset = date.getTimezoneOffset() * 60_000
+
+    return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16)
+}
+
 function normalizeSlug(value) {
     const source = String(value)
         .split('')
@@ -62,6 +92,7 @@ function normalizeSlug(value) {
         .toLowerCase()
         .trim()
         .replace(/['’]+/g, '')
+        .replace(/\//g, '-')
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]+/g, '-')
         .replace(/-+/g, '-')
@@ -84,11 +115,12 @@ function handleSlugInput() {
 function fillForm(page) {
     form.title = page.title ?? ''
     form.slug = page.slug ?? ''
+    form.parent_id = page.parent_id ?? ''
     form.excerpt = page.excerpt ?? ''
     form.status = page.status ?? 'draft'
     form.visibility = page.visibility ?? 'public'
     form.is_home = page.is_home ?? false
-    form.published_at = page.published_at ? page.published_at.slice(0, 16) : ''
+    form.published_at = formatDateTimeLocalValue(page.published_at)
     form.template = page.template ?? ''
     form.meta_title = page.meta_title ?? ''
     form.meta_description = page.meta_description ?? ''
@@ -107,16 +139,26 @@ function resetForm() {
 }
 
 async function loadPage() {
-    if (isCreateMode.value) {
-        resetForm()
-        return
-    }
-
     loading.value = true
     errorMessage.value = ''
 
     try {
-        const payload = await fetchPage(pageId.value)
+        const pagesPayloadPromise = fetchPageTree()
+
+        if (isCreateMode.value) {
+            const pagesPayload = await pagesPayloadPromise
+            allPages.value = pagesPayload.data ?? []
+            resetForm()
+
+            return
+        }
+
+        const [payload, pagesPayload] = await Promise.all([
+            fetchPage(pageId.value),
+            pagesPayloadPromise,
+        ])
+
+        allPages.value = pagesPayload.data ?? []
         fillForm(payload.data)
     } catch (error) {
         errorMessage.value = 'Не удалось загрузить страницу.'
@@ -188,8 +230,9 @@ onMounted(loadPage)
 
                     <label class="admin-form-label">
                         <span>Slug</span>
-                        <input v-model="form.slug" class="admin-input" type="text" placeholder="about-company" @input="handleSlugInput">
+                        <input v-model="form.slug" class="admin-input" type="text" placeholder="review" @input="handleSlugInput">
                         <small v-if="validationErrors.slug" class="error-text">{{ validationErrors.slug[0] }}</small>
+                        <small class="muted">Slug хранится как отдельный сегмент URL. Полный путь строится из родительской страницы.</small>
                     </label>
 
                     <label class="admin-form-label">
@@ -199,6 +242,17 @@ onMounted(loadPage)
                     </label>
 
                     <div class="page-meta-grid">
+                        <label class="admin-form-label">
+                            <span>Родительская страница</span>
+                            <select v-model="form.parent_id" class="admin-select">
+                                <option value="">Без родителя</option>
+                                <option v-for="page in availableParents" :key="page.id" :value="page.id">
+                                    {{ page.title }} ({{ page.is_home ? '/' : `/${page.path || page.slug}` }})
+                                </option>
+                            </select>
+                            <small v-if="validationErrors.parent_id" class="error-text">{{ validationErrors.parent_id[0] }}</small>
+                        </label>
+
                         <label class="admin-form-label">
                             <span>Статус публикации</span>
                             <select v-model="form.status" class="admin-select">
@@ -286,7 +340,7 @@ onMounted(loadPage)
                     <div class="page-preview-box">
                         <p class="eyebrow">Публичная ссылка</p>
                         <p class="page-preview-box__value">{{ publicUrl }}</p>
-                        <p class="muted">Обычные страницы открываются по своему slug. Главная страница сайта всегда открывается по адресу /.</p>
+                        <p class="muted">Чтобы перенести страницу из /review в /login/review, достаточно поменять родительскую страницу на Login. Главная страница сайта всегда открывается по адресу /.</p>
                     </div>
                 </div>
             </AdminCard>

@@ -14,6 +14,7 @@ use App\Http\Requests\Admin\Pages\UpdatePageRequest;
 use App\Http\Resources\Admin\PageResource;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
 
@@ -41,6 +42,16 @@ class PageController extends Controller
         Gate::authorize('viewAny', Page::class);
 
         return PageResource::collection($pages->paginateTrashed());
+    }
+
+    /**
+     * Контроллер возвращает все страницы для визуального дерева меню.
+     */
+    public function tree(PageRepository $pages): AnonymousResourceCollection
+    {
+        Gate::authorize('viewAny', Page::class);
+
+        return PageResource::collection($pages->all());
     }
 
     /**
@@ -113,6 +124,25 @@ class PageController extends Controller
         $this->authorize('delete', $trashedPage);
 
         $pages->forceDelete($trashedPage);
+
+        return response()->noContent();
+    }
+
+    /**
+     * Контроллер сохраняет полную иерархию страниц для будущего меню.
+     */
+    public function updateTree(Request $request, PageRepository $pages): Response
+    {
+        Gate::authorize('create', Page::class);
+
+        $validated = $request->validate([
+            'tree' => ['required', 'array', 'min:1'],
+            'tree.*.id' => ['required', 'integer'],
+            'tree.*.parent_id' => ['nullable', 'integer'],
+            'tree.*.sort_order' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $pages->syncTree($validated['tree']);
 
         return response()->noContent();
     }

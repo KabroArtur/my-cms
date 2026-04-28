@@ -21,6 +21,12 @@ export async function fetchPage(id) {
     return response.data
 }
 
+export async function fetchPageTree() {
+    const response = await axios.get('/admin/api/pages-tree')
+
+    return response.data
+}
+
 export async function fetchTrashedPages() {
     const response = await axios.get('/admin/api/pages-trash')
 
@@ -51,4 +57,8 @@ export async function restorePage(id) {
 
 export async function permanentlyDeletePage(id) {
     await axios.delete(`/admin/api/pages/${id}/force`)
+}
+
+export async function savePageTree(tree) {
+    await axios.put('/admin/api/pages-tree', { tree })
 }

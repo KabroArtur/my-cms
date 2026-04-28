@@ -45,6 +45,11 @@ const routes = [
                 name: 'settings',
                 component: () => import('./pages/Settings/SettingsIndex.vue'),
             },
+            {
+                path: ':pathMatch(.*)*',
+                name: 'admin-not-found',
+                component: () => import('./pages/System/AdminNotFound.vue'),
+            },
         ],
     },
 ]

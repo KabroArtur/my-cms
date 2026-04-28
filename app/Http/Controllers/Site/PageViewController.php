@@ -31,9 +31,9 @@ class PageViewController extends Controller
     /**
      * Контроллер показывает публичную страницу по slug.
      */
-    public function show(string $slug, PageRepository $pages): Response
+    public function show(string $slugPath, PageRepository $pages): Response
     {
-        $page = $pages->findPublicBySlug($slug);
+        $page = $pages->findPublicBySlug(trim($slugPath, '/'));
 
         if ($page === null) {
             throw new NotFoundHttpException('Страница не найдена.');

@@ -7,5 +7,5 @@ export async function fetchCurrentUser() {
 }
 
 export async function logout() {
-    await axios.post('/logout')
+    await axios.post('/admin/logout')
 }
