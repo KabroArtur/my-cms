@@ -126,6 +126,14 @@ return [
 
     'two_factor' => [
         'enabled' => (bool) env('AUTH_2FA_ENABLED', false),
+        'challenge_expires_minutes' => (int) env('AUTH_2FA_CHALLENGE_EXPIRES_MINUTES', 10),
+        'verify' => [
+            'max_attempts' => (int) env('AUTH_2FA_VERIFY_MAX_ATTEMPTS', 5),
+            'decay_seconds' => (int) env('AUTH_2FA_VERIFY_DECAY_SECONDS', 300),
+        ],
+        'resend' => [
+            'cooldown_seconds' => (int) env('AUTH_2FA_RESEND_COOLDOWN_SECONDS', 60),
+        ],
     ],
 
 ];

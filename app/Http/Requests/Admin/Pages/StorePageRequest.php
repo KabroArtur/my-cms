@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin\Pages;
 
+use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Models\Page;
@@ -40,6 +41,7 @@ class StorePageRequest extends FormRequest
             'template' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string'],
+            'featured_media_id' => ['nullable', 'integer', 'exists:'.(new MediaFile())->getTable().',id'],
             'published_at' => ['nullable', 'date', 'required_if:status,scheduled'],
             'parent_id' => ['nullable', 'integer', 'exists:pages,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],

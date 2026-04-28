@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Core\Media\Models\MediaFile;
+use App\Core\Media\Models\MediaFolder;
 use App\Core\Roles\Models\Role;
 use App\Core\Pages\Models\Page;
+use App\Policies\MediaFilePolicy;
+use App\Policies\MediaFolderPolicy;
 use App\Policies\PagePolicy;
 use App\Policies\RolePolicy;
 use App\Policies\UserPolicy;
@@ -29,5 +33,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Page::class, PagePolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
+        Gate::policy(MediaFolder::class, MediaFolderPolicy::class);
+        Gate::policy(MediaFile::class, MediaFilePolicy::class);
     }
 }

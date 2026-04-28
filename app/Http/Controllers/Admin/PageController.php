@@ -8,6 +8,7 @@ use App\Core\Pages\Actions\UpdatePageAction;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Pages\Data\PageData;
 use App\Core\Pages\Models\Page;
+use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Pages\StorePageRequest;
 use App\Http\Requests\Admin\Pages\UpdatePageRequest;
@@ -67,9 +68,15 @@ class PageController extends Controller
     /**
      * Контроллер создает новую страницу через доменный action.
      */
-    public function store(StorePageRequest $request, CreatePageAction $createPage): JsonResponse
+    public function store(StorePageRequest $request, CreatePageAction $createPage, SecurityAuditLogger $audit): JsonResponse
     {
         $page = $createPage->handle(PageData::fromArray($request->validated()));
+
+        $audit->log('pages.created', $request->user(), [
+            'target_page_id' => $page->id,
+            'target_page_slug' => $page->slug,
+            'target_page_path' => $page->path,
+        ]);
 
         return PageResource::make($page)
             ->response()
@@ -79,9 +86,15 @@ class PageController extends Controller
     /**
      * Контроллер обновляет существующую страницу через доменный action.
      */
-    public function update(UpdatePageRequest $request, Page $page, UpdatePageAction $updatePage): PageResource
+    public function update(UpdatePageRequest $request, Page $page, UpdatePageAction $updatePage, SecurityAuditLogger $audit): PageResource
     {
         $page = $updatePage->handle($page, PageData::fromArray($request->validated()));
+
+        $audit->log('pages.updated', $request->user(), [
+            'target_page_id' => $page->id,
+            'target_page_slug' => $page->slug,
+            'target_page_path' => $page->path,
+        ]);
 
         return PageResource::make($page);
     }
@@ -89,9 +102,15 @@ class PageController extends Controller
     /**
      * Контроллер удаляет существующую страницу через доменный action.
      */
-    public function destroy(Page $page, DeletePageAction $deletePage): Response
+    public function destroy(Page $page, DeletePageAction $deletePage, SecurityAuditLogger $audit): Response
     {
         $this->authorize('delete', $page);
+
+        $audit->log('pages.deleted', request()->user(), [
+            'target_page_id' => $page->id,
+            'target_page_slug' => $page->slug,
+            'target_page_path' => $page->path,
+        ]);
 
         $deletePage->handle($page);
 
@@ -101,7 +120,7 @@ class PageController extends Controller
     /**
      * Контроллер восстанавливает страницу из корзины.
      */
-    public function restore(int $page, PageRepository $pages): PageResource
+    public function restore(int $page, PageRepository $pages, SecurityAuditLogger $audit): PageResource
     {
         $trashedPage = $pages->findTrashedById($page);
 
@@ -109,19 +128,33 @@ class PageController extends Controller
 
         $this->authorize('update', $trashedPage);
 
-        return PageResource::make($pages->restore($trashedPage));
+        $restoredPage = $pages->restore($trashedPage);
+
+        $audit->log('pages.restored', request()->user(), [
+            'target_page_id' => $restoredPage->id,
+            'target_page_slug' => $restoredPage->slug,
+            'target_page_path' => $restoredPage->path,
+        ]);
+
+        return PageResource::make($restoredPage);
     }
 
     /**
      * Контроллер удаляет страницу из корзины безвозвратно.
      */
-    public function forceDelete(int $page, PageRepository $pages): Response
+    public function forceDelete(int $page, PageRepository $pages, SecurityAuditLogger $audit): Response
     {
         $trashedPage = $pages->findTrashedById($page);
 
         abort_if($trashedPage === null, 404);
 
         $this->authorize('delete', $trashedPage);
+
+        $audit->log('pages.force_deleted', request()->user(), [
+            'target_page_id' => $trashedPage->id,
+            'target_page_slug' => $trashedPage->slug,
+            'target_page_path' => $trashedPage->path,
+        ]);
 
         $pages->forceDelete($trashedPage);
 
@@ -133,7 +166,7 @@ class PageController extends Controller
      */
     public function updateTree(Request $request, PageRepository $pages): Response
     {
-        Gate::authorize('create', Page::class);
+        Gate::authorize('reorder', Page::class);
 
         $validated = $request->validate([
             'tree' => ['required', 'array', 'min:1'],

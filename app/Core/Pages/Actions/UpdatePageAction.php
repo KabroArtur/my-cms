@@ -5,6 +5,7 @@ namespace App\Core\Pages\Actions;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Pages\Data\PageData;
 use App\Core\Pages\Models\Page;
+use App\Core\Security\Services\PageContentSanitizer;
 
 /**
  * Action обновляет страницу через доменный контракт репозитория.
@@ -14,6 +15,7 @@ class UpdatePageAction
 {
     public function __construct(
         protected PageRepository $pages,
+        protected PageContentSanitizer $sanitizer,
     ) {
     }
 
@@ -22,6 +24,9 @@ class UpdatePageAction
      */
     public function handle(Page $page, PageData $data): Page
     {
-        return $this->pages->update($page, $data);
+        return $this->pages->update(
+            $page,
+            $data->withContent($this->sanitizer->sanitize($data->content)),
+        );
     }
 }

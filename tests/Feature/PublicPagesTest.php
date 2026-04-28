@@ -1,5 +1,6 @@
 <?php
 
+use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Contracts\PageRepository;
@@ -103,6 +104,37 @@ it('moves a page between levels by changing only its parent', function () {
     $this->get('/login/review')
         ->assertOk()
         ->assertSee('Review page content');
+});
+
+it('renders featured media on public page', function () {
+    $mediaFile = MediaFile::query()->create([
+        'disk' => 'public',
+        'directory' => 'media',
+        'filename' => 'cover.jpg',
+        'original_name' => 'cover.jpg',
+        'extension' => 'jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 4096,
+        'width' => 1600,
+        'height' => 900,
+        'path' => 'media/cover.jpg',
+    ]);
+
+    Page::query()->create([
+        'title' => 'Featured page',
+        'slug' => 'featured-page',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'content' => 'Featured page content',
+        'featured_media_id' => $mediaFile->id,
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $this->get('/featured-page')
+        ->assertOk()
+        ->assertSee('Featured page')
+        ->assertSee('/storage/media/cover.jpg')
+        ->assertSee('Featured page content');
 });
 
 it('publishes scheduled pages in database via artisan command', function () {

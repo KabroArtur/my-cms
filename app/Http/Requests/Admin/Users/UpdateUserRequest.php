@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * Запрос валидирует обновление пользователя в административной зоне.
@@ -32,7 +33,7 @@ class UpdateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'alpha_dash:ascii', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'min:4'],
+            'password' => ['nullable', 'string', Password::min(10)->letters()->mixedCase()->numbers()],
             'role_slugs' => ['nullable', 'array'],
             'role_slugs.*' => ['string', 'exists:roles,slug'],
         ];

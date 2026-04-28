@@ -81,6 +81,22 @@
             font-size: 13px;
         }
 
+        .site-featured-media {
+            margin: 0 0 28px;
+            border: 1px solid var(--site-border);
+            border-radius: 24px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.68);
+            box-shadow: 0 20px 60px rgba(28, 25, 23, 0.06);
+        }
+
+        .site-featured-media img {
+            display: block;
+            width: 100%;
+            max-height: 480px;
+            object-fit: cover;
+        }
+
         .site-content {
             padding: 28px;
             border: 1px solid var(--site-border);
@@ -122,6 +138,15 @@
             <span>Status: {{ $page->status?->value ?? $page->status }}</span>
             <span>Published: {{ optional($page->published_at)->format('d.m.Y H:i') ?? 'not scheduled' }}</span>
         </div>
+
+        @if ($page->featuredMedia)
+            <figure class="site-featured-media">
+                <img src="{{ $page->featuredMedia->url() }}" alt="{{ $page->featuredMedia->alt_text ?: $page->featuredMedia->original_name }}">
+                @if ($page->featuredMedia->caption)
+                    <figcaption style="padding: 12px 16px; color: var(--site-muted); font-size: 14px;">{{ $page->featuredMedia->caption }}</figcaption>
+                @endif
+            </figure>
+        @endif
 
         <article class="site-content">
             {!! $page->content ?: nl2br(e($page->excerpt ?? 'Контент страницы пока не заполнен.')) !!}

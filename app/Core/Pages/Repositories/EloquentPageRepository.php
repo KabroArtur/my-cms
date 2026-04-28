@@ -25,6 +25,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
+            ->with(['parent', 'featuredMedia'])
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get();
@@ -35,7 +36,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with('parent')
+            ->with(['parent', 'featuredMedia'])
             ->orderBy('sort_order')
             ->orderByDesc('updated_at')
             ->paginate($perPage);
@@ -45,7 +46,7 @@ class EloquentPageRepository implements PageRepository
     {
         return Page::query()
             ->onlyTrashed()
-            ->with('parent')
+            ->with(['parent', 'featuredMedia'])
             ->orderByDesc('deleted_at')
             ->paginate($perPage);
     }
@@ -54,13 +55,16 @@ class EloquentPageRepository implements PageRepository
     {
         $this->refreshScheduledPublications();
 
-        return Page::query()->find($id);
+        return Page::query()
+            ->with(['parent', 'featuredMedia'])
+            ->find($id);
     }
 
     public function findTrashedById(int $id): ?Page
     {
         return Page::query()
             ->onlyTrashed()
+            ->with(['parent', 'featuredMedia'])
             ->find($id);
     }
 
@@ -69,6 +73,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
+            ->with(['parent', 'featuredMedia'])
             ->where('slug', $slug)
             ->first();
     }
@@ -150,7 +155,7 @@ class EloquentPageRepository implements PageRepository
 
         $this->syncHomePage($page, (bool) $attributes['is_home']);
 
-        return $page->fresh();
+        return $page->fresh(['parent', 'featuredMedia']);
     }
 
     public function update(Page $page, PageData $data): Page
@@ -165,7 +170,7 @@ class EloquentPageRepository implements PageRepository
 
         $this->syncHomePage($page, (bool) $attributes['is_home']);
 
-        return $page->fresh();
+        return $page->fresh(['parent', 'featuredMedia']);
     }
 
     public function delete(Page $page): void
@@ -183,10 +188,10 @@ class EloquentPageRepository implements PageRepository
     {
         $page->restore();
 
-        $restoredPage = $page->fresh();
+        $restoredPage = $page->fresh(['parent', 'featuredMedia']);
         $this->syncHomePage($restoredPage, (bool) $restoredPage->is_home);
 
-        return $restoredPage->fresh();
+        return $restoredPage->fresh(['parent', 'featuredMedia']);
     }
 
     public function forceDelete(Page $page): void
@@ -407,6 +412,7 @@ class EloquentPageRepository implements PageRepository
     protected function publicQuery(): Builder
     {
         return Page::query()
+            ->with('featuredMedia')
             ->whereIn('status', [
                 PageStatus::Published->value,
                 PageStatus::Scheduled->value,

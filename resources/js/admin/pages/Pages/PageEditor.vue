@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { fetchMediaLibrary } from '../../api/media'
 import { createPage, fetchPage, fetchPageTree, updatePage } from '../../api/pages'
 
 const route = useRoute()
@@ -15,6 +16,15 @@ const errorMessage = ref('')
 const validationErrors = ref({})
 const slugLocked = ref(false)
 const allPages = ref([])
+const mediaLoading = ref(false)
+const mediaErrorMessage = ref('')
+const mediaCurrentFolder = ref(null)
+const mediaBreadcrumbs = ref([])
+const mediaFolders = ref([])
+const mediaFiles = ref([])
+const featuredMedia = ref(null)
+const contentTextarea = ref(null)
+const mediaInsertSize = ref('original')
 
 const form = reactive({
     title: '',
@@ -28,6 +38,7 @@ const form = reactive({
     template: '',
     meta_title: '',
     meta_description: '',
+    featured_media_id: '',
     content: '',
 })
 
@@ -124,8 +135,92 @@ function fillForm(page) {
     form.template = page.template ?? ''
     form.meta_title = page.meta_title ?? ''
     form.meta_description = page.meta_description ?? ''
+    form.featured_media_id = page.featured_media_id ?? ''
     form.content = page.content ?? ''
+    featuredMedia.value = page.featured_media ?? null
     slugLocked.value = form.slug.trim() !== ''
+}
+
+async function loadMedia(folderId = null) {
+    mediaLoading.value = true
+    mediaErrorMessage.value = ''
+
+    try {
+        const payload = await fetchMediaLibrary(folderId)
+        mediaCurrentFolder.value = payload.data?.current_folder ?? null
+        mediaBreadcrumbs.value = payload.data?.breadcrumbs ?? []
+        mediaFolders.value = payload.data?.folders ?? []
+        mediaFiles.value = payload.data?.files ?? []
+    } catch (error) {
+        mediaErrorMessage.value = 'Не удалось загрузить медиафайлы.'
+        console.error(error)
+    } finally {
+        mediaLoading.value = false
+    }
+}
+
+async function openMediaFolder(folder) {
+    await loadMedia(folder.id)
+}
+
+async function openMediaRoot() {
+    await loadMedia(null)
+}
+
+function buildImageTag(file) {
+    const source = resolveMediaUrl(file)
+    const alt = file.alt_text || file.original_name
+
+    return `<img src="${source}" alt="${alt}">`
+}
+
+function resolveMediaUrl(file) {
+    if (mediaInsertSize.value === 'original') {
+        return file.url
+    }
+
+    return file.variants?.[mediaInsertSize.value]?.url || file.url
+}
+
+async function insertIntoContent(value) {
+    const textarea = contentTextarea.value
+    const insertValue = String(value)
+
+    if (!textarea) {
+        form.content = `${form.content}${form.content ? '\n' : ''}${insertValue}`
+        return
+    }
+
+    const start = textarea.selectionStart ?? form.content.length
+    const end = textarea.selectionEnd ?? form.content.length
+    const before = form.content.slice(0, start)
+    const after = form.content.slice(end)
+
+    form.content = `${before}${insertValue}${after}`
+
+    await nextTick()
+
+    textarea.focus()
+    const position = start + insertValue.length
+    textarea.setSelectionRange(position, position)
+}
+
+async function insertMediaUrl(file) {
+    await insertIntoContent(resolveMediaUrl(file))
+}
+
+async function insertMediaImage(file) {
+    await insertIntoContent(buildImageTag(file))
+}
+
+function setFeaturedMedia(file) {
+    form.featured_media_id = file.id
+    featuredMedia.value = file
+}
+
+function clearFeaturedMedia() {
+    form.featured_media_id = ''
+    featuredMedia.value = null
 }
 
 function resetForm() {
@@ -196,7 +291,10 @@ async function submitForm() {
     }
 }
 
-onMounted(loadPage)
+onMounted(() => {
+    loadPage()
+    loadMedia()
+})
 </script>
 
 <template>
@@ -306,10 +404,33 @@ onMounted(loadPage)
                         <textarea v-model="form.meta_description" class="admin-textarea" rows="3" placeholder="SEO описание страницы"></textarea>
                     </label>
 
+                    <div class="page-featured-media">
+                        <div class="page-featured-media__header">
+                            <span>Обложка страницы</span>
+                            <input v-model="form.featured_media_id" type="hidden">
+                            <AdminButton v-if="featuredMedia" type="button" @click="clearFeaturedMedia">
+                                Очистить
+                            </AdminButton>
+                        </div>
+
+                        <div v-if="featuredMedia" class="page-featured-media__card">
+                            <div class="page-featured-media__preview">
+                                <img :src="featuredMedia.preview_url || featuredMedia.url" :alt="featuredMedia.alt_text || featuredMedia.original_name">
+                            </div>
+
+                            <div class="page-featured-media__body">
+                                <strong>{{ featuredMedia.original_name }}</strong>
+                                <p class="muted">{{ featuredMedia.size_human }}<span v-if="featuredMedia.width && featuredMedia.height"> | {{ featuredMedia.width }} x {{ featuredMedia.height }}</span></p>
+                            </div>
+                        </div>
+
+                        <p v-else class="muted">Обложка пока не выбрана.</p>
+                    </div>
+
                     <label class="admin-form-label">
                         <span>Контент</span>
-                        <textarea v-model="form.content" class="admin-textarea admin-editor" rows="16" placeholder="Временный editor через textarea. Кастомный редактор можно будет подключить позже."></textarea>
-                        <small class="muted">Сейчас используется простой editor-слой через textarea. Позже его можно заменить на кастомный редактор.</small>
+                        <textarea ref="contentTextarea" v-model="form.content" class="admin-textarea admin-editor" rows="16" placeholder="Временный editor через textarea. Кастомный редактор можно будет подключить позже."></textarea>
+                        <small class="muted">Сейчас используется простой editor-слой через textarea. Ниже можно вставлять URL или готовый img-тег прямо из медиатеки.</small>
                     </label>
 
                     <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
@@ -341,6 +462,79 @@ onMounted(loadPage)
                         <p class="eyebrow">Публичная ссылка</p>
                         <p class="page-preview-box__value">{{ publicUrl }}</p>
                         <p class="muted">Чтобы перенести страницу из /review в /login/review, достаточно поменять родительскую страницу на Login. Главная страница сайта всегда открывается по адресу /.</p>
+                    </div>
+
+                    <div class="page-media-picker">
+                        <div class="page-media-picker__header">
+                            <h2>Медиа для вставки</h2>
+                            <div class="media-breadcrumbs">
+                                <button type="button" class="button-link" @click="openMediaRoot">
+                                    Корень
+                                </button>
+
+                                <template v-for="folder in mediaBreadcrumbs" :key="folder.id">
+                                    <span>/</span>
+                                    <button type="button" class="button-link" @click="openMediaFolder(folder)">
+                                        {{ folder.name }}
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <p v-if="mediaLoading" class="muted">Загрузка медиатеки...</p>
+                        <p v-else-if="mediaErrorMessage" class="error-text">{{ mediaErrorMessage }}</p>
+
+                        <div v-if="mediaFolders.length > 0" class="page-media-picker__folders">
+                            <button
+                                v-for="folder in mediaFolders"
+                                :key="folder.id"
+                                type="button"
+                                class="page-media-picker__folder"
+                                @click="openMediaFolder(folder)"
+                            >
+                                {{ folder.name }}
+                            </button>
+                        </div>
+
+                        <div v-if="mediaFiles.length > 0" class="page-media-picker__files">
+                            <label class="admin-form-label">
+                                <span>Размер для вставки</span>
+                                <select v-model="mediaInsertSize" class="admin-select">
+                                    <option value="original">Оригинал</option>
+                                    <option value="large">Large</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="thumb">Mini / Thumb</option>
+                                </select>
+                                <small class="muted">Превью в админке всегда компактное, а здесь выбирается размер URL и img-тега для контента.</small>
+                            </label>
+
+                            <article v-for="file in mediaFiles" :key="file.id" class="page-media-picker__file-card">
+                                <div class="page-media-picker__preview">
+                                    <img :src="file.preview_url || file.url" :alt="file.alt_text || file.original_name">
+                                </div>
+
+                                <div class="page-media-picker__file-body">
+                                    <h3>{{ file.original_name }}</h3>
+                                    <p class="muted">{{ file.size_human }}<span v-if="file.width && file.height"> | {{ file.width }} x {{ file.height }}</span></p>
+
+                                    <div class="admin-actions-row">
+                                        <AdminButton type="button" @click="insertMediaUrl(file)">
+                                            Вставить URL
+                                        </AdminButton>
+
+                                        <AdminButton type="button" variant="primary" @click="insertMediaImage(file)">
+                                            Вставить img
+                                        </AdminButton>
+
+                                        <AdminButton type="button" @click="setFeaturedMedia(file)">
+                                            Сделать обложкой
+                                        </AdminButton>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+
+                        <p v-else-if="!mediaLoading" class="muted">В текущей папке пока нет изображений.</p>
                     </div>
                 </div>
             </AdminCard>

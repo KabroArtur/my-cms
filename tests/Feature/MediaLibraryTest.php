@@ -1,0 +1,329 @@
+<?php
+
+use App\Core\Media\Models\MediaFile;
+use App\Core\Media\Models\MediaFolder;
+use App\Core\Roles\Models\Permission;
+use App\Models\User;
+use Database\Seeders\AccessSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    $this->seed(AccessSeeder::class);
+    Storage::fake('public');
+});
+
+it('loads media library for users with media access permission', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->where('slug', 'media.access')->pluck('id')->all());
+
+    $this->actingAs($user)
+        ->getJson('/admin/api/media')
+        ->assertOk()
+        ->assertJsonStructure([
+            'data' => [
+                'current_folder',
+                'breadcrumbs',
+                'folders',
+                'files',
+            ],
+        ]);
+});
+
+it('creates media folders with dedicated permission', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.manage_folders'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->postJson('/admin/api/media/folders', [
+            'name' => 'Hero Images',
+        ])
+        ->assertCreated();
+
+    expect($response->json('data.path'))->toBe('hero-images');
+    expect(MediaFolder::query()->where('path', 'hero-images')->exists())->toBeTrue();
+    Storage::disk('public')->assertExists('media/hero-images');
+});
+
+it('uploads image files and stores metadata in database', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $file = UploadedFile::fake()->image('banner.webp', 1200, 630);
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => $file,
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
+
+    expect($mediaFile->mime_type)->toStartWith('image/');
+    expect($mediaFile->width)->toBe(1200);
+    expect($mediaFile->height)->toBe(630);
+    expect($mediaFile->variants)->toBeArray()->not->toBeEmpty();
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['medium']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['large']['path']);
+
+    expect($response->json('data.preview_url'))->not->toBeNull();
+    expect($response->json('data.variants.thumb.url'))->not->toBeNull();
+});
+
+it('rejects svg uploads in media library', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $file = UploadedFile::fake()->createWithContent(
+        'vector.svg',
+        '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+    );
+
+    $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => $file,
+        ], [
+            'Accept' => 'application/json',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['file']);
+});
+
+it('deletes uploaded media files with dedicated permission', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload', 'media.delete'])->pluck('id')->all());
+
+    $file = UploadedFile::fake()->image('gallery.jpg', 800, 600);
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => $file,
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
+
+    $this->actingAs($user)
+        ->deleteJson("/admin/api/media/files/{$mediaFile->id}")
+        ->assertNoContent();
+
+    expect(MediaFile::query()->find($mediaFile->id))->toBeNull();
+    Storage::disk('public')->assertMissing($mediaFile->path);
+});
+
+it('moves uploaded media files into another folder', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload', 'media.manage_folders'])->pluck('id')->all());
+
+    $targetFolder = MediaFolder::query()->create([
+        'name' => 'Gallery',
+        'slug' => 'gallery',
+        'path' => 'gallery',
+    ]);
+
+    Storage::disk('public')->makeDirectory('media/gallery');
+
+    $uploadResponse = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => UploadedFile::fake()->image('move-me.jpg', 400, 300),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($uploadResponse->json('data.id'));
+    $originalPath = $mediaFile->path;
+
+    $this->actingAs($user)
+        ->putJson("/admin/api/media/files/{$mediaFile->id}/move", [
+            'folder_id' => $targetFolder->id,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.folder_id', $targetFolder->id)
+        ->assertJsonPath('data.folder_name', 'Gallery');
+
+    $mediaFile->refresh();
+
+    expect($mediaFile->folder_id)->toBe($targetFolder->id);
+    expect($mediaFile->path)->toStartWith('media/gallery/');
+    expect($mediaFile->variants['thumb']['path'])->toStartWith('media/gallery/');
+    Storage::disk('public')->assertMissing($originalPath);
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+});
+
+it('renames media folders and updates nested file paths', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload', 'media.manage_folders'])->pluck('id')->all());
+
+    $folder = MediaFolder::query()->create([
+        'name' => 'Gallery',
+        'slug' => 'gallery',
+        'path' => 'gallery',
+    ]);
+
+    Storage::disk('public')->makeDirectory('media/gallery');
+
+    $uploadResponse = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'folder_id' => $folder->id,
+            'file' => UploadedFile::fake()->image('nested.jpg', 320, 240),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($uploadResponse->json('data.id'));
+    $originalPath = $mediaFile->path;
+
+    $this->actingAs($user)
+        ->putJson("/admin/api/media/folders/{$folder->id}", [
+            'name' => 'Portfolio',
+            'parent_id' => null,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.path', 'portfolio');
+
+    $folder->refresh();
+    $mediaFile->refresh();
+
+    expect($folder->path)->toBe('portfolio');
+    expect($mediaFile->path)->toStartWith('media/portfolio/');
+    expect($mediaFile->variants['thumb']['path'])->toStartWith('media/portfolio/');
+    Storage::disk('public')->assertMissing($originalPath);
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+});
+
+it('moves media folders under another parent and updates nested paths', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload', 'media.manage_folders'])->pluck('id')->all());
+
+    $parent = MediaFolder::query()->create([
+        'name' => 'Sections',
+        'slug' => 'sections',
+        'path' => 'sections',
+    ]);
+
+    $folder = MediaFolder::query()->create([
+        'name' => 'Gallery',
+        'slug' => 'gallery',
+        'path' => 'gallery',
+    ]);
+
+    Storage::disk('public')->makeDirectory('media/sections');
+    Storage::disk('public')->makeDirectory('media/gallery');
+
+    $uploadResponse = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'folder_id' => $folder->id,
+            'file' => UploadedFile::fake()->image('relocate.jpg', 320, 240),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($uploadResponse->json('data.id'));
+
+    $this->actingAs($user)
+        ->putJson("/admin/api/media/folders/{$folder->id}", [
+            'name' => 'Gallery',
+            'parent_id' => $parent->id,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.path', 'sections/gallery');
+
+    $folder->refresh();
+    $mediaFile->refresh();
+
+    expect($folder->path)->toBe('sections/gallery');
+    expect($mediaFile->path)->toStartWith('media/sections/gallery/');
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+});
+
+it('updates media file metadata through admin api', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $uploadResponse = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => UploadedFile::fake()->image('meta.jpg', 600, 400),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($uploadResponse->json('data.id'));
+
+    $this->actingAs($user)
+        ->putJson("/admin/api/media/files/{$mediaFile->id}", [
+            'title' => 'Homepage hero',
+            'alt_text' => 'Main homepage hero image',
+            'caption' => 'Spring campaign visual',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.title', 'Homepage hero')
+        ->assertJsonPath('data.alt_text', 'Main homepage hero image')
+        ->assertJsonPath('data.caption', 'Spring campaign visual');
+
+    $mediaFile->refresh();
+
+    expect($mediaFile->title)->toBe('Homepage hero');
+    expect($mediaFile->alt_text)->toBe('Main homepage hero image');
+    expect($mediaFile->caption)->toBe('Spring campaign visual');
+});
+
+it('regenerates variants for existing media files via artisan command', function (): void {
+    $storedFile = UploadedFile::fake()->image('legacy-banner.jpg', 1400, 900);
+    $storedPath = $storedFile->storeAs('media', 'legacy-banner.jpg', 'public');
+
+    $mediaFile = MediaFile::query()->create([
+        'disk' => 'public',
+        'directory' => 'media',
+        'filename' => 'legacy-banner.jpg',
+        'original_name' => 'legacy-banner.jpg',
+        'extension' => 'jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => Storage::disk('public')->size($storedPath),
+        'width' => 1400,
+        'height' => 900,
+        'path' => $storedPath,
+        'variants' => null,
+    ]);
+
+    $this->artisan('media:regenerate-variants')
+        ->expectsOutput('Регенерировано файлов: 1')
+        ->assertExitCode(0);
+
+    $mediaFile->refresh();
+
+    expect($mediaFile->variants)->toBeArray()->toHaveKeys(['thumb', 'medium', 'large']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['medium']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['large']['path']);
+});

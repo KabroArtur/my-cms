@@ -86,7 +86,8 @@ php artisan key:generate
 
 ```env
 APP_NAME="My CMS"
-APP_URL=http://my-cms.test
+APP_URL=https://my-cms.test
+APP_ENFORCE_CANONICAL_URL=true
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -114,19 +115,19 @@ npm run dev
 Если используется Herd:
 
 ```text
-http://my-cms.test
+https://my-cms.test
 ```
 
 Страница входа:
 
 ```text
-http://my-cms.test/login
+https://my-cms.test/admin/login
 ```
 
 Админка:
 
 ```text
-http://my-cms.test/admin/pages
+https://my-cms.test/admin/pages
 ```
 
 ## Данные администратора
@@ -192,6 +193,12 @@ php artisan cms:core
 
 ```bash
 php artisan route:list
+```
+
+Регенерировать thumb, medium и large для уже загруженных изображений:
+
+```bash
+php artisan media:regenerate-variants
 ```
 
 Проверить сборку frontend:

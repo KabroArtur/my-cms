@@ -20,12 +20,12 @@
                     <tbody>
                         <tr>
                             <td><label for="login">Логин</label></td>
-                            <td><input id="login" name="login" type="text" value="{{ old('login', 'admin') }}" autocomplete="username"></td>
+                            <td><input id="login" name="login" type="text" value="{{ old('login') }}" autocomplete="username"></td>
                             <td>@error('login') <strong>{{ $message }}</strong> @enderror</td>
                         </tr>
                         <tr>
                             <td><label for="password">Пароль</label></td>
-                            <td><input id="password" name="password" type="password" value="admin" autocomplete="current-password"></td>
+                            <td><input id="password" name="password" type="password" autocomplete="current-password"></td>
                             <td>@error('password') <strong>{{ $message }}</strong> @enderror</td>
                         </tr>
                         <tr>

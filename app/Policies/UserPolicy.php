@@ -10,6 +10,19 @@ use App\Models\User;
  */
 class UserPolicy
 {
+    protected function canManageProtectedUser(?User $user, User $target): bool
+    {
+        $protectedUsernames = collect(config('access.protected_usernames', []))
+            ->filter(fn (mixed $username): bool => is_string($username) && $username !== '')
+            ->values();
+
+        if (! $protectedUsernames->contains($target->username)) {
+            return true;
+        }
+
+        return $user?->hasRole('admin') ?? false;
+    }
+
     /**
      * Policy разрешает просмотр списка пользователей.
      */
@@ -23,7 +36,7 @@ class UserPolicy
      */
     public function create(?User $user): bool
     {
-        return $user?->hasPermission('users.access') ?? false;
+        return $user?->hasPermission('users.create') ?? false;
     }
 
     /**
@@ -31,7 +44,8 @@ class UserPolicy
      */
     public function update(?User $user, User $target): bool
     {
-        return $user?->hasPermission('users.access') ?? false;
+        return ($user?->hasPermission('users.update') ?? false)
+            && $this->canManageProtectedUser($user, $target);
     }
 
     /**
@@ -39,6 +53,7 @@ class UserPolicy
      */
     public function delete(?User $user, User $target): bool
     {
-        return $user?->hasPermission('users.access') ?? false;
+        return ($user?->hasPermission('users.delete') ?? false)
+            && $this->canManageProtectedUser($user, $target);
     }
 }

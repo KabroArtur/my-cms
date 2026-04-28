@@ -14,10 +14,22 @@ return [
 
     'permissions' => [
         'pages.access',
+        'pages.create',
+        'pages.update',
+        'pages.delete',
         'users.access',
+        'users.create',
+        'users.update',
+        'users.delete',
+        'users.manage_roles',
         'roles.access',
+        'roles.create',
+        'roles.update',
         'settings.access',
         'media.access',
+        'media.upload',
+        'media.delete',
+        'media.manage_folders',
     ],
 
     /*
@@ -39,8 +51,23 @@ return [
             'name' => 'Editor',
             'permissions' => [
                 'pages.access',
+                'pages.create',
+                'pages.update',
+                'pages.delete',
                 'media.access',
+                'media.upload',
+                'media.delete',
+                'media.manage_folders',
             ],
         ],
+    ],
+
+    'protected_roles' => [
+        'admin',
+        'editor',
+    ],
+
+    'protected_usernames' => [
+        'admin',
     ],
 ];

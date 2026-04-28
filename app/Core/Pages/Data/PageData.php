@@ -23,6 +23,7 @@ readonly class PageData
         public ?string $template = null,
         public ?string $metaTitle = null,
         public ?string $metaDescription = null,
+        public ?int $featuredMediaId = null,
         public ?int $parentId = null,
         public int $sortOrder = 0,
         public bool $isHome = false,
@@ -52,6 +53,9 @@ readonly class PageData
             template: self::nullableString($attributes['template'] ?? null),
             metaTitle: self::nullableString($attributes['meta_title'] ?? null),
             metaDescription: self::nullableString($attributes['meta_description'] ?? null),
+            featuredMediaId: isset($attributes['featured_media_id']) && $attributes['featured_media_id'] !== ''
+                ? (int) $attributes['featured_media_id']
+                : null,
             parentId: isset($attributes['parent_id']) ? (int) $attributes['parent_id'] : null,
             sortOrder: isset($attributes['sort_order']) ? (int) $attributes['sort_order'] : 0,
             isHome: (bool) ($attributes['is_home'] ?? false),
@@ -83,11 +87,35 @@ readonly class PageData
             'template' => $this->template,
             'meta_title' => $this->metaTitle,
             'meta_description' => $this->metaDescription,
+            'featured_media_id' => $this->featuredMediaId,
             'parent_id' => $this->parentId,
             'sort_order' => $this->sortOrder,
             'is_home' => $this->isHome,
             'published_at' => $publishedAt,
         ];
+    }
+
+    /**
+     * DTO возвращает копию с уже очищенным HTML-контентом.
+     */
+    public function withContent(?string $content): self
+    {
+        return new self(
+            title: $this->title,
+            slug: $this->slug,
+            status: $this->status,
+            visibility: $this->visibility,
+            excerpt: $this->excerpt,
+            content: $content,
+            template: $this->template,
+            metaTitle: $this->metaTitle,
+            metaDescription: $this->metaDescription,
+            featuredMediaId: $this->featuredMediaId,
+            parentId: $this->parentId,
+            sortOrder: $this->sortOrder,
+            isHome: $this->isHome,
+            publishedAt: $this->publishedAt,
+        );
     }
 
     /**

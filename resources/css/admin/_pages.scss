@@ -1,7 +1,8 @@
 .admin-grid,
 .pages-grid,
 .users-grid,
-.roles-grid {
+.roles-grid,
+.media-grid {
     display: grid;
     grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
     gap: 20px;
@@ -48,6 +49,151 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.media-breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.media-library-stack {
+    display: grid;
+    gap: 20px;
+}
+
+.media-folder-list,
+.media-file-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.media-file-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.media-folder-card,
+.media-file-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-md);
+    background: var(--admin-color-surface-muted);
+}
+
+.media-folder-card {
+    grid-template-columns: 1fr;
+}
+
+.media-folder-card__content {
+    display: grid;
+    gap: 12px;
+}
+
+.media-folder-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.media-folder-card__main {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.media-folder-card__rename {
+    display: grid;
+    gap: 8px;
+}
+
+.media-folder-card__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.media-folder-card__title {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--admin-color-text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+}
+
+.media-folder-card__title:hover {
+    text-decoration: underline;
+}
+
+.media-file-card {
+    grid-template-columns: 1fr;
+    align-content: start;
+    overflow: hidden;
+}
+
+.media-file-card__preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    border-radius: var(--admin-radius-md);
+    border: 1px solid var(--admin-color-border);
+    background: #fff;
+    overflow: hidden;
+}
+
+.media-file-card__preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    object-fit: cover;
+}
+
+.media-file-card__body {
+    display: grid;
+    gap: 10px;
+}
+
+.media-file-card__meta {
+    display: grid;
+    gap: 4px;
+}
+
+.media-file-card__editor {
+    display: grid;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--admin-color-border);
+}
+
+.media-file-card__body h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.media-file-card__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.media-file-card__action {
+    width: 100%;
+    background: color-mix(in srgb, var(--admin-color-surface) 88%, white);
+}
+
+.media-file-card__action--danger {
+    color: var(--admin-color-danger);
+    border-color: var(--admin-color-danger-border);
+    background: color-mix(in srgb, var(--admin-color-danger-bg) 72%, white);
 }
 
 .page-form-fieldset {
@@ -110,6 +256,118 @@
     margin: 0 0 8px;
     font-size: 20px;
     font-weight: 700;
+}
+
+.page-featured-media {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-md);
+    background: var(--admin-color-surface-muted);
+}
+
+.page-featured-media__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.page-featured-media__card {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 12px;
+}
+
+.page-featured-media__preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-md);
+    background: #fff;
+    overflow: hidden;
+}
+
+.page-featured-media__preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.page-featured-media__body {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+}
+
+.page-media-picker {
+    display: grid;
+    gap: 14px;
+}
+
+.page-media-picker__header {
+    display: grid;
+    gap: 8px;
+}
+
+.page-media-picker__header h2,
+.page-media-picker__file-body h3 {
+    margin: 0;
+}
+
+.page-media-picker__folders,
+.page-media-picker__files {
+    display: grid;
+    gap: 12px;
+}
+
+.page-media-picker__folder,
+.page-media-picker__file-card {
+    border: 1px solid var(--admin-color-border);
+    border-radius: var(--admin-radius-md);
+    background: var(--admin-color-surface-muted);
+}
+
+.page-media-picker__folder {
+    padding: 12px 14px;
+    text-align: left;
+    color: var(--admin-color-text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.page-media-picker__file-card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+}
+
+.page-media-picker__preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 84px;
+    border-radius: var(--admin-radius-md);
+    border: 1px solid var(--admin-color-border);
+    background: #fff;
+    overflow: hidden;
+}
+
+.page-media-picker__preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.page-media-picker__file-body {
+    display: grid;
+    gap: 8px;
 }
 
 .page-badge {
@@ -262,7 +520,8 @@
     .admin-grid,
     .pages-grid,
     .users-grid,
-    .roles-grid {
+    .roles-grid,
+    .media-grid {
         grid-template-columns: 1fr;
     }
 
@@ -279,5 +538,24 @@
     .users-toolbar {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .media-folder-card,
+    .media-file-card,
+    .page-media-picker__file-card,
+    .page-featured-media__card {
+        grid-template-columns: 1fr;
+    }
+
+    .media-folder-card__top {
+        flex-direction: column;
+    }
+
+    .media-folder-card__actions {
+        justify-content: flex-start;
+    }
+
+    .media-file-card__actions {
+        grid-template-columns: 1fr;
     }
 }

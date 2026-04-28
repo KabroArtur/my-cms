@@ -85,7 +85,25 @@ class User extends Authenticatable
      */
     public function canAccessAdmin(): bool
     {
-        return $this->hasRole('admin') || $this->roles()->exists() || $this->permissions()->exists();
+        if ($this->hasRole('admin')) {
+            return true;
+        }
+
+        $accessPermissions = collect(config('access.permissions', []))
+            ->filter(fn (mixed $permission): bool => is_string($permission) && str_ends_with($permission, '.access'))
+            ->values();
+
+        if ($accessPermissions->isEmpty()) {
+            return false;
+        }
+
+        if ($this->permissions()->whereIn('slug', $accessPermissions->all())->exists()) {
+            return true;
+        }
+
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->whereIn('slug', $accessPermissions->all()))
+            ->exists();
     }
 
     /**

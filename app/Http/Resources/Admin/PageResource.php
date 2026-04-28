@@ -31,6 +31,8 @@ class PageResource extends JsonResource
             'template' => $this->template,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
+            'featured_media_id' => $this->featured_media_id,
+            'featured_media' => $this->featuredMedia ? MediaFileResource::make($this->featuredMedia) : null,
             'parent_id' => $this->parent_id,
             'parent_title' => $this->parent?->title,
             'sort_order' => $this->sort_order,

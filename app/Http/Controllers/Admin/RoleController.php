@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Core\Roles\Models\Permission;
 use App\Core\Roles\Models\Role;
+use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Roles\StoreRoleRequest;
 use App\Http\Requests\Admin\Roles\UpdateRoleRequest;
@@ -37,7 +38,7 @@ class RoleController extends Controller
     /**
      * Контроллер создает новую роль.
      */
-    public function store(StoreRoleRequest $request): JsonResponse
+    public function store(StoreRoleRequest $request, SecurityAuditLogger $audit): JsonResponse
     {
         $data = $request->validated();
 
@@ -48,6 +49,12 @@ class RoleController extends Controller
 
         $this->syncPermissions($role, $data['permission_slugs'] ?? []);
 
+        $audit->log('roles.created', $request->user(), [
+            'target_role_id' => $role->id,
+            'target_role_slug' => $role->slug,
+            'permission_slugs' => $role->permissions()->pluck('slug')->all(),
+        ]);
+
         return RoleResource::make($role->load('permissions')->loadCount('users'))
             ->response()
             ->setStatusCode(201);
@@ -56,7 +63,7 @@ class RoleController extends Controller
     /**
      * Контроллер обновляет существующую роль.
      */
-    public function update(UpdateRoleRequest $request, Role $role): RoleResource
+    public function update(UpdateRoleRequest $request, Role $role, SecurityAuditLogger $audit): RoleResource
     {
         $data = $request->validated();
 
@@ -67,6 +74,12 @@ class RoleController extends Controller
         $role->save();
 
         $this->syncPermissions($role, $data['permission_slugs'] ?? []);
+
+        $audit->log('roles.updated', $request->user(), [
+            'target_role_id' => $role->id,
+            'target_role_slug' => $role->slug,
+            'permission_slugs' => $role->permissions()->pluck('slug')->all(),
+        ]);
 
         return RoleResource::make($role->load('permissions')->loadCount('users'));
     }

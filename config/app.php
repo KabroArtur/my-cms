@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'enforce_canonical_url' => (bool) env('APP_ENFORCE_CANONICAL_URL', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

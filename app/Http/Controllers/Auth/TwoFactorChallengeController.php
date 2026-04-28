@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Core\Auth\Services\TwoFactorChallengeService;
+use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\TwoFactorChallengeRequest;
 use Illuminate\Http\RedirectResponse;
@@ -42,7 +43,7 @@ class TwoFactorChallengeController extends Controller
     /**
      * Контроллер проверяет код и завершает 2FA-подтверждение.
      */
-    public function store(TwoFactorChallengeRequest $request, TwoFactorChallengeService $service): RedirectResponse
+    public function store(TwoFactorChallengeRequest $request, TwoFactorChallengeService $service, SecurityAuditLogger $audit): RedirectResponse
     {
         $user = $request->user();
 
@@ -50,7 +51,22 @@ class TwoFactorChallengeController extends Controller
             return redirect()->route('login');
         }
 
-        if (! $service->verify($user, (string) $request->string('code'))) {
+        $verification = $service->verify($user, (string) $request->string('code'));
+
+        if (($verification['status'] ?? null) === TwoFactorChallengeService::VERIFY_STATUS_LOCKED) {
+            $audit->log('auth.two_factor_locked', $user, [
+                'retry_after' => (int) ($verification['retry_after'] ?? 0),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'code' => 'Слишком много неверных попыток. Попробуйте через '.max(1, (int) ($verification['retry_after'] ?? 0)).' сек.',
+                ]);
+        }
+
+        if (($verification['status'] ?? null) !== TwoFactorChallengeService::VERIFY_STATUS_VERIFIED) {
+            $audit->log('auth.two_factor_failed', $user);
+
             return back()
                 ->withErrors(['code' => 'Неверный или просроченный код.'])
                 ->withInput();
@@ -58,13 +74,15 @@ class TwoFactorChallengeController extends Controller
 
         $request->session()->put('auth.two_factor_confirmed_user_id', $user->id);
 
+        $audit->log('auth.two_factor_verified', $user);
+
         return redirect()->intended('/admin/pages');
     }
 
     /**
      * Контроллер повторно отправляет код второго фактора.
      */
-    public function resend(Request $request, TwoFactorChallengeService $service): RedirectResponse
+    public function resend(Request $request, TwoFactorChallengeService $service, SecurityAuditLogger $audit): RedirectResponse
     {
         $user = $request->user();
 
@@ -72,7 +90,19 @@ class TwoFactorChallengeController extends Controller
             return redirect()->route('login');
         }
 
-        $service->issue($user);
+        $resend = $service->resend($user);
+
+        if (($resend['status'] ?? null) === TwoFactorChallengeService::RESEND_STATUS_THROTTLED) {
+            $audit->log('auth.two_factor_resend_throttled', $user, [
+                'retry_after' => (int) ($resend['retry_after'] ?? 0),
+            ]);
+
+            return back()->withErrors([
+                'code' => 'Повторная отправка будет доступна через '.max(1, (int) ($resend['retry_after'] ?? 0)).' сек.',
+            ]);
+        }
+
+        $audit->log('auth.two_factor_resent', $user);
 
         return back()->with('status', 'Новый код отправлен.');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Core\Pages\Models;
 
+use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'template',
     'meta_title',
     'meta_description',
+    'featured_media_id',
     'parent_id',
     'sort_order',
     'is_home',
@@ -88,6 +90,14 @@ class Page extends Model
         return $this->hasMany(self::class, 'parent_id')
             ->orderBy('sort_order')
             ->orderBy('title');
+    }
+
+    /**
+     * Страница может иметь выбранную обложку из медиатеки.
+     */
+    public function featuredMedia(): BelongsTo
+    {
+        return $this->belongsTo(MediaFile::class, 'featured_media_id');
     }
 
     /**

@@ -11,6 +11,19 @@ use App\Models\User;
  */
 class RolePolicy
 {
+    protected function canManageProtectedRole(?User $user, Role $role): bool
+    {
+        $protectedRoles = collect(config('access.protected_roles', []))
+            ->filter(fn (mixed $slug): bool => is_string($slug) && $slug !== '')
+            ->values();
+
+        if (! $protectedRoles->contains($role->slug)) {
+            return true;
+        }
+
+        return $user?->hasRole('admin') ?? false;
+    }
+
     /**
      * Policy разрешает просмотр списка ролей.
      */
@@ -24,7 +37,7 @@ class RolePolicy
      */
     public function create(?User $user): bool
     {
-        return $user?->hasPermission('roles.access') ?? false;
+        return $user?->hasPermission('roles.create') ?? false;
     }
 
     /**
@@ -32,6 +45,7 @@ class RolePolicy
      */
     public function update(?User $user, Role $role): bool
     {
-        return $user?->hasPermission('roles.access') ?? false;
+        return ($user?->hasPermission('roles.update') ?? false)
+            && $this->canManageProtectedRole($user, $role);
     }
 }

@@ -8,6 +8,7 @@ use App\Core\Pages\Models\Page;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -20,15 +21,20 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::query()->updateOrCreate([
+        $adminUser = User::query()->firstOrNew([
             'username' => 'admin',
-        ], [
-            'name' => 'Administrator',
-            'email' => 'admin@example.com',
-            'password' => 'admin',
-            'two_factor_channel' => 'email',
-            'two_factor_enabled_at' => now(),
         ]);
+
+        $adminUser->name = 'Administrator';
+        $adminUser->email = $adminUser->email ?: 'admin@example.com';
+
+        if (! $adminUser->exists) {
+            $adminUser->password = env('ADMIN_INITIAL_PASSWORD', Str::password(24));
+            $adminUser->two_factor_channel = 'email';
+            $adminUser->two_factor_enabled_at = now();
+        }
+
+        $adminUser->save();
 
         $this->call(AccessSeeder::class);
 

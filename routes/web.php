@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -31,6 +32,14 @@ Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')-
     Route::post('/users', [UserController::class, 'store']);
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);
+    Route::get('/media', [MediaController::class, 'index']);
+    Route::post('/media/folders', [MediaController::class, 'storeFolder']);
+    Route::put('/media/folders/{folder}', [MediaController::class, 'updateFolder']);
+    Route::delete('/media/folders/{folder}', [MediaController::class, 'destroyFolder']);
+    Route::post('/media/files', [MediaController::class, 'storeFile']);
+    Route::put('/media/files/{mediaFile}', [MediaController::class, 'updateFile']);
+    Route::put('/media/files/{mediaFile}/move', [MediaController::class, 'moveFile']);
+    Route::delete('/media/files/{mediaFile}', [MediaController::class, 'destroyFile']);
     Route::get('/pages', [PageController::class, 'index']);
     Route::get('/pages-tree', [PageController::class, 'tree']);
     Route::get('/pages-trash', [PageController::class, 'trash']);

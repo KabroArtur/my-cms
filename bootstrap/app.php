@@ -2,9 +2,12 @@
 
 use App\Http\Middleware\EnsureUserCanAccessAdmin;
 use App\Http\Middleware\EnsureTwoFactorIsConfirmed;
+use App\Http\Middleware\RedirectToCanonicalUrl;
+use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,6 +17,23 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $trustedProxies = array_values(array_filter(array_map(
+            static fn (string $proxy): string => trim($proxy),
+            explode(',', (string) env('TRUSTED_PROXIES', '127.0.0.1,::1')),
+        )));
+
+        $middleware->trustProxies(
+            at: $trustedProxies === ['*'] ? '*' : $trustedProxies,
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO
+                | Request::HEADER_X_FORWARDED_PREFIX,
+        );
+
+        $middleware->append(SetSecurityHeaders::class);
+        $middleware->append(RedirectToCanonicalUrl::class);
+
         $middleware->alias([
             'admin.access' => EnsureUserCanAccessAdmin::class,
             'two_factor' => EnsureTwoFactorIsConfirmed::class,

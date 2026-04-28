@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Core\Auth\Services\TwoFactorChallengeService;
+use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +33,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Контроллер аутентифицирует пользователя по логину и паролю.
      */
-    public function store(LoginRequest $request, TwoFactorChallengeService $twoFactor): RedirectResponse
+    public function store(LoginRequest $request, TwoFactorChallengeService $twoFactor, SecurityAuditLogger $audit): RedirectResponse
     {
         $request->authenticate();
         $request->session()->regenerate();
@@ -40,6 +41,10 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if ($user === null || ! $user->canAccessAdmin()) {
+            $audit->log('auth.admin_access_denied', $user, [
+                'login' => (string) $request->string('login'),
+            ]);
+
             Auth::logout();
 
             throw ValidationException::withMessages([
@@ -50,10 +55,18 @@ class AuthenticatedSessionController extends Controller
         $request->session()->forget('auth.two_factor_confirmed_user_id');
 
         if ($user->requiresTwoFactorChallenge()) {
+            $audit->log('auth.password_verified', $user, [
+                'two_factor_required' => true,
+            ]);
+
             $twoFactor->issue($user);
 
             return redirect()->route('two-factor.challenge');
         }
+
+        $audit->log('auth.login_succeeded', $user, [
+            'two_factor_required' => false,
+        ]);
 
         return redirect()->intended('/admin/pages');
     }
@@ -61,8 +74,10 @@ class AuthenticatedSessionController extends Controller
     /**
      * Контроллер завершает пользовательскую сессию.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, SecurityAuditLogger $audit): RedirectResponse
     {
+        $audit->log('auth.logout', $request->user());
+
         Auth::guard('web')->logout();
 
         $request->session()->forget('auth.two_factor_confirmed_user_id');

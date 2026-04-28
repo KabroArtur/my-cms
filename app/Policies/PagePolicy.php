@@ -24,7 +24,15 @@ class PagePolicy
      */
     public function create(?User $user): bool
     {
-        return $this->allows($user, 'pages.access');
+        return $this->allows($user, 'pages.create');
+    }
+
+    /**
+     * Policy разрешает перестраивать дерево страниц.
+     */
+    public function reorder(?User $user): bool
+    {
+        return $this->allows($user, 'pages.update');
     }
 
     /**
@@ -32,7 +40,7 @@ class PagePolicy
      */
     public function update(?User $user, Page $page): bool
     {
-        return $this->allows($user, 'pages.access');
+        return $this->allows($user, 'pages.update');
     }
 
     /**
@@ -40,7 +48,7 @@ class PagePolicy
      */
     public function delete(?User $user, Page $page): bool
     {
-        return $this->allows($user, 'pages.access');
+        return $this->allows($user, 'pages.delete');
     }
 
     /**

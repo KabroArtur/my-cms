@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin\Users;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * Запрос валидирует создание пользователя в административной зоне.
@@ -26,7 +27,7 @@ class StoreUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'alpha_dash:ascii', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:4'],
+            'password' => ['required', 'string', Password::min(10)->letters()->mixedCase()->numbers()],
             'role_slugs' => ['nullable', 'array'],
             'role_slugs.*' => ['string', 'exists:roles,slug'],
         ];

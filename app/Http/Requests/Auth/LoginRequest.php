@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Core\Security\Services\SecurityAuditLogger;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -48,6 +49,10 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
+            app(SecurityAuditLogger::class)->log('auth.login_failed', null, [
+                'login' => (string) $this->string('login'),
+            ]);
+
             throw ValidationException::withMessages([
                 'login' => 'Неверный логин или пароль.',
             ]);
@@ -68,6 +73,11 @@ class LoginRequest extends FormRequest
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+
+        app(SecurityAuditLogger::class)->log('auth.login_lockout', null, [
+            'login' => (string) $this->string('login'),
+            'retry_after' => $seconds,
+        ]);
 
         throw ValidationException::withMessages([
             'login' => "Слишком много попыток. Повторите через {$seconds} сек.",

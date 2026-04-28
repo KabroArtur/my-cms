@@ -22,10 +22,22 @@ const form = reactive({
 
 const permissionOptions = [
     { slug: 'pages.access', label: 'Pages' },
+    { slug: 'pages.create', label: 'Pages: create' },
+    { slug: 'pages.update', label: 'Pages: update' },
+    { slug: 'pages.delete', label: 'Pages: delete' },
     { slug: 'users.access', label: 'Users' },
+    { slug: 'users.create', label: 'Users: create' },
+    { slug: 'users.update', label: 'Users: update' },
+    { slug: 'users.delete', label: 'Users: delete' },
+    { slug: 'users.manage_roles', label: 'Users: manage roles' },
     { slug: 'roles.access', label: 'Roles' },
+    { slug: 'roles.create', label: 'Roles: create' },
+    { slug: 'roles.update', label: 'Roles: update' },
     { slug: 'settings.access', label: 'Settings' },
     { slug: 'media.access', label: 'Media' },
+    { slug: 'media.upload', label: 'Media: upload' },
+    { slug: 'media.delete', label: 'Media: delete' },
+    { slug: 'media.manage_folders', label: 'Media: folders' },
 ]
 
 function resetForm() {
