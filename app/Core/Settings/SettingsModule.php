@@ -2,6 +2,7 @@
 
 namespace App\Core\Settings;
 
+use App\Core\Settings\Services\SettingsManager;
 use App\Core\Support\BaseCoreModule;
 use App\Core\Support\ModuleDefinition;
 
@@ -11,6 +12,11 @@ use App\Core\Support\ModuleDefinition;
  */
 class SettingsModule extends BaseCoreModule
 {
+    public function register(): void
+    {
+        $this->app->singleton(SettingsManager::class, SettingsManager::class);
+    }
+
     protected function newDefinition(): ModuleDefinition
     {
         return new ModuleDefinition(

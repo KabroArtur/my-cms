@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')-
     Route::put('/media/files/{mediaFile}', [MediaController::class, 'updateFile']);
     Route::put('/media/files/{mediaFile}/move', [MediaController::class, 'moveFile']);
     Route::delete('/media/files/{mediaFile}', [MediaController::class, 'destroyFile']);
+    Route::get('/settings', [SettingsController::class, 'show']);
+    Route::put('/settings', [SettingsController::class, 'update']);
     Route::get('/pages', [PageController::class, 'index']);
     Route::get('/pages-tree', [PageController::class, 'tree']);
     Route::get('/pages-trash', [PageController::class, 'trash']);

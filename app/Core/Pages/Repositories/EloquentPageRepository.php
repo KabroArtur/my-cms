@@ -7,6 +7,7 @@ use App\Core\Pages\Data\PageData;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Models\Page;
+use App\Core\Settings\Services\SettingsManager;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -20,6 +21,10 @@ use Illuminate\Validation\ValidationException;
  */
 class EloquentPageRepository implements PageRepository
 {
+    public function __construct(protected SettingsManager $settings)
+    {
+    }
+
     public function all(): Collection
     {
         $this->refreshScheduledPublications();
@@ -119,6 +124,13 @@ class EloquentPageRepository implements PageRepository
             ->where('slug', $lastSegment)
             ->get()
             ->first(fn (Page $page): bool => $page->path === $path);
+    }
+
+    public function publicNavigation(): Collection
+    {
+        $this->refreshScheduledPublications();
+
+        return $this->publicQuery()->get();
     }
 
     /**
@@ -439,6 +451,8 @@ class EloquentPageRepository implements PageRepository
                 $page->forceFill(['is_home' => true])->saveQuietly();
             }
 
+            $this->settings->rememberHomePage($page->id);
+
             return;
         }
 
@@ -452,6 +466,7 @@ class EloquentPageRepository implements PageRepository
         }
 
         $page->forceFill(['is_home' => true])->saveQuietly();
+        $this->settings->rememberHomePage($page->id);
     }
 
     /**
@@ -465,10 +480,13 @@ class EloquentPageRepository implements PageRepository
             ->first();
 
         if ($fallbackPage === null) {
+            $this->settings->rememberHomePage(null);
+
             return;
         }
 
         Page::query()->where('is_home', true)->update(['is_home' => false]);
         $fallbackPage->forceFill(['is_home' => true])->saveQuietly();
+        $this->settings->rememberHomePage($fallbackPage->id);
     }
 }

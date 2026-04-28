@@ -78,6 +78,45 @@ it('shows nested pages by full url path', function () {
         ->assertSee('Nested page content');
 });
 
+it('renders site navigation from the same nested page tree', function () {
+    $homePage = Page::query()->create([
+        'title' => 'Home',
+        'slug' => 'home',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'is_home' => true,
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $companyPage = Page::query()->create([
+        'title' => 'Company',
+        'slug' => 'company',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $teamPage = Page::query()->create([
+        'title' => 'Team',
+        'slug' => 'team',
+        'parent_id' => $companyPage->id,
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $response = $this->get('/');
+
+    $response
+        ->assertOk()
+        ->assertSee('Страницы сайта')
+        ->assertSee('/company', false)
+        ->assertSee('/company/team', false)
+        ->assertSee('Company')
+        ->assertSee('Team')
+        ->assertDontSee('cms-menu__item', false);
+});
+
 it('moves a page between levels by changing only its parent', function () {
     $loginPage = Page::query()->create([
         'title' => 'Login',

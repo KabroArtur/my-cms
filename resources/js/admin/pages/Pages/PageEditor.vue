@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { loadCmsSettings } from '../../composables/useCmsSettings'
 import { fetchMediaLibrary } from '../../api/media'
 import { createPage, fetchPage, fetchPageTree, updatePage } from '../../api/pages'
 
@@ -146,6 +147,8 @@ async function loadMedia(folderId = null) {
     mediaErrorMessage.value = ''
 
     try {
+        const settingsPayload = await loadCmsSettings()
+        mediaInsertSize.value = settingsPayload.settings?.media_default_insert_variant || 'original'
         const payload = await fetchMediaLibrary(folderId)
         mediaCurrentFolder.value = payload.data?.current_folder ?? null
         mediaBreadcrumbs.value = payload.data?.breadcrumbs ?? []
@@ -384,14 +387,10 @@ onMounted(() => {
                             <small v-if="validationErrors.template" class="error-text">{{ validationErrors.template[0] }}</small>
                         </label>
 
-                        <label class="admin-form-label page-home-toggle">
+                        <div class="admin-form-label page-home-toggle">
                             <span>Главная страница</span>
-                            <label class="admin-choice">
-                                <input v-model="form.is_home" type="checkbox">
-                                <span>Использовать эту страницу как главную для сайта</span>
-                            </label>
-                            <small class="muted">Главная страница всегда одна. Если отметить этот флаг, она будет открываться по адресу /.</small>
-                        </label>
+                            <small class="muted">Выбирается в разделе настроек сайта, чтобы не держать этот переключатель на каждой странице.</small>
+                        </div>
                     </div>
 
                     <label class="admin-form-label">

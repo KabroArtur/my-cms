@@ -56,6 +56,13 @@ interface PageRepository
     public function findPublicBySlug(string $slug): ?Page;
 
     /**
+     * Репозиторий возвращает публичные страницы для навигации и тем сайта.
+     *
+     * @return Collection<int, Page>
+     */
+    public function publicNavigation(): Collection;
+
+    /**
      * Репозиторий создает новую страницу.
      */
     public function create(PageData $data): Page;

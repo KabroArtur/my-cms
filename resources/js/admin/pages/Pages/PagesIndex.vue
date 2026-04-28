@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { formatCmsDateTime, loadCmsSettings } from '../../composables/useCmsSettings'
 import PageMenuTreeItem from './components/PageMenuTreeItem.vue'
 import { deletePage, fetchPages, fetchPageTree, fetchTrashedPages, permanentlyDeletePage, restorePage, savePageTree } from '../../api/pages'
 
@@ -31,18 +32,7 @@ const visibilityLabels = {
 }
 
 function formatDateTime(value) {
-    if (!value) {
-        return '—'
-    }
-
-    return new Intl.DateTimeFormat('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    }).format(new Date(value))
+    return formatCmsDateTime(value)
 }
 
 function resolvePublicUrl(page) {
@@ -302,7 +292,10 @@ async function forceRemovePage(page) {
     }
 }
 
-onMounted(loadPages)
+onMounted(async () => {
+    await loadCmsSettings()
+    await loadPages()
+})
 </script>
 
 <template>

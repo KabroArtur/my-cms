@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Site;
 
 use App\Core\Pages\Contracts\PageRepository;
+use App\Core\Settings\Services\SettingsManager;
+use App\Core\Themes\Services\ThemeRuntime;
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Response;
@@ -14,6 +16,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class PageViewController extends Controller
 {
+    public function __construct(
+        protected SettingsManager $settings,
+        protected ThemeRuntime $cms,
+    ) {
+    }
+
     /**
      * Контроллер показывает домашнюю страницу сайта.
      */
@@ -48,8 +56,20 @@ class PageViewController extends Controller
     protected function renderTheme(mixed $page): Response
     {
         /** @var View $view */
-        $view = view()->file(base_path('themes/default/theme.blade.php'), [
+        $themeSettings = $this->settings->publicPayload();
+        $themePath = $this->settings->themeViewPath();
+        $featuredMediaVariant = $themeSettings['site_featured_media_variant'] ?? 'original';
+        $featuredMediaUrl = $page->featuredMedia
+            ? ($featuredMediaVariant === 'original' ? $page->featuredMedia->url() : ($page->featuredMedia->variantUrl($featuredMediaVariant) ?? $page->featuredMedia->url()))
+            : null;
+
+        view()->replaceNamespace('theme', dirname($themePath));
+
+        $view = view()->file($themePath, [
             'page' => $page,
+            'settings' => $themeSettings,
+            'featuredMediaUrl' => $featuredMediaUrl,
+            'cms' => $this->cms,
         ]);
 
         return response($view);

@@ -2,11 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { fetchCurrentUser, logout } from '../api/auth'
+import { loadCmsSettings } from '../composables/useCmsSettings'
 
 const router = useRouter()
 const loading = ref(true)
 const user = ref(null)
 const errorMessage = ref('')
+const siteName = ref('My CMS')
 
 const links = computed(() => {
     const permissions = new Set(user.value?.permissions ?? [])
@@ -25,8 +27,12 @@ async function loadCurrentUser() {
     errorMessage.value = ''
 
     try {
-        const payload = await fetchCurrentUser()
+        const [payload, settingsPayload] = await Promise.all([
+            fetchCurrentUser(),
+            loadCmsSettings(),
+        ])
         user.value = payload.data
+        siteName.value = settingsPayload.settings?.site_name || 'My CMS'
     } catch (error) {
         errorMessage.value = 'Не удалось загрузить пользователя.'
         console.error(error)
@@ -54,7 +60,7 @@ onMounted(loadCurrentUser)
         <header class="admin-header">
             <div>
                 <p class="eyebrow">CMS</p>
-                <h1 class="admin-title">Admin Panel</h1>
+                <h1 class="admin-title">{{ siteName }}</h1>
             </div>
 
             <div class="admin-header__meta">

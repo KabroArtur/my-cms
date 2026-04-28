@@ -1,0 +1,7 @@
+{
+  "name": "Editorial Theme",
+  "slug": "editorial",
+  "version": "1.0.0",
+  "description": "Светлая журнальная тема с крупной типографикой и карточной структурой.",
+  "entry": "theme.blade.php"
+}

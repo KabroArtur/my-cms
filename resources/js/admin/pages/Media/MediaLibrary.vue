@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { formatCmsDateTime, loadCmsSettings } from '../../composables/useCmsSettings'
 import {
     createMediaFolder,
     deleteMediaFile,
@@ -306,14 +307,7 @@ async function saveFileMetadata(file) {
 }
 
 function formatDate(value) {
-    if (!value) {
-        return 'Без даты'
-    }
-
-    return new Intl.DateTimeFormat('ru-RU', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value))
+    return value ? formatCmsDateTime(value) : 'Без даты'
 }
 
 async function copyUrl(file) {
@@ -325,7 +319,10 @@ async function copyUrl(file) {
     }
 }
 
-onMounted(() => loadLibrary())
+onMounted(async () => {
+    await loadCmsSettings()
+    await loadLibrary()
+})
 </script>
 
 <template>
