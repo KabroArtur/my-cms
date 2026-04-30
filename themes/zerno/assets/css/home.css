@@ -1,0 +1,12 @@
+/* Home-only style from theme.json templates */
+.editorial-hero {
+  position: relative;
+}
+
+.editorial-hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 28px -10px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #9a4f2a, transparent);
+}

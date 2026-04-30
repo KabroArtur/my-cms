@@ -25,6 +25,7 @@ const permissionOptions = [
     { slug: 'pages.create', label: 'Pages: create' },
     { slug: 'pages.update', label: 'Pages: update' },
     { slug: 'pages.delete', label: 'Pages: delete' },
+    { slug: 'pages.additional_fields.manage', label: 'Pages: additional fields' },
     { slug: 'users.access', label: 'Users' },
     { slug: 'users.create', label: 'Users: create' },
     { slug: 'users.update', label: 'Users: update' },
@@ -34,11 +35,31 @@ const permissionOptions = [
     { slug: 'roles.create', label: 'Roles: create' },
     { slug: 'roles.update', label: 'Roles: update' },
     { slug: 'settings.access', label: 'Settings' },
+    { slug: 'settings.general.manage', label: 'Settings: general' },
+    { slug: 'settings.appearance.manage', label: 'Settings: appearance' },
+    { slug: 'settings.cache.manage', label: 'Settings: cache' },
+    { slug: 'settings.security.manage', label: 'Settings: security' },
     { slug: 'media.access', label: 'Media' },
     { slug: 'media.upload', label: 'Media: upload' },
     { slug: 'media.delete', label: 'Media: delete' },
     { slug: 'media.manage_folders', label: 'Media: folders' },
 ]
+
+const permissionChildren = {
+    'pages.access': ['pages.create', 'pages.update', 'pages.delete', 'pages.additional_fields.manage'],
+    'users.access': ['users.create', 'users.update', 'users.delete', 'users.manage_roles'],
+    'roles.access': ['roles.create', 'roles.update'],
+    'settings.access': ['settings.general.manage', 'settings.appearance.manage', 'settings.cache.manage', 'settings.security.manage'],
+    'media.access': ['media.upload', 'media.delete', 'media.manage_folders'],
+}
+
+const permissionParent = Object.entries(permissionChildren).reduce((carry, [parent, children]) => {
+    children.forEach((child) => {
+        carry[child] = parent
+    })
+
+    return carry
+}, {})
 
 function resetForm() {
     editingId.value = null
@@ -59,12 +80,23 @@ function startEdit(role) {
 
 function togglePermission(slug) {
     if (form.permission_slugs.includes(slug)) {
-        form.permission_slugs = form.permission_slugs.filter((value) => value !== slug)
+        const next = new Set(form.permission_slugs.filter((value) => value !== slug))
+        ;(permissionChildren[slug] ?? []).forEach((child) => next.delete(child))
+        form.permission_slugs = Array.from(next)
 
         return
     }
 
-    form.permission_slugs = [...form.permission_slugs, slug]
+    const next = new Set(form.permission_slugs)
+    next.add(slug)
+
+    const parent = permissionParent[slug]
+
+    if (parent) {
+        next.add(parent)
+    }
+
+    form.permission_slugs = Array.from(next)
 }
 
 async function submitForm() {
@@ -124,7 +156,7 @@ onMounted(loadRoles)
         description="Экран ролей и прав открыт как внутренний раздел из страницы пользователей, а не как отдельный пункт общего меню."
     >
         <template #actions>
-            <RouterLink to="/admin/users" class="button-link">
+            <RouterLink :to="{ name: 'users' }" class="button-link">
                 К пользователям
             </RouterLink>
         </template>

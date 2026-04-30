@@ -1,0 +1,22 @@
+{
+  "slug": "Blog",
+  "name": "Blog",
+  "description": "Плагин блога с записями, категориями и тегами.",
+  "version": "1.0.0",
+  "provider": "Plugins\\Blog\\BlogServiceProvider",
+  "permissions": [
+    "blog.access",
+    "blog.posts.manage",
+    "blog.categories.manage",
+    "blog.tags.manage",
+    "blog.settings.manage"
+  ],
+  "admin_menu": [
+    {
+      "title": "Создать раздел",
+      "path": "admin://records/sections",
+      "group": "Записи",
+      "permission": "blog.access"
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources\Admin;
 
+use App\Core\Pages\Models\Page;
+use App\Core\Pages\Services\AdditionalFieldsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,8 +20,18 @@ class PageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isSinglePageResponse = $request->route('page') instanceof Page;
+
         return [
             'id' => $this->id,
+            'created_by' => $this->created_by,
+            'creator' => $this->creator === null
+                ? null
+                : [
+                    'id' => $this->creator->id,
+                    'name' => $this->creator->name,
+                    'username' => $this->creator->username,
+                ],
             'title' => $this->title,
             'slug' => $this->slug,
             'path' => $this->path,
@@ -40,6 +52,22 @@ class PageResource extends JsonResource
             'published_at' => $this->published_at?->toISOString(),
             'deleted_at' => $this->deleted_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
+            'can' => [
+                'update' => $request->user()?->can('update', $this->resource) ?? false,
+                'delete' => $request->user()?->can('delete', $this->resource) ?? false,
+            ],
+            $this->mergeWhen($isSinglePageResponse, function (): array {
+                $additionalFields = app(AdditionalFieldsService::class);
+
+                return [
+                    'additional_fields' => [
+                        'groups' => AdditionalFieldGroupResource::collection(
+                            $additionalFields->resolveApplicableGroupsForPage($this->resource)->load('fields'),
+                        )->resolve(),
+                        'values' => $additionalFields->combinedValuesForPage($this->resource),
+                    ],
+                ];
+            }),
         ];
     }
 }

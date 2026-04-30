@@ -1,4 +1,5 @@
 body {
+    font-family: 'IBM Plex Sans', 'Instrument Sans', 'Segoe UI', Tahoma, sans-serif;
     background: var(--admin-color-bg);
     color: var(--admin-color-text);
 }
@@ -51,6 +52,12 @@ p {
     border-radius: var(--admin-radius-sm);
     font: inherit;
     background: var(--admin-color-surface);
+    color: var(--admin-color-text);
+}
+
+.admin-input::placeholder,
+.admin-textarea::placeholder {
+    color: color-mix(in srgb, var(--admin-color-text-muted) 90%, transparent);
 }
 
 .admin-fieldset {

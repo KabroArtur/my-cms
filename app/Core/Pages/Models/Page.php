@@ -5,6 +5,7 @@ namespace App\Core\Pages\Models;
 use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Она держит дерево страниц, публикацию и SEO-поля в одном месте.
  */
 #[Fillable([
+    'created_by',
     'title',
     'slug',
     'status',
@@ -98,6 +100,14 @@ class Page extends Model
     public function featuredMedia(): BelongsTo
     {
         return $this->belongsTo(MediaFile::class, 'featured_media_id');
+    }
+
+    /**
+     * Страница может иметь автора из таблицы пользователей.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

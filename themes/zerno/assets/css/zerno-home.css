@@ -1,0 +1,14 @@
+/* Home-level accent for Zerno */
+.zerno-hero {
+    position: relative;
+}
+
+.zerno-hero::after {
+    content: '';
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: -1px;
+    height: 4px;
+    background: linear-gradient(90deg, #3c5224, #6a823f 45%, #3c5224);
+}

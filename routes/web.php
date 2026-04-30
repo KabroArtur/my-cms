@@ -1,7 +1,11 @@
 <?php
 
+use App\Core\Security\Services\AdminPathManager;
+use App\Core\Modules\Services\PluginManager;
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\AdditionalFieldGroupController;
+use App\Http\Controllers\Admin\PluginController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
@@ -9,22 +13,53 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Site\PageViewController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('guest')->group(function () {
-    Route::get('/admin/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/admin/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+$adminPathManager = app(AdminPathManager::class);
+$adminPath = $adminPathManager->currentPath();
+$legacyAdminPath = $adminPathManager->legacyPath();
+
+if ($legacyAdminPath !== null && $legacyAdminPath !== $adminPath) {
+    Route::any('/'.$legacyAdminPath.'/{any?}', function (Request $request, ?string $any = null) use ($adminPathManager) {
+        $legacy = $adminPathManager->legacyPath();
+
+        if ($legacy === null) {
+            abort(404);
+        }
+
+        $target = '/'.$adminPathManager->currentPath();
+
+        if ($any !== null && $any !== '') {
+            $target .= '/'.ltrim($any, '/');
+        }
+
+        $query = $request->getQueryString();
+
+        if (is_string($query) && $query !== '') {
+            $target .= '?'.$query;
+        }
+
+        return redirect($target, 307);
+    })->where('any', '.*');
+}
+
+Route::middleware('guest')->group(function () use ($adminPath) {
+    Route::get('/'.$adminPath.'/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/'.$adminPath.'/login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:auth-login')
+        ->name('login.store');
 });
 
-Route::middleware('auth')->post('/admin/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+Route::middleware('auth')->post('/'.$adminPath.'/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/admin/two-factor-challenge', [TwoFactorChallengeController::class, 'create'])->name('two-factor.challenge');
-    Route::post('/admin/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])->name('two-factor.store');
-    Route::post('/admin/two-factor-challenge/resend', [TwoFactorChallengeController::class, 'resend'])->name('two-factor.resend');
+Route::middleware('auth')->group(function () use ($adminPath) {
+    Route::get('/'.$adminPath.'/two-factor-challenge', [TwoFactorChallengeController::class, 'create'])->name('two-factor.challenge');
+    Route::post('/'.$adminPath.'/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])->name('two-factor.store');
+    Route::post('/'.$adminPath.'/two-factor-challenge/resend', [TwoFactorChallengeController::class, 'resend'])->name('two-factor.resend');
 });
 
-Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')->group(function () {
+Route::middleware(['auth', 'admin.access', 'two_factor', 'throttle:admin-api'])->prefix('/'.$adminPath.'/api')->group(function () {
     Route::get('/me', [AdminSessionController::class, 'show']);
     Route::get('/roles', [RoleController::class, 'index']);
     Route::post('/roles', [RoleController::class, 'store']);
@@ -43,6 +78,7 @@ Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')-
     Route::delete('/media/files/{mediaFile}', [MediaController::class, 'destroyFile']);
     Route::get('/settings', [SettingsController::class, 'show']);
     Route::put('/settings', [SettingsController::class, 'update']);
+    Route::post('/settings/cache/clear', [SettingsController::class, 'clearCache']);
     Route::get('/pages', [PageController::class, 'index']);
     Route::get('/pages-tree', [PageController::class, 'tree']);
     Route::get('/pages-trash', [PageController::class, 'trash']);
@@ -53,13 +89,34 @@ Route::middleware(['auth', 'admin.access', 'two_factor'])->prefix('/admin/api')-
     Route::delete('/pages/{page}', [PageController::class, 'destroy']);
     Route::post('/pages/{page}/restore', [PageController::class, 'restore']);
     Route::delete('/pages/{page}/force', [PageController::class, 'forceDelete']);
+    Route::get('/field-groups', [AdditionalFieldGroupController::class, 'index']);
+    Route::get('/field-groups/applicable', [AdditionalFieldGroupController::class, 'applicable']);
+    Route::post('/field-groups', [AdditionalFieldGroupController::class, 'store']);
+    Route::put('/field-groups/{group}', [AdditionalFieldGroupController::class, 'update']);
+    Route::delete('/field-groups/{group}', [AdditionalFieldGroupController::class, 'destroy']);
+    Route::get('/plugins', [PluginController::class, 'index']);
+    Route::post('/plugins/{slug}/install', [PluginController::class, 'install']);
+    Route::post('/plugins/{slug}/enable', [PluginController::class, 'enable']);
+    Route::post('/plugins/{slug}/disable', [PluginController::class, 'disable']);
+    Route::delete('/plugins/{slug}', [PluginController::class, 'destroy']);
 });
 
-Route::middleware(['auth', 'admin.access', 'two_factor'])->get('/admin/{any?}', function () {
+$pluginManager = app(PluginManager::class);
+
+foreach ($pluginManager->enabledRouteFiles('admin') as $routeFile) {
+    require $routeFile;
+}
+
+Route::middleware(['auth', 'admin.access', 'two_factor'])->get('/'.$adminPath.'/{any?}', function () {
     return view('admin');
 })->where('any', '.*');
 
 Route::get('/', [PageViewController::class, 'home'])->name('site.home');
+
+foreach ($pluginManager->enabledRouteFiles('web') as $routeFile) {
+    require $routeFile;
+}
+
 Route::get('/{slugPath}', [PageViewController::class, 'show'])
-    ->where('slugPath', '^(?!admin(?:/|$)).*')
+    ->where('slugPath', '.*')
     ->name('site.page');

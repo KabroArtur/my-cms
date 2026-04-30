@@ -6,6 +6,7 @@ use App\Core\Media\Models\MediaFile;
 use App\Core\Media\Models\MediaFolder;
 use App\Core\Media\Services\MediaVariantManager;
 use App\Core\Security\Services\SecurityAuditLogger;
+use App\Core\Support\Services\CmsCacheService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Media\StoreMediaFolderRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFileRequest;
@@ -23,7 +24,10 @@ use Illuminate\Support\Str;
 
 class MediaController extends Controller
 {
-    public function __construct(protected MediaVariantManager $variants)
+    public function __construct(
+        protected MediaVariantManager $variants,
+        protected CmsCacheService $cache,
+    )
     {
     }
 
@@ -85,6 +89,8 @@ class MediaController extends Controller
             'folder_path' => $folder->path,
         ]);
 
+        $this->cache->invalidateAll(reason: 'media-folder-created');
+
         return MediaFolderResource::make($folder->loadCount(['children', 'files']))
             ->response()
             ->setStatusCode(201);
@@ -105,6 +111,7 @@ class MediaController extends Controller
         ]);
 
         $folder->delete();
+        $this->cache->invalidateAll(reason: 'media-folder-deleted');
 
         return response()->noContent();
     }
@@ -143,6 +150,8 @@ class MediaController extends Controller
             'to_path' => $nextPath,
             'parent_id' => $targetParent?->id,
         ]);
+
+        $this->cache->invalidateAll(reason: 'media-folder-updated');
 
         return MediaFolderResource::make($folder->fresh()->loadCount(['children', 'files']));
     }
@@ -185,6 +194,8 @@ class MediaController extends Controller
             'folder_id' => $folder?->id,
         ]);
 
+        $this->cache->invalidateAll(reason: 'media-file-uploaded');
+
         return MediaFileResource::make($mediaFile)
             ->response()
             ->setStatusCode(201);
@@ -205,6 +216,8 @@ class MediaController extends Controller
             'file_path' => $mediaFile->path,
         ]);
 
+        $this->cache->invalidateAll(reason: 'media-file-updated');
+
         return MediaFileResource::make($mediaFile->fresh()->load('folder'));
     }
 
@@ -221,6 +234,7 @@ class MediaController extends Controller
         ]);
 
         $mediaFile->delete();
+        $this->cache->invalidateAll(reason: 'media-file-deleted');
 
         return response()->noContent();
     }
@@ -261,6 +275,8 @@ class MediaController extends Controller
             'to_folder_id' => $targetFolder?->id,
             'file_path' => $mediaFile->path,
         ]);
+
+        $this->cache->invalidateAll(reason: 'media-file-moved');
 
         return MediaFileResource::make($mediaFile->fresh()->load('folder'));
     }

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { adminApiPath } from '../utils/adminPath'
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
@@ -10,55 +11,55 @@ if (csrfToken) {
 }
 
 export async function fetchPages() {
-    const response = await axios.get('/admin/api/pages')
+    const response = await axios.get(adminApiPath('pages'))
 
     return response.data
 }
 
 export async function fetchPage(id) {
-    const response = await axios.get(`/admin/api/pages/${id}`)
+    const response = await axios.get(adminApiPath(`pages/${id}`))
 
     return response.data
 }
 
 export async function fetchPageTree() {
-    const response = await axios.get('/admin/api/pages-tree')
+    const response = await axios.get(adminApiPath('pages-tree'))
 
     return response.data
 }
 
 export async function fetchTrashedPages() {
-    const response = await axios.get('/admin/api/pages-trash')
+    const response = await axios.get(adminApiPath('pages-trash'))
 
     return response.data
 }
 
 export async function createPage(payload) {
-    const response = await axios.post('/admin/api/pages', payload)
+    const response = await axios.post(adminApiPath('pages'), payload)
 
     return response.data
 }
 
 export async function updatePage(id, payload) {
-    const response = await axios.put(`/admin/api/pages/${id}`, payload)
+    const response = await axios.put(adminApiPath(`pages/${id}`), payload)
 
     return response.data
 }
 
 export async function deletePage(id) {
-    await axios.delete(`/admin/api/pages/${id}`)
+    await axios.delete(adminApiPath(`pages/${id}`))
 }
 
 export async function restorePage(id) {
-    const response = await axios.post(`/admin/api/pages/${id}/restore`)
+    const response = await axios.post(adminApiPath(`pages/${id}/restore`))
 
     return response.data
 }
 
 export async function permanentlyDeletePage(id) {
-    await axios.delete(`/admin/api/pages/${id}/force`)
+    await axios.delete(adminApiPath(`pages/${id}/force`))
 }
 
 export async function savePageTree(tree) {
-    await axios.put('/admin/api/pages-tree', { tree })
+    await axios.put(adminApiPath('pages-tree'), { tree })
 }

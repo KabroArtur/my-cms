@@ -1,0 +1,9 @@
+/* Editorial theme runtime styles */
+:root {
+  --editorial-runtime-outline: rgba(154, 79, 42, 0.25);
+}
+
+.editorial-shell {
+  outline: 1px solid var(--editorial-runtime-outline);
+  outline-offset: -1px;
+}

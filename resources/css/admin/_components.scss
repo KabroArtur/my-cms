@@ -20,7 +20,6 @@
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-lg);
     background: var(--admin-color-surface);
-    box-shadow: var(--admin-shadow-card);
 }
 
 .badge {
@@ -41,9 +40,14 @@
 .button-base {
     padding: 8px 12px;
     border-radius: var(--admin-radius-sm);
-    border: 1px solid var(--admin-color-border-strong);
-    background: var(--admin-color-surface);
+    border: 1px solid color-mix(in srgb, var(--admin-color-primary) 56%, var(--admin-color-border-strong));
+    background: color-mix(in srgb, var(--admin-color-primary) 14%, var(--admin-color-surface));
+    color: var(--admin-color-text);
     cursor: pointer;
+}
+
+.button-base:hover {
+    background: color-mix(in srgb, var(--admin-color-primary) 26%, var(--admin-color-surface));
 }
 
 .button-base:disabled {
@@ -68,42 +72,62 @@
     align-items: center;
     justify-content: center;
     padding: 8px 12px;
-    border: 1px solid var(--admin-color-border-strong);
+    border: 1px solid color-mix(in srgb, var(--admin-color-primary) 56%, var(--admin-color-border-strong));
     border-radius: var(--admin-radius-sm);
-    background: var(--admin-color-surface);
+    background: color-mix(in srgb, var(--admin-color-primary) 12%, var(--admin-color-surface));
     color: var(--admin-color-text);
     text-decoration: none;
     cursor: pointer;
 }
 
 .button-link:hover {
-    background: var(--admin-color-surface-muted);
+    background: color-mix(in srgb, var(--admin-color-primary) 24%, var(--admin-color-surface));
 }
 
 .admin-tabs {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 2px solid var(--admin-color-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-tab {
-    padding: 8px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--admin-color-border-strong);
-    background: var(--admin-color-surface);
-    color: var(--admin-color-text);
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    background: transparent;
+    color: var(--admin-color-text-muted);
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    white-space: nowrap;
     cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease;
+    border-radius: 0;
+}
+
+.admin-tab:hover {
+    color: var(--admin-color-text);
+    border-bottom-color: color-mix(in srgb, var(--admin-color-primary) 35%, transparent);
 }
 
 .admin-tab.is-active {
-    background: var(--admin-color-primary);
-    border-color: var(--admin-color-primary);
-    color: var(--admin-color-primary-contrast);
+    color: var(--admin-color-primary);
+    border-bottom-color: var(--admin-color-primary);
+    background: transparent;
 }
 
 .admin-tab--ghost {
-    opacity: 0.72;
+    opacity: 0.5;
 }
 
 .data-table {
@@ -128,7 +152,6 @@
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-lg);
     background: var(--admin-color-surface);
-    box-shadow: var(--admin-shadow-card);
 }
 
 .admin-stat-card__label {
@@ -166,7 +189,6 @@
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-lg);
     background: var(--admin-color-surface);
-    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
 }
 
 .admin-modal__dialog--wide {
@@ -190,4 +212,23 @@
     padding: 20px 22px 22px;
     overflow: auto;
     max-height: calc(min(86vh, 920px) - 82px);
+}
+
+@media (max-width: 768px) {
+    .panel-header {
+        flex-direction: column;
+    }
+
+    .panel-header h1 {
+        font-size: 26px;
+    }
+
+    .admin-actions-row {
+        width: 100%;
+    }
+
+    .admin-actions-row .button-base,
+    .admin-actions-row .button-link {
+        flex: 1 1 auto;
+    }
 }

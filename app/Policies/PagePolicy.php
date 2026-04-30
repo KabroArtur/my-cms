@@ -40,7 +40,7 @@ class PagePolicy
      */
     public function update(?User $user, Page $page): bool
     {
-        return $this->allows($user, 'pages.update');
+        return $this->allowsOwnerAction($user, $page, 'pages.update');
     }
 
     /**
@@ -48,7 +48,27 @@ class PagePolicy
      */
     public function delete(?User $user, Page $page): bool
     {
-        return $this->allows($user, 'pages.delete');
+        return $this->allowsOwnerAction($user, $page, 'pages.delete');
+    }
+
+    /**
+     * Policy разрешает действие владельцу страницы либо администратору.
+     */
+    protected function allowsOwnerAction(?User $user, Page $page, string $permission): bool
+    {
+        if (! $this->allows($user, $permission) || $user === null) {
+            return false;
+        }
+
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        if ($page->created_by === null) {
+            return true;
+        }
+
+        return (int) $page->created_by === (int) $user->id;
     }
 
     /**

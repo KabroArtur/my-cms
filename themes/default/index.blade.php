@@ -3,13 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $page->meta_title ?? $page->title ?? ($settings['site_name'] ?? 'CMS Site') }}</title>
-    @if ($page->meta_description)
-        <meta name="description" content="{{ $page->meta_description }}">
-    @endif
-    @if (! empty($settings['favicon_url']))
-        <link rel="icon" href="{{ $settings['favicon_url'] }}">
-    @endif
+    {!! theme_head($page) !!}
     <style>
         :root {
             color-scheme: light;
@@ -166,58 +160,83 @@
             color: var(--site-muted);
             font-size: 14px;
         }
+
+        .site-posts {
+            margin-top: 24px;
+            padding: 24px;
+            border: 1px solid var(--site-border);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .site-posts__list {
+            display: grid;
+            gap: 14px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .site-posts__item {
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--site-border);
+        }
+
+        .site-posts__item:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .site-posts__meta {
+            color: var(--site-muted);
+            font-size: 13px;
+        }
     </style>
 </head>
-<body {!! cms_body_attrs(['class' => 'site-body']) !!}>
+<body {!! attr(['class' => body_class('site-body')]) !!}>
 
     <main class="site-shell">
-        <header class="site-header">
-            <p class="site-kicker">{{ cms_site_name() }} / {{ cms_template(cms_setting('site_theme', 'default')) }}</p>
-            <h1 class="site-title">{{ cms_title('Home') }}</h1>
-
-            @if (cms_has_field('excerpt'))
-                <p class="site-excerpt">{{ cms_excerpt() }}</p>
-            @endif
-        </header>
-
-        <nav class="site-nav" aria-label="Site navigation">
-            <h2>Страницы сайта</h2>
-            {!! cms_menu('main', [
-                'container' => null,
-                'list' => true,
-                'list_tag' => 'ul',
-                'list_class' => 'site-nav__tree',
-                'item_tag' => 'li',
-                'item_class' => 'site-nav__item',
-                'active_class' => 'is-current',
-                'ancestor_class' => 'is-ancestor',
-                'link_class' => 'site-nav__link',
-                'children_tag' => 'ul',
-                'children_class' => 'site-nav__children',
-            ]) !!}
-        </nav>
+        {!! component('components/header') !!}
 
         <div class="site-meta">
-            <span>Slug: /{{ cms_slug() }}</span>
-            <span>Status: {{ cms_status() }}</span>
-            <span>Published: {{ cms_date() ?: 'not scheduled' }}</span>
+            <span>Slug: /{{ slug() }}</span>
+            <span>Status: {{ status() }}</span>
+            <span>Published: {{ page_date() ?: 'not scheduled' }}</span>
         </div>
 
-        @if (cms_has_image('featured_image'))
+        @if (has_image('featured_image'))
             <figure class="site-featured-media">
-                {!! cms_image('featured_image', ['size' => cms_setting('site_featured_media_variant', 'original')]) !!}
+                {!! image('featured_image', ['size' => setting('site_featured_media_variant', 'original')]) !!}
             </figure>
         @endif
 
         <article class="site-content">
-            {!! cms_content(new \Illuminate\Support\HtmlString(nl2br(e(cms_excerpt('Контент страницы пока не заполнен.'))))) !!}
+            {!! content(new \Illuminate\Support\HtmlString(nl2br(e(excerpt('Контент страницы пока не заполнен.'))))) !!}
         </article>
 
-        <footer class="site-footer">
-            <p>{{ cms_site_name() }}. Страница рендерится из CMS через тему по slug.</p>
-        </footer>
+        @php($latestPosts = posts(['limit' => 3]))
+        @if ($latestPosts !== [])
+            <section class="site-posts">
+                <h2>Свежие записи блога</h2>
+                <ul class="site-posts__list">
+                    @foreach ($latestPosts as $post)
+                        <li class="site-posts__item">
+                            <h3><a href="{{ $post->url }}">{{ $post->title }}</a></h3>
+                            @if ($post->excerpt !== '')
+                                <p>{{ $post->excerpt }}</p>
+                            @endif
+                            <p class="site-posts__meta">
+                                Категория: {{ $post->category?->name ?? 'Без категории' }}
+                            </p>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
+        {!! component('components/footer') !!}
     </main>
 
-    {!! cms_footer() !!}
+    {!! footer() !!}
 </body>
 </html>

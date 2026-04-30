@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Core\Auth\Services\TwoFactorChallengeService;
+use App\Core\Security\Services\AdminPathManager;
 use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\TwoFactorChallengeRequest;
@@ -28,7 +29,7 @@ class TwoFactorChallengeController extends Controller
         }
 
         if (! $user->requiresTwoFactorChallenge()) {
-            return redirect('/admin/pages');
+            return redirect(app(AdminPathManager::class)->pagesPath());
         }
 
         if ($service->activeChallenge($user) === null) {
@@ -76,7 +77,7 @@ class TwoFactorChallengeController extends Controller
 
         $audit->log('auth.two_factor_verified', $user);
 
-        return redirect()->intended('/admin/pages');
+        return redirect()->intended(app(AdminPathManager::class)->pagesPath());
     }
 
     /**

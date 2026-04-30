@@ -3,6 +3,8 @@
 namespace App\Core\Pages;
 
 use App\Core\Pages\Contracts\PageRepository;
+use App\Core\Pages\Models\Page;
+use App\Core\Pages\Observers\PageCacheObserver;
 use App\Core\Pages\Repositories\EloquentPageRepository;
 use App\Core\Support\BaseCoreModule;
 use App\Core\Support\ModuleDefinition;
@@ -19,6 +21,11 @@ class PagesModule extends BaseCoreModule
     public function register(): void
     {
         $this->app->bind(PageRepository::class, EloquentPageRepository::class);
+    }
+
+    public function boot(): void
+    {
+        Page::observe(PageCacheObserver::class);
     }
 
     protected function newDefinition(): ModuleDefinition

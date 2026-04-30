@@ -8,7 +8,7 @@ import { formatCmsDateTime, loadCmsSettings } from '../../composables/useCmsSett
 import PageMenuTreeItem from './components/PageMenuTreeItem.vue'
 import { deletePage, fetchPages, fetchPageTree, fetchTrashedPages, permanentlyDeletePage, restorePage, savePageTree } from '../../api/pages'
 
-const activeTab = ref('list')
+const activeTab = ref('all')
 const loading = ref(true)
 const savingTree = ref(false)
 const errorMessage = ref('')
@@ -17,6 +17,7 @@ const treePages = ref([])
 const trashedPages = ref([])
 const draggingPageId = ref(null)
 const treeDirty = ref(false)
+const menuModalOpen = ref(false)
 
 const statusLabels = {
     draft: 'Черновик',
@@ -47,6 +48,18 @@ function resolveVisibilityLabel(visibility) {
     return visibilityLabels[visibility] ?? visibility
 }
 
+function resolveCreatorLabel(page) {
+    if (page.creator?.name) {
+        return page.creator.name
+    }
+
+    if (page.creator?.username) {
+        return page.creator.username
+    }
+
+    return 'Не указан'
+}
+
 const menuTree = computed(() => buildTree(treePages.value))
 const orderedPages = computed(() => {
     if (treePages.value.length === 0) {
@@ -59,6 +72,14 @@ const orderedPages = computed(() => {
     return order
         .map((id) => pageMap.get(id))
         .filter(Boolean)
+})
+
+const visiblePages = computed(() => {
+    if (activeTab.value === 'all' || activeTab.value === 'trash') {
+        return orderedPages.value
+    }
+
+    return orderedPages.value.filter((page) => page.status === activeTab.value)
 })
 
 function buildTree(items) {
@@ -306,152 +327,143 @@ onMounted(async () => {
     >
         <template #actions>
             <div class="admin-actions-row">
-                <div class="admin-tabs admin-tabs--subtle" role="tablist" aria-label="Режимы работы со страницами">
-                    <button type="button" class="admin-tab" :class="{ 'is-active': activeTab === 'list' }" @click="activeTab = 'list'">
-                        Список
-                    </button>
-                    <button type="button" class="admin-tab admin-tab--ghost" :class="{ 'is-active': activeTab === 'menu' }" @click="activeTab = 'menu'">
-                        Меню
-                    </button>
-                </div>
+                <AdminButton type="button" @click="menuModalOpen = true">
+                    Меню
+                </AdminButton>
 
-                <RouterLink to="/admin/pages/create" class="button-link">
+                <RouterLink :to="{ name: 'page-create' }" class="button-link">
                     Новая страница
                 </RouterLink>
             </div>
         </template>
 
         <div class="admin-page-grid">
-            <AdminCard v-if="activeTab === 'list'">
+            <AdminCard>
+                <div class="admin-tabs" role="tablist" aria-label="Фильтр страниц">
+                    <button type="button" class="admin-tab" :class="{ 'is-active': activeTab === 'all' }" @click="activeTab = 'all'">
+                        Все
+                    </button>
+                    <button type="button" class="admin-tab" :class="{ 'is-active': activeTab === 'published' }" @click="activeTab = 'published'">
+                        Опубликованные
+                    </button>
+                    <button type="button" class="admin-tab" :class="{ 'is-active': activeTab === 'archived' }" @click="activeTab = 'archived'">
+                        Архив
+                    </button>
+                    <button type="button" class="admin-tab" :class="{ 'is-active': activeTab === 'trash' }" @click="activeTab = 'trash'">
+                        Корзина
+                    </button>
+                </div>
+
                 <p v-if="loading" class="muted">Загрузка страниц...</p>
-                <p v-else-if="orderedPages.length === 0" class="muted">Страницы пока не созданы.</p>
+                <p v-else-if="activeTab !== 'trash' && visiblePages.length === 0" class="muted">По выбранному фильтру страниц нет.</p>
+                <p v-else-if="activeTab === 'trash' && trashedPages.length === 0" class="muted">Удалённых страниц пока нет.</p>
 
-                <table v-else class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Title</th>
-                            <th>URL</th>
-                            <th>Description</th>
-                            <th>Slug</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Visibility</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr v-for="page in orderedPages" :key="page.id">
-                            <td>{{ page.id }}</td>
-                            <td>
-                                <RouterLink :to="`/admin/pages/${page.id}`" class="page-title-link">
+                <div v-else-if="activeTab !== 'trash'" class="page-record-grid">
+                    <article v-for="page in visiblePages" :key="page.id" class="page-record-card">
+                        <header class="page-record-card__top">
+                            <div class="page-record-card__head">
+                                <RouterLink :to="{ name: 'page-edit', params: { id: page.id } }" class="page-title-link">
                                     {{ page.title }}
                                 </RouterLink>
-                            </td>
-                            <td>
-                                <span v-if="page.is_home">/</span>
-                                <span v-else>/{{ page.path || page.slug }}</span>
-                            </td>
-                            <td>{{ page.excerpt || '—' }}</td>
-                            <td>{{ page.slug }}</td>
-                            <td>
+                                <p class="muted">ID {{ page.id }}</p>
+                            </div>
+
+                            <div class="page-record-card__badges">
+                                <span v-if="page.is_home" class="page-badge page-badge--home" title="Главная страница сайта">Главная</span>
                                 <span :class="['page-badge', `page-badge--${page.status}`]">
                                     {{ resolveStatusLabel(page.status) }}
                                 </span>
-                            </td>
-                            <td>{{ formatDateTime(page.published_at) }}</td>
-                            <td>
                                 <span class="page-badge page-badge--visibility">
                                     {{ resolveVisibilityLabel(page.visibility) }}
                                 </span>
-                            </td>
-                            <td>
-                                <div class="admin-actions-row">
-                                    <a :href="resolvePublicUrl(page)" class="button-link" target="_blank" rel="noopener">
-                                        Перейти
-                                    </a>
+                            </div>
+                        </header>
 
-                                    <RouterLink :to="`/admin/pages/${page.id}`" class="button-link">
-                                        Открыть
-                                    </RouterLink>
+                        <div class="page-record-card__meta">
+                            <p><strong>URL:</strong> {{ resolvePublicUrl(page) }}</p>
+                            <p><strong>Slug:</strong> {{ page.slug }}</p>
+                            <p><strong>Создал:</strong> {{ resolveCreatorLabel(page) }}</p>
+                            <p><strong>Дата:</strong> {{ formatDateTime(page.published_at) }}</p>
+                            <p><strong>Шаблон:</strong> {{ page.template || 'default' }}</p>
+                        </div>
 
-                                    <AdminButton type="button" variant="danger" @click="removePage(page)">
-                                        В корзину
-                                    </AdminButton>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                        <p class="page-record-card__excerpt">
+                            {{ page.excerpt || 'Описание пока не добавлено.' }}
+                        </p>
+
+                        <div class="admin-actions-row">
+                            <a :href="resolvePublicUrl(page)" class="button-link" target="_blank" rel="noopener">
+                                Перейти
+                            </a>
+
+                            <RouterLink :to="{ name: 'page-edit', params: { id: page.id } }" class="button-link">
+                                Открыть
+                            </RouterLink>
+
+                            <AdminButton type="button" variant="danger" :disabled="!page.can?.delete" @click="removePage(page)">
+                                В корзину
+                            </AdminButton>
+                        </div>
+                    </article>
+                </div>
+
+                <div v-else class="page-trash-grid">
+                    <article v-for="page in trashedPages" :key="page.id" class="page-trash-card">
+                        <div>
+                            <h3>{{ page.title }}</h3>
+                            <p class="muted">Создал: {{ resolveCreatorLabel(page) }}</p>
+                            <p class="muted">ID {{ page.id }} | {{ page.slug }} | Удалена: {{ formatDateTime(page.deleted_at) }}</p>
+                        </div>
+
+                        <div class="admin-actions-row">
+                            <AdminButton type="button" @click="restoreTrashedPage(page)">
+                                Восстановить
+                            </AdminButton>
+
+                            <AdminButton type="button" variant="danger" :disabled="!page.can?.delete" @click="forceRemovePage(page)">
+                                Удалить навсегда
+                            </AdminButton>
+                        </div>
+                    </article>
+                </div>
             </AdminCard>
+        </div>
 
-            <AdminCard v-if="activeTab === 'list'">
-                <h2>Корзина</h2>
-                <p v-if="trashedPages.length === 0" class="muted">Удалённых страниц пока нет.</p>
-
-                <table v-else class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Title</th>
-                            <th>Slug</th>
-                            <th>Удалена</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr v-for="page in trashedPages" :key="page.id">
-                            <td>{{ page.id }}</td>
-                            <td>{{ page.title }}</td>
-                            <td>{{ page.slug }}</td>
-                            <td>{{ formatDateTime(page.deleted_at) }}</td>
-                            <td>
-                                <div class="admin-actions-row">
-                                    <AdminButton type="button" @click="restoreTrashedPage(page)">
-                                        Восстановить
-                                    </AdminButton>
-
-                                    <AdminButton type="button" variant="danger" @click="forceRemovePage(page)">
-                                        Удалить навсегда
-                                    </AdminButton>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </AdminCard>
-
-            <AdminCard v-if="activeTab === 'menu'">
-                <div class="panel-header">
+        <div v-if="menuModalOpen" class="admin-modal" @click.self="menuModalOpen = false">
+            <div class="admin-modal__dialog admin-modal__dialog--wide">
+                <div class="admin-modal__header">
                     <div>
-                        <h2>Скрытое меню</h2>
-                        <p class="muted">Бета-режим без плагинов: перетаскивай страницы мышкой, чтобы менять вложенность и порядок. Это уже готовит основу под будущую модалку меню.</p>
+                        <p class="eyebrow">Pages</p>
+                        <h2>Меню страниц</h2>
                     </div>
 
                     <div class="admin-actions-row">
                         <AdminButton type="button" :disabled="savingTree || !treeDirty" @click="handleTreeSave">
                             {{ savingTree ? 'Сохранение...' : 'Сохранить структуру' }}
                         </AdminButton>
+                        <AdminButton type="button" @click="menuModalOpen = false">
+                            Закрыть
+                        </AdminButton>
                     </div>
                 </div>
 
-                <p v-if="loading" class="muted">Загрузка структуры...</p>
-                <p v-else-if="treePages.length === 0" class="muted">Для структуры меню пока нет страниц.</p>
+                <div class="admin-modal__body">
+                    <p v-if="loading" class="muted">Загрузка структуры...</p>
+                    <p v-else-if="treePages.length === 0" class="muted">Для структуры меню пока нет страниц.</p>
 
-                <div v-else class="page-tree-shell">
-                    <PageMenuTreeItem
-                        :nodes="menuTree"
-                        :level="0"
-                        :ancestor-ids="[]"
-                        :dragging-id="draggingPageId"
-                        :status-labels="statusLabels"
-                        @move="handleTreeMove"
-                        @dragging-change="draggingPageId = $event"
-                    />
+                    <div v-else class="page-tree-shell">
+                        <PageMenuTreeItem
+                            :nodes="menuTree"
+                            :level="0"
+                            :ancestor-ids="[]"
+                            :dragging-id="draggingPageId"
+                            :status-labels="statusLabels"
+                            @move="handleTreeMove"
+                            @dragging-change="draggingPageId = $event"
+                        />
+                    </div>
                 </div>
-            </AdminCard>
+            </div>
         </div>
     </AdminPage>
 </template>

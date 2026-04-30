@@ -2,8 +2,6 @@
 import { inject, provide, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 
-const OUTDENT_THRESHOLD = 24
-const INDENT_STEP = 28
 const dropStateKey = Symbol('page-menu-drop-state')
 
 defineOptions({
@@ -43,6 +41,7 @@ const inheritedDropState = inject(dropStateKey, null)
 const dropState = inheritedDropState ?? reactive({
     activeDropKey: '',
     activeDropLevel: 0,
+    activeInsideId: null,
     clearTimer: null,
 })
 
@@ -79,12 +78,15 @@ function createDragPreview(sourceElement, pointerX, pointerY) {
 
 function handleDragStart(event, nodeId) {
     const sourceElement = event.currentTarget
+    const previewSource = sourceElement instanceof HTMLElement
+        ? sourceElement.closest('.page-tree-item') ?? sourceElement
+        : sourceElement
 
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', String(nodeId))
 
-    if (sourceElement instanceof HTMLElement && event.dataTransfer?.setDragImage) {
-        const { previewElement, offsetX, offsetY } = createDragPreview(sourceElement, event.clientX, event.clientY)
+    if (previewSource instanceof HTMLElement && event.dataTransfer?.setDragImage) {
+        const { previewElement, offsetX, offsetY } = createDragPreview(previewSource, event.clientX, event.clientY)
 
         event.dataTransfer.setDragImage(previewElement, offsetX, offsetY)
         window.setTimeout(() => previewElement.remove(), 0)
@@ -104,6 +106,7 @@ function resetDropIndicators() {
     cancelPendingClear()
     dropState.activeDropKey = ''
     dropState.activeDropLevel = 0
+    dropState.activeInsideId = null
 }
 
 function scheduleDropIndicatorClear() {
@@ -111,14 +114,23 @@ function scheduleDropIndicatorClear() {
     dropState.clearTimer = window.setTimeout(() => {
         dropState.activeDropKey = ''
         dropState.activeDropLevel = 0
+        dropState.activeInsideId = null
         dropState.clearTimer = null
-    }, 40)
+    }, 120)
 }
 
 function setActiveSlot(dropKey, level) {
     cancelPendingClear()
     dropState.activeDropKey = dropKey
     dropState.activeDropLevel = level
+    dropState.activeInsideId = null
+}
+
+function setActiveInside(nodeId) {
+    cancelPendingClear()
+    dropState.activeDropKey = ''
+    dropState.activeDropLevel = props.level
+    dropState.activeInsideId = nodeId
 }
 
 function handleDragEnd() {
@@ -132,28 +144,20 @@ function resolveDraggedId(event) {
     return Number.isNaN(rawValue) || rawValue === 0 ? null : rawValue
 }
 
-function findPreviousSibling(targetIndex) {
-    for (let index = targetIndex - 1; index >= 0; index -= 1) {
-        const sibling = props.nodes[index]
-
-        if (sibling?.id !== props.draggingId) {
-            return sibling
-        }
-    }
-
-    return null
-}
-
 function handleDrop(event, targetIndex) {
-    const instruction = resolveSlotDropInstruction(event, targetIndex)
+    const draggedId = resolveDraggedId(event)
 
     resetDropIndicators()
 
-    if (instruction.payload.draggedId === null) {
+    if (draggedId === null) {
         return
     }
 
-    emit('move', instruction.payload)
+    emit('move', {
+        draggedId,
+        targetParentId: props.parentId,
+        targetIndex,
+    })
 }
 
 function resolveNodeDropPosition(event) {
@@ -172,82 +176,16 @@ function resolveNodeDropPosition(event) {
     return 'inside'
 }
 
-function resolveSlotDropInstruction(event, targetIndex) {
-    const draggedId = resolveDraggedId(event)
-    const desiredLevel = resolveDesiredLevel(event)
-
-    if (desiredLevel < props.level) {
-        return {
-            level: desiredLevel,
-            payload: {
-                draggedId,
-                targetParentId: desiredLevel === 0 ? null : props.ancestorIds[desiredLevel - 1],
-                anchorNodeId: props.ancestorIds[desiredLevel] ?? props.parentId,
-                position: 'after',
-            },
-        }
-    }
-
-    return {
-        level: props.level,
-        payload: {
-            draggedId,
-            targetParentId: props.parentId,
-            targetIndex,
-        },
-    }
-}
-
-function resolveDesiredLevel(event) {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const rootLeft = bounds.left - (props.level * INDENT_STEP)
-    const absoluteOffset = event.clientX - rootLeft
-    const snappedLevel = Math.floor((absoluteOffset + (INDENT_STEP / 2) - OUTDENT_THRESHOLD) / INDENT_STEP)
-
-    return Math.max(0, Math.min(props.level + 1, snappedLevel))
-}
-
-function resolveNodeDropInstruction(event, node) {
-    const draggedId = resolveDraggedId(event)
-    const desiredLevel = resolveDesiredLevel(event)
-
-    if (desiredLevel > props.level) {
-        return {
-            key: resolveSlotKey(props.nodes.findIndex((entry) => entry.id === node.id) + 1),
-            level: props.level + 1,
-            payload: {
-                draggedId,
-                targetParentId: node.id,
-                targetIndex: node.children?.length ?? 0,
-            },
-        }
-    }
-
-    return null
-}
-
 function resolveSlotKey(targetIndex) {
     return `slot-${props.parentId ?? 'root'}-${targetIndex}`
 }
 
 function handleNodeDragOver(event, node, index) {
     event.preventDefault()
-    const instruction = resolveNodeDropInstruction(event, node)
     const position = resolveNodeDropPosition(event)
-    const desiredLevel = resolveDesiredLevel(event)
-
-    if (desiredLevel > props.level) {
-        setActiveSlot(resolveSlotKey(index + 1), instruction.level)
-
-        if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = 'move'
-        }
-
-        return
-    }
 
     if (position === 'before') {
-        setActiveSlot(resolveSlotKey(index), Math.min(desiredLevel, props.level))
+        setActiveSlot(resolveSlotKey(index), props.level)
 
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = 'move'
@@ -256,7 +194,17 @@ function handleNodeDragOver(event, node, index) {
         return
     }
 
-    setActiveSlot(resolveSlotKey(index + 1), Math.min(desiredLevel, props.level))
+    if (position === 'inside') {
+        setActiveInside(node.id)
+
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'move'
+        }
+
+        return
+    }
+
+    setActiveSlot(resolveSlotKey(index + 1), props.level)
 
     if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move'
@@ -265,10 +213,7 @@ function handleNodeDragOver(event, node, index) {
 
 function handleSlotDragOver(event, dropKey, targetIndex) {
     event.preventDefault()
-
-    const instruction = resolveSlotDropInstruction(event, targetIndex)
-
-    setActiveSlot(dropKey, instruction.level)
+    setActiveSlot(dropKey, props.level)
 
     if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move'
@@ -278,7 +223,6 @@ function handleSlotDragOver(event, dropKey, targetIndex) {
 function handleNodeDrop(event, node, index) {
     const draggedId = resolveDraggedId(event)
     const position = resolveNodeDropPosition(event)
-    const desiredLevel = resolveDesiredLevel(event)
 
     resetDropIndicators()
 
@@ -286,28 +230,48 @@ function handleNodeDrop(event, node, index) {
         return
     }
 
-    if (desiredLevel > props.level) {
-        emit('move', resolveNodeDropInstruction(event, node).payload)
+    if (position === 'inside') {
+        emit('move', {
+            draggedId,
+            targetParentId: node.id,
+            targetIndex: node.children?.length ?? 0,
+        })
 
         return
     }
 
     if (position === 'before') {
-        emit('move', resolveSlotDropInstruction(event, index).payload)
+        emit('move', {
+            draggedId,
+            targetParentId: props.parentId,
+            targetIndex: index,
+        })
 
         return
     }
 
-    emit('move', resolveSlotDropInstruction(event, index + 1).payload)
+    emit('move', {
+        draggedId,
+        targetParentId: props.parentId,
+        targetIndex: index + 1,
+    })
 }
 
-function handleDragLeave(dropKey) {
+function handleDragLeave(event, dropKey) {
+    if (event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
+        return
+    }
+
     if (dropState.activeDropKey === dropKey) {
         scheduleDropIndicatorClear()
     }
 }
 
-function clearNodeDrop() {
+function clearNodeDrop(event) {
+    if (event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
+        return
+    }
+
     scheduleDropIndicatorClear()
 }
 </script>
@@ -319,7 +283,7 @@ function clearNodeDrop() {
             :class="{ 'is-active': dropState.activeDropKey === `slot-${parentId ?? 'root'}-0`, 'is-dragging': draggingId !== null }"
             :style="{ '--drop-level': dropState.activeDropKey === `slot-${parentId ?? 'root'}-0` ? dropState.activeDropLevel : level }"
             @dragover="handleSlotDragOver($event, `slot-${parentId ?? 'root'}-0`, 0)"
-            @dragleave="handleDragLeave(`slot-${parentId ?? 'root'}-0`)"
+            @dragleave="handleDragLeave($event, `slot-${parentId ?? 'root'}-0`)"
             @drop="handleDrop($event, 0)"
         ></div>
 
@@ -327,21 +291,26 @@ function clearNodeDrop() {
             <article
                 class="page-tree-item"
                 :class="{
-                    'is-dragging-source': draggingId === node.id
+                    'is-dragging-source': draggingId === node.id,
+                    'is-drop-inside': dropState.activeInsideId === node.id
                 }"
-                draggable="true"
-                @dragstart="handleDragStart($event, node.id)"
-                @dragend="handleDragEnd"
                 @dragover="handleNodeDragOver($event, node, index)"
-                @dragleave="clearNodeDrop"
+                @dragleave="clearNodeDrop($event)"
                 @drop="handleNodeDrop($event, node, index)"
             >
                 <div class="page-tree-item__main">
-                    <span class="page-tree-item__handle">::</span>
+                    <span
+                        class="page-tree-item__handle"
+                        draggable="true"
+                        @dragstart="handleDragStart($event, node.id)"
+                        @dragend="handleDragEnd"
+                    >
+                        ::
+                    </span>
 
                     <div>
                         <div class="page-tree-item__title-row">
-                            <RouterLink :to="`/admin/pages/${node.id}`" class="page-title-link">
+                            <RouterLink :to="{ name: 'page-edit', params: { id: node.id } }" class="page-title-link">
                                 {{ node.title }}
                             </RouterLink>
 
@@ -379,7 +348,7 @@ function clearNodeDrop() {
                 :class="{ 'is-active': dropState.activeDropKey === `slot-${parentId ?? 'root'}-${index + 1}`, 'is-dragging': draggingId !== null }"
                 :style="{ '--drop-level': dropState.activeDropKey === `slot-${parentId ?? 'root'}-${index + 1}` ? dropState.activeDropLevel : level }"
                 @dragover="handleSlotDragOver($event, `slot-${parentId ?? 'root'}-${index + 1}`, index + 1)"
-                @dragleave="handleDragLeave(`slot-${parentId ?? 'root'}-${index + 1}`)"
+                @dragleave="handleDragLeave($event, `slot-${parentId ?? 'root'}-${index + 1}`)"
                 @drop="handleDrop($event, index + 1)"
             ></div>
         </template>

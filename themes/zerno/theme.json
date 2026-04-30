@@ -1,0 +1,42 @@
+{
+  "name": "Zerno Theme",
+  "slug": "editorial",
+  "version": "1.1.0",
+  "description": "Сдержанная агропромышленная тема с акцентом на контент и структурированные данные.",
+  "entry": "index.blade.php",
+  "assets": {
+    "styles": [
+      {
+        "handle": "zerno-main",
+        "src": "css/zerno.css",
+        "global": true,
+        "priority": 10
+      },
+      {
+        "handle": "zerno-home",
+        "src": "css/zerno-home.css",
+        "templates": ["home"],
+        "deps": ["zerno-main"],
+        "priority": 20
+      }
+    ],
+    "scripts": [
+      {
+        "handle": "theme-main",
+        "src": "js/app.js",
+        "global": true,
+        "in_head": true,
+        "defer": true,
+        "priority": 10
+      },
+      {
+        "handle": "slider",
+        "src": "js/slider.js",
+        "templates": ["home"],
+        "deps": ["theme-main"],
+        "defer": true,
+        "priority": 20
+      }
+    ]
+  }
+}

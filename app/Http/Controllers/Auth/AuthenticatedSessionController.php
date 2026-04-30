@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Core\Security\Services\AdminPathManager;
 use App\Core\Auth\Services\TwoFactorChallengeService;
 use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
@@ -24,7 +25,7 @@ class AuthenticatedSessionController extends Controller
     public function create(Request $request): View|RedirectResponse
     {
         if ($request->user() !== null) {
-            return redirect('/admin/pages');
+            return redirect(app(AdminPathManager::class)->pagesPath());
         }
 
         return view('auth.login');
@@ -68,7 +69,7 @@ class AuthenticatedSessionController extends Controller
             'two_factor_required' => false,
         ]);
 
-        return redirect()->intended('/admin/pages');
+        return redirect()->intended(app(AdminPathManager::class)->pagesPath());
     }
 
     /**

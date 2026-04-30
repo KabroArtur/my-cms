@@ -8,6 +8,7 @@ use App\Core\Pages\Actions\UpdatePageAction;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Pages\Data\PageData;
 use App\Core\Pages\Models\Page;
+use App\Core\Pages\Services\AdditionalFieldsService;
 use App\Core\Security\Services\SecurityAuditLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Pages\StorePageRequest;
@@ -68,9 +69,16 @@ class PageController extends Controller
     /**
      * Контроллер создает новую страницу через доменный action.
      */
-    public function store(StorePageRequest $request, CreatePageAction $createPage, SecurityAuditLogger $audit): JsonResponse
+    public function store(StorePageRequest $request, CreatePageAction $createPage, AdditionalFieldsService $additionalFields, SecurityAuditLogger $audit): JsonResponse
     {
         $page = $createPage->handle(PageData::fromArray($request->validated()));
+
+        if ($page->created_by === null && $request->user() !== null) {
+            $page->forceFill(['created_by' => $request->user()->id])->save();
+            $page = $page->fresh(['parent', 'featuredMedia', 'creator']);
+        }
+
+        $additionalFields->syncPageValues($page, (array) $request->input('additional_fields', []));
 
         $audit->log('pages.created', $request->user(), [
             'target_page_id' => $page->id,
@@ -86,9 +94,10 @@ class PageController extends Controller
     /**
      * Контроллер обновляет существующую страницу через доменный action.
      */
-    public function update(UpdatePageRequest $request, Page $page, UpdatePageAction $updatePage, SecurityAuditLogger $audit): PageResource
+    public function update(UpdatePageRequest $request, Page $page, UpdatePageAction $updatePage, AdditionalFieldsService $additionalFields, SecurityAuditLogger $audit): PageResource
     {
         $page = $updatePage->handle($page, PageData::fromArray($request->validated()));
+        $additionalFields->syncPageValues($page, (array) $request->input('additional_fields', []));
 
         $audit->log('pages.updated', $request->user(), [
             'target_page_id' => $page->id,

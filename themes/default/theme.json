@@ -2,5 +2,24 @@
   "name": "Default Theme",
   "slug": "default",
   "version": "1.0.0",
-  "entry": "index.blade.php"
+  "entry": "index.blade.php",
+  "assets": {
+    "styles": [
+      {
+        "handle": "theme-main",
+        "src": "css/app.css",
+        "global": true,
+        "priority": 10
+      }
+    ],
+    "scripts": [
+      {
+        "handle": "theme-main",
+        "src": "js/app.js",
+        "global": true,
+        "defer": true,
+        "priority": 10
+      }
+    ]
+  }
 }

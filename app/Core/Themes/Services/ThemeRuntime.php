@@ -6,8 +6,13 @@ use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Pages\Models\Page;
+use App\Core\Pages\Services\AdditionalFieldsService;
 use App\Core\Settings\Services\SettingsManager;
 use App\Core\Themes\Data\ThemeDataBag;
+use App\Core\Themes\Services\ThemeAssetManager;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
 
@@ -15,15 +20,22 @@ class ThemeRuntime
 {
     protected ?Page $currentPage = null;
 
+    protected array $menuTreeCache = [];
+
+    protected array $mediaByIdCache = [];
+
     public function __construct(
         protected PageRepository $pages,
         protected SettingsManager $settings,
+        protected ThemeAssetManager $assets,
+        protected AdditionalFieldsService $additionalFields,
     ) {
     }
 
     public function usePage(?Page $page): self
     {
         $this->currentPage = $page;
+        $this->menuTreeCache = [];
 
         return $this;
     }
@@ -184,6 +196,18 @@ class ThemeRuntime
         if ($this->hasSetting('favicon_url')) {
             $parts[] = '<link rel="icon" href="'.e((string) $this->setting('favicon_url')).'">';
         }
+
+        $styles = $this->assets->renderStyles($this->resolvePage($page));
+
+        if ($styles !== '') {
+            $parts[] = $styles;
+        }
+        $headScripts = $this->assets->renderScriptsInHead($this->resolvePage($page));
+
+        if ($headScripts !== '') {
+            $parts[] = $headScripts;
+        }
+
 
         return new HtmlString(implode("\n", $parts));
     }
@@ -382,6 +406,13 @@ class ThemeRuntime
 
     public function menuTree(?Page $currentPage = null): array
     {
+        $currentPage = $this->resolvePage($currentPage);
+        $cacheKey = (string) ($currentPage?->id ?? 0);
+
+        if (array_key_exists($cacheKey, $this->menuTreeCache)) {
+            return $this->menuTreeCache[$cacheKey];
+        }
+
         $pages = $this->pages->publicNavigation();
         $nodes = [];
 
@@ -414,7 +445,9 @@ class ThemeRuntime
             $tree[] = &$nodes[$id];
         }
 
-        return array_map(fn (array $item): array => $this->stripParentId($item), $tree);
+        $this->menuTreeCache[$cacheKey] = array_map(fn (array $item): array => $this->stripParentId($item), $tree);
+
+        return $this->menuTreeCache[$cacheKey];
     }
 
     public function children(Page|array|null $page, ?Page $currentPage = null): array
@@ -502,9 +535,80 @@ class ThemeRuntime
         return $this->template('', $page) === $template;
     }
 
+    public function not(mixed $value): bool
+    {
+        return ! (bool) $value;
+    }
+
+    public function any(mixed ...$values): bool
+    {
+        foreach ($values as $value) {
+            if ((bool) $value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function all(mixed ...$values): bool
+    {
+        if ($values === []) {
+            return false;
+        }
+
+        foreach ($values as $value) {
+            if (! (bool) $value) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function year(string $format = 'Y'): string
     {
         return now()->format($format);
+    }
+
+    public function now(?string $format = null): string
+    {
+        return now()->format($format ?? 'Y-m-d H:i:s');
+    }
+
+    public function time(string $format = 'H:i'): string
+    {
+        return now()->format($format);
+    }
+
+    public function month(string $format = 'm'): string
+    {
+        return now()->format($format);
+    }
+
+    public function day(string $format = 'd'): string
+    {
+        return now()->format($format);
+    }
+
+    public function hour(string $format = 'H'): string
+    {
+        return now()->format($format);
+    }
+
+    public function minute(string $format = 'i'): string
+    {
+        return now()->format($format);
+    }
+
+    public function second(string $format = 's'): string
+    {
+        return now()->format($format);
+    }
+
+    public function timezone(): string
+    {
+        return (string) config('app.timezone', 'UTC');
     }
 
     public function lang(): string
@@ -533,6 +637,38 @@ class ThemeRuntime
     public function asset(string $path): string
     {
         return asset('themes/'.$this->settings->activeTheme().'/'.ltrim($path, '/'));
+    }
+
+    public function component(string $name, array $data = []): HtmlString
+    {
+        $componentPath = $this->resolveThemeComponentPath($name);
+
+        if ($componentPath === null) {
+            return new HtmlString('');
+        }
+
+        $payload = array_merge([
+            'cms' => $this,
+            'page' => $this->resolvePage(),
+            'settings' => $this->settings->publicPayload(),
+        ], $data);
+
+        return new HtmlString((string) view()->file($componentPath, $payload)->render());
+    }
+
+    public function partial(string $name, array $data = []): HtmlString
+    {
+        return $this->component($name, $data);
+    }
+
+    public function hasComponent(string $name): bool
+    {
+        return $this->resolveThemeComponentPath($name) !== null;
+    }
+
+    public function hasPartial(string $name): bool
+    {
+        return $this->hasComponent($name);
     }
 
     public function form(string $key, array $options = []): HtmlString
@@ -593,17 +729,48 @@ class ThemeRuntime
 
     public function posts(array $options = []): array
     {
+        $options = array_replace([
+            'limit' => 5,
+            'category_slug' => null,
+            'status' => 'published',
+            'section_slug' => 'blog',
+        ], $options);
+
+        if (Schema::hasTable('records') && Schema::hasTable('record_types')) {
+            return $this->postsFromRecordTables($options);
+        }
+
+        if (Schema::hasTable('blog_posts')) {
+            return $this->postsFromBlogTables($options);
+        }
+
+        if (Schema::hasTable('theme_posts')) {
+            return $this->postsFromThemeTables($options);
+        }
+
         return [];
     }
 
     public function categories(): array
     {
+        if (Schema::hasTable('record_categories') && Schema::hasTable('record_types')) {
+            return $this->categoriesFromRecordTables();
+        }
+
+        if (Schema::hasTable('blog_categories')) {
+            return $this->categoriesFromBlogTables();
+        }
+
+        if (Schema::hasTable('theme_post_categories')) {
+            return $this->categoriesFromThemeTables();
+        }
+
         return [];
     }
 
     public function footer(): HtmlString
     {
-        return new HtmlString('');
+        return new HtmlString($this->assets->renderScriptsInFooter($this->resolvePage()));
     }
 
     public function bodyClass(array|string|null $extra = null, ?Page $page = null): string
@@ -685,14 +852,26 @@ class ThemeRuntime
         }
 
         if (is_numeric($value)) {
-            return MediaFile::query()->find((int) $value);
+            $mediaId = (int) $value;
+
+            if (! array_key_exists($mediaId, $this->mediaByIdCache)) {
+                $this->mediaByIdCache[$mediaId] = MediaFile::query()->find($mediaId);
+            }
+
+            return $this->mediaByIdCache[$mediaId];
         }
 
         if (is_array($value)) {
             $mediaId = $value['id'] ?? $value['value'] ?? null;
 
             if (is_numeric($mediaId)) {
-                return MediaFile::query()->find((int) $mediaId);
+                $mediaId = (int) $mediaId;
+
+                if (! array_key_exists($mediaId, $this->mediaByIdCache)) {
+                    $this->mediaByIdCache[$mediaId] = MediaFile::query()->find($mediaId);
+                }
+
+                return $this->mediaByIdCache[$mediaId];
             }
         }
 
@@ -852,6 +1031,10 @@ class ThemeRuntime
             return $builtIn[$key];
         }
 
+        if ($this->additionalFields->hasPageValue($page, $key)) {
+            return $this->additionalFields->pageValue($page, $key);
+        }
+
         return $page->getAttribute($key);
     }
 
@@ -924,5 +1107,295 @@ class ThemeRuntime
     protected function dateTimeFormat(): string
     {
         return trim((string) $this->setting('date_format', 'd.m.Y').' '.(string) $this->setting('time_format', 'H:i'));
+    }
+
+    protected function resolveThemeComponentPath(string $name): ?string
+    {
+        $relative = str_replace('.', '/', trim($name));
+        $relative = ltrim($relative, '/');
+
+        if ($relative === '' || str_contains($relative, '..')) {
+            return null;
+        }
+
+        if (! str_ends_with($relative, '.blade.php')) {
+            $relative .= '.blade.php';
+        }
+
+        $candidates = [
+            $relative,
+            'components/'.$relative,
+            'partials/'.$relative,
+        ];
+
+        $themeRoot = base_path('themes/'.$this->settings->activeTheme());
+
+        foreach (array_unique($candidates) as $candidate) {
+            $filePath = $themeRoot.'/'.ltrim($candidate, '/');
+
+            if (File::exists($filePath)) {
+                return $filePath;
+            }
+        }
+
+        return null;
+    }
+
+    protected function postsFromThemeTables(array $options): array
+    {
+        $query = DB::table('theme_posts as posts')
+            ->leftJoin('theme_post_categories as categories', 'categories.id', '=', 'posts.category_id')
+            ->select([
+                'posts.id',
+                'posts.title',
+                'posts.slug',
+                'posts.excerpt',
+                'posts.content',
+                'posts.is_published',
+                'posts.published_at',
+                'categories.name as category_name',
+                'categories.slug as category_slug',
+            ]);
+
+        if (($options['status'] ?? 'published') === 'published') {
+            $query->where('posts.is_published', true);
+        }
+
+        if (is_string($options['category_slug'] ?? null) && trim((string) $options['category_slug']) !== '') {
+            $query->where('categories.slug', trim((string) $options['category_slug']));
+        }
+
+        $limit = max(1, (int) ($options['limit'] ?? 5));
+
+        return $query
+            ->orderByDesc('posts.published_at')
+            ->orderByDesc('posts.id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (object $post): object => (object) [
+                'id' => $post->id,
+                'title' => (string) $post->title,
+                'slug' => (string) $post->slug,
+                'excerpt' => (string) ($post->excerpt ?? ''),
+                'content' => (string) ($post->content ?? ''),
+                'published_at' => $post->published_at,
+                'url' => '/posts/'.ltrim((string) $post->slug, '/'),
+                'category' => $post->category_slug !== null
+                    ? (object) [
+                        'name' => (string) $post->category_name,
+                        'slug' => (string) $post->category_slug,
+                        'url' => '/posts/category/'.ltrim((string) $post->category_slug, '/'),
+                    ]
+                    : null,
+            ])
+            ->all();
+    }
+
+    protected function postsFromRecordTables(array $options): array
+    {
+        $sectionSlug = trim((string) ($options['section_slug'] ?? 'blog'));
+
+        $section = DB::table('record_types')
+            ->where('slug', $sectionSlug)
+            ->where('status', 'active')
+            ->first(['id', 'slug', 'name']);
+
+        if ($section === null) {
+            $section = DB::table('record_types')
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->first(['id', 'slug', 'name']);
+        }
+
+        if ($section === null) {
+            return [];
+        }
+
+        $query = DB::table('records as posts')
+            ->leftJoin('record_categories as categories', 'categories.id', '=', 'posts.category_id')
+            ->select([
+                'posts.id',
+                'posts.title',
+                'posts.slug',
+                'posts.excerpt',
+                'posts.content',
+                'posts.status',
+                'posts.published_at',
+                'categories.name as category_name',
+                'categories.slug as category_slug',
+            ])
+            ->where('posts.record_type_id', (int) $section->id);
+
+        if (($options['status'] ?? 'published') === 'published') {
+            $query->where('posts.status', 'published');
+        }
+
+        if (is_string($options['category_slug'] ?? null) && trim((string) $options['category_slug']) !== '') {
+            $query->where('categories.slug', trim((string) $options['category_slug']));
+        }
+
+        $limit = max(1, (int) ($options['limit'] ?? 5));
+        $sectionPath = '/'.ltrim((string) $section->slug, '/');
+
+        return $query
+            ->orderByDesc('posts.published_at')
+            ->orderByDesc('posts.id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (object $post): object => (object) [
+                'id' => $post->id,
+                'title' => (string) $post->title,
+                'slug' => (string) $post->slug,
+                'excerpt' => (string) ($post->excerpt ?? ''),
+                'content' => (string) ($post->content ?? ''),
+                'published_at' => $post->published_at,
+                'url' => $sectionPath.'/'.ltrim((string) $post->slug, '/'),
+                'category' => $post->category_slug !== null
+                    ? (object) [
+                        'name' => (string) $post->category_name,
+                        'slug' => (string) $post->category_slug,
+                        'url' => $sectionPath.'/category/'.ltrim((string) $post->category_slug, '/'),
+                    ]
+                    : null,
+            ])
+            ->all();
+    }
+
+    protected function postsFromBlogTables(array $options): array
+    {
+        $query = DB::table('blog_posts as posts')
+            ->leftJoin('blog_categories as categories', 'categories.id', '=', 'posts.category_id')
+            ->select([
+                'posts.id',
+                'posts.title',
+                'posts.slug',
+                'posts.excerpt',
+                'posts.content',
+                'posts.is_published',
+                'posts.published_at',
+                'categories.name as category_name',
+                'categories.slug as category_slug',
+            ]);
+
+        if (($options['status'] ?? 'published') === 'published') {
+            $query->where('posts.is_published', true);
+        }
+
+        if (is_string($options['category_slug'] ?? null) && trim((string) $options['category_slug']) !== '') {
+            $query->where('categories.slug', trim((string) $options['category_slug']));
+        }
+
+        $limit = max(1, (int) ($options['limit'] ?? 5));
+
+        return $query
+            ->orderByDesc('posts.published_at')
+            ->orderByDesc('posts.id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (object $post): object => (object) [
+                'id' => $post->id,
+                'title' => (string) $post->title,
+                'slug' => (string) $post->slug,
+                'excerpt' => (string) ($post->excerpt ?? ''),
+                'content' => (string) ($post->content ?? ''),
+                'published_at' => $post->published_at,
+                'url' => '/blog/'.ltrim((string) $post->slug, '/'),
+                'category' => $post->category_slug !== null
+                    ? (object) [
+                        'name' => (string) $post->category_name,
+                        'slug' => (string) $post->category_slug,
+                        'url' => '/category/'.ltrim((string) $post->category_slug, '/'),
+                    ]
+                    : null,
+            ])
+            ->all();
+    }
+
+    protected function categoriesFromThemeTables(): array
+    {
+        return DB::table('theme_post_categories as categories')
+            ->leftJoin('theme_posts as posts', 'posts.category_id', '=', 'categories.id')
+            ->select([
+                'categories.id',
+                'categories.name',
+                'categories.slug',
+                DB::raw('COUNT(posts.id) as posts_count'),
+            ])
+            ->groupBy('categories.id', 'categories.name', 'categories.slug')
+            ->orderBy('categories.name')
+            ->get()
+            ->map(fn (object $category): object => (object) [
+                'id' => $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'url' => '/posts/category/'.ltrim((string) $category->slug, '/'),
+                'posts_count' => (int) $category->posts_count,
+            ])
+            ->all();
+    }
+
+    protected function categoriesFromRecordTables(): array
+    {
+        $section = DB::table('record_types')
+            ->where('status', 'active')
+            ->where('slug', 'blog')
+            ->first(['id', 'slug']);
+
+        if ($section === null) {
+            $section = DB::table('record_types')
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->first(['id', 'slug']);
+        }
+
+        if ($section === null) {
+            return [];
+        }
+
+        $sectionPath = '/'.ltrim((string) $section->slug, '/');
+
+        return DB::table('record_categories as categories')
+            ->leftJoin('records as posts', 'posts.category_id', '=', 'categories.id')
+            ->select([
+                'categories.id',
+                'categories.name',
+                'categories.slug',
+                DB::raw('COUNT(posts.id) as posts_count'),
+            ])
+            ->where('categories.record_type_id', (int) $section->id)
+            ->groupBy('categories.id', 'categories.name', 'categories.slug')
+            ->orderBy('categories.name')
+            ->get()
+            ->map(fn (object $category): object => (object) [
+                'id' => $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'url' => $sectionPath.'/category/'.ltrim((string) $category->slug, '/'),
+                'posts_count' => (int) $category->posts_count,
+            ])
+            ->all();
+    }
+
+    protected function categoriesFromBlogTables(): array
+    {
+        return DB::table('blog_categories as categories')
+            ->leftJoin('blog_posts as posts', 'posts.category_id', '=', 'categories.id')
+            ->select([
+                'categories.id',
+                'categories.name',
+                'categories.slug',
+                DB::raw('COUNT(posts.id) as posts_count'),
+            ])
+            ->groupBy('categories.id', 'categories.name', 'categories.slug')
+            ->orderBy('categories.name')
+            ->get()
+            ->map(fn (object $category): object => (object) [
+                'id' => $category->id,
+                'name' => (string) $category->name,
+                'slug' => (string) $category->slug,
+                'url' => '/category/'.ltrim((string) $category->slug, '/'),
+                'posts_count' => (int) $category->posts_count,
+            ])
+            ->all();
     }
 }

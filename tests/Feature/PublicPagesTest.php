@@ -5,6 +5,7 @@ use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Pages\Models\Page;
+use App\Core\Settings\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -275,4 +276,29 @@ it('allows nesting pages inside the home page', function () {
     ]);
 
     expect($reviewPage->fresh()->parent_id)->toBe($homePage->id);
+});
+
+it('returns 503 for public pages when emergency mode is enabled', function () {
+    Page::query()->create([
+        'title' => 'Home',
+        'slug' => 'home',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'is_home' => true,
+        'published_at' => now()->subMinute(),
+    ]);
+
+    Setting::query()->updateOrCreate(
+        ['key' => 'security_emergency_mode'],
+        ['value' => json_encode(true, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
+    );
+
+    Setting::query()->updateOrCreate(
+        ['key' => 'security_emergency_message'],
+        ['value' => json_encode('Emergency maintenance window', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
+    );
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertSee('Emergency maintenance window');
 });

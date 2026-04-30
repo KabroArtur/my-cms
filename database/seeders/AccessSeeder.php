@@ -18,10 +18,6 @@ class AccessSeeder extends Seeder
     {
         $configuredPermissions = collect(config('access.permissions', []));
 
-        Permission::query()
-            ->whereNotIn('slug', $configuredPermissions->all())
-            ->delete();
-
         $permissions = $configuredPermissions
             ->mapWithKeys(function (string $slug): array {
                 $permission = Permission::query()->updateOrCreate(

@@ -5,11 +5,11 @@
         <p class="muted">Такой страницы в административной части нет. Проверь адрес или вернись к списку страниц.</p>
 
         <div class="admin-actions-row">
-            <RouterLink to="/admin" class="button-link">
+            <RouterLink :to="{ name: 'dashboard' }" class="button-link">
                 На dashboard
             </RouterLink>
 
-            <RouterLink to="/admin/pages" class="button-link">
+            <RouterLink :to="{ name: 'pages' }" class="button-link">
                 К страницам
             </RouterLink>
         </div>

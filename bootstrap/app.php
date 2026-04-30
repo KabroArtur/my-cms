@@ -1,7 +1,10 @@
 <?php
 
+use App\Core\Security\Services\AdminPathManager;
+use App\Http\Middleware\EmergencyModeMiddleware;
 use App\Http\Middleware\EnsureUserCanAccessAdmin;
 use App\Http\Middleware\EnsureTwoFactorIsConfirmed;
+use App\Http\Middleware\ProtectAgainstDdos;
 use App\Http\Middleware\RedirectToCanonicalUrl;
 use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -33,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->append(SetSecurityHeaders::class);
         $middleware->append(RedirectToCanonicalUrl::class);
+        $middleware->append(ProtectAgainstDdos::class);
+        $middleware->append(EmergencyModeMiddleware::class);
 
         $middleware->alias([
             'admin.access' => EnsureUserCanAccessAdmin::class,
@@ -41,7 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (NotFoundHttpException $exception, $request) {
-            if ($request->expectsJson() || $request->is('admin') || $request->is('admin/*')) {
+            if ($request->expectsJson() || app(AdminPathManager::class)->isAdminRequest($request)) {
                 return null;
             }
 

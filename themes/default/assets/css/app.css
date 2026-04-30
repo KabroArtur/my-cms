@@ -1,0 +1,8 @@
+/* Default theme runtime styles */
+:root {
+  --default-accent: #8b5e34;
+}
+
+.site-shell {
+  accent-color: var(--default-accent);
+}

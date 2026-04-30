@@ -78,6 +78,10 @@ class ThemesModule extends BaseCoreModule
             'translate' => 'translate',
             't' => 'translate',
             'asset' => 'asset',
+            'component' => 'component',
+            'partial' => 'partial',
+            'has_component' => 'hasComponent',
+            'has_partial' => 'hasPartial',
             'form' => 'form',
             'pages' => 'pages',
             'posts' => 'posts',
@@ -85,7 +89,21 @@ class ThemesModule extends BaseCoreModule
             'is_home' => 'isHome',
             'is_page' => 'isPage',
             'is_template' => 'isTemplate',
+            'not' => 'not',
+            'any' => 'any',
+            'all' => 'all',
+            'logic_not' => 'not',
+            'logic_or' => 'any',
+            'logic_and' => 'all',
+            'now' => 'now',
+            'time' => 'time',
             'year' => 'year',
+            'month' => 'month',
+            'day' => 'day',
+            'hour' => 'hour',
+            'minute' => 'minute',
+            'second' => 'second',
+            'timezone' => 'timezone',
             'footer' => 'footer',
             'body_attrs' => 'bodyAttrs',
             'body_class' => 'bodyClass',
@@ -107,6 +125,112 @@ class ThemesModule extends BaseCoreModule
                 $method,
             ));
         }
+
+        $this->registerAliasHelpers($runtime, $prefix, $macros);
+    }
+
+    protected function registerAliasHelpers(string $runtime, string $prefix, array $macros): void
+    {
+        $aliases = [];
+
+        foreach ($macros as $suffix => $method) {
+            $aliases[$suffix] = $method;
+        }
+
+        $fallbackAliases = [
+            'url' => 'page_url',
+            'asset' => 'theme_asset',
+            'class' => 'class_list',
+            'date' => 'page_date',
+            'time' => 'date_time',
+            'now' => 'date_now',
+            'year' => 'date_year',
+            'month' => 'date_month',
+            'day' => 'date_day',
+            'hour' => 'date_hour',
+            'minute' => 'date_minute',
+            'second' => 'date_second',
+            'timezone' => 'date_timezone',
+            'head' => 'theme_head',
+            'footer' => 'theme_footer',
+        ];
+
+        foreach ($aliases as $function => $method) {
+            if ($this->isAliasFunctionAllowed($function) && ! function_exists($function)) {
+                eval(sprintf(
+                    'namespace { function %1$s(...$arguments) { return app(%2$s)->%3$s(...$arguments); } }',
+                    $function,
+                    var_export($runtime, true),
+                    $method,
+                ));
+            }
+
+            $fallback = $fallbackAliases[$function] ?? null;
+
+            if ($fallback === null || ! $this->isAliasFunctionAllowed($fallback) || function_exists($fallback)) {
+                continue;
+            }
+
+            eval(sprintf(
+                'namespace { function %1$s(...$arguments) { return app(%2$s)->%3$s(...$arguments); } }',
+                $fallback,
+                var_export($runtime, true),
+                $method,
+            ));
+        }
+    }
+
+    protected function isAliasFunctionAllowed(string $name): bool
+    {
+        if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
+            return false;
+        }
+
+        return ! in_array(strtolower($name), [
+            'class',
+            'function',
+            'trait',
+            'interface',
+            'namespace',
+            'use',
+            'new',
+            'static',
+            'public',
+            'private',
+            'protected',
+            'abstract',
+            'final',
+            'echo',
+            'print',
+            'match',
+            'fn',
+            'if',
+            'else',
+            'elseif',
+            'switch',
+            'case',
+            'default',
+            'while',
+            'for',
+            'foreach',
+            'do',
+            'try',
+            'catch',
+            'finally',
+            'return',
+            'yield',
+            'array',
+            'callable',
+            'iterable',
+            'object',
+            'string',
+            'int',
+            'float',
+            'bool',
+            'null',
+            'true',
+            'false',
+        ], true);
     }
 
     protected function normalizePrefix(string $prefix): string

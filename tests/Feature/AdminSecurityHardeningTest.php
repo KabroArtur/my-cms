@@ -304,6 +304,88 @@ it('denies creating pages without explicit pages.create permission', function ()
         ->assertForbidden();
 });
 
+it('assigns page creator on create and exposes creator in admin api response', function (): void {
+    $editor = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $editor->permissions()->sync(Permission::query()->whereIn('slug', ['pages.access', 'pages.create'])->pluck('id')->all());
+
+    $response = $this->actingAs($editor)
+        ->postJson('/admin/api/pages', [
+            'title' => 'Owned Page',
+            'slug' => 'owned-page',
+            'status' => PageStatus::Draft->value,
+            'visibility' => PageVisibility::Public->value,
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.created_by', $editor->id)
+        ->assertJsonPath('data.creator.id', $editor->id)
+        ->assertJsonPath('data.creator.username', $editor->username);
+
+    $page = Page::query()->findOrFail($response->json('data.id'));
+
+    expect($page->created_by)->toBe($editor->id);
+});
+
+it('allows page update and delete only for owner or admin', function (): void {
+    $owner = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $otherEditor = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $admin = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $owner->permissions()->sync(Permission::query()->whereIn('slug', ['pages.access', 'pages.update', 'pages.delete'])->pluck('id')->all());
+    $otherEditor->permissions()->sync(Permission::query()->whereIn('slug', ['pages.access', 'pages.update', 'pages.delete'])->pluck('id')->all());
+
+    $adminRole = Role::query()->where('slug', 'admin')->firstOrFail();
+    $admin->roles()->syncWithoutDetaching([$adminRole->id]);
+
+    $page = Page::query()->create([
+        'created_by' => $owner->id,
+        'title' => 'Owner Page',
+        'slug' => 'owner-page',
+        'status' => PageStatus::Draft,
+        'visibility' => PageVisibility::Public,
+    ]);
+
+    $this->actingAs($otherEditor)
+        ->putJson("/admin/api/pages/{$page->id}", [
+            'title' => 'Other Editor Update',
+            'slug' => 'owner-page',
+            'status' => PageStatus::Draft->value,
+            'visibility' => PageVisibility::Public->value,
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($otherEditor)
+        ->deleteJson("/admin/api/pages/{$page->id}")
+        ->assertForbidden();
+
+    $this->actingAs($owner)
+        ->putJson("/admin/api/pages/{$page->id}", [
+            'title' => 'Owner Updated',
+            'slug' => 'owner-page',
+            'status' => PageStatus::Draft->value,
+            'visibility' => PageVisibility::Public->value,
+        ])
+        ->assertOk();
+
+    expect($page->fresh()->title)->toBe('Owner Updated');
+
+    $this->actingAs($admin)
+        ->deleteJson("/admin/api/pages/{$page->id}")
+        ->assertNoContent();
+
+    expect($page->fresh()->deleted_at)->not->toBeNull();
+});
+
 it('sanitizes page html content before storing and rendering it publicly', function (): void {
     $editor = User::factory()->create([
         'password' => 'StrongPass123',

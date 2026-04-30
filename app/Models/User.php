@@ -140,7 +140,18 @@ class User extends Authenticatable
     public function permissionSlugs(): array
     {
         if ($this->hasRole('admin')) {
-            return config('access.permissions', []);
+            $configured = collect(config('access.permissions', []))
+                ->filter(fn (mixed $slug): bool => is_string($slug) && $slug !== '');
+
+            $persisted = Permission::query()
+                ->pluck('slug')
+                ->filter(fn (mixed $slug): bool => is_string($slug) && $slug !== '');
+
+            return $configured
+                ->merge($persisted)
+                ->unique()
+                ->values()
+                ->all();
         }
 
         $directPermissions = $this->permissions

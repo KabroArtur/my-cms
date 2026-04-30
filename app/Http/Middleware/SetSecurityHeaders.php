@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Core\Security\Services\AdminPathManager;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,12 @@ class SetSecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         $response->headers->set('Content-Security-Policy', $contentSecurityPolicy);
+
+        $adminPath = app(AdminPathManager::class)->currentPath();
+        if ($request->is($adminPath) || $request->is($adminPath.'/*')) {
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+        }
 
         if ($request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

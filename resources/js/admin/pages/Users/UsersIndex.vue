@@ -15,6 +15,7 @@ const roles = ref([])
 const saving = ref(false)
 const validationErrors = ref({})
 const editingId = ref(null)
+const showPassword = ref(false)
 
 const form = reactive({
     name: '',
@@ -24,8 +25,50 @@ const form = reactive({
     role_slugs: [],
 })
 
+function generateStrongPassword(length = 12) {
+    const safeLength = Math.max(10, Number(length) || 10)
+    const lowers = 'abcdefghijkmnopqrstuvwxyz'
+    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+    const digits = '23456789'
+    const symbols = '!@#$%^&*()-_=+[]{};:,.?'
+    const all = `${lowers}${uppers}${digits}${symbols}`
+
+    const pick = (charset) => charset[randomInt(charset.length)]
+    const passwordChars = [
+        pick(lowers),
+        pick(uppers),
+        pick(digits),
+        pick(symbols),
+    ]
+
+    while (passwordChars.length < safeLength) {
+        passwordChars.push(pick(all))
+    }
+
+    for (let index = passwordChars.length - 1; index > 0; index -= 1) {
+        const swapIndex = randomInt(index + 1)
+        const current = passwordChars[index]
+        passwordChars[index] = passwordChars[swapIndex]
+        passwordChars[swapIndex] = current
+    }
+
+    form.password = passwordChars.join('')
+}
+
+function randomInt(max) {
+    const bytes = new Uint32Array(1)
+    window.crypto.getRandomValues(bytes)
+
+    return bytes[0] % max
+}
+
+function togglePasswordVisibility() {
+    showPassword.value = !showPassword.value
+}
+
 function resetForm() {
     editingId.value = null
+    showPassword.value = false
     validationErrors.value = {}
     form.name = ''
     form.username = ''
@@ -36,6 +79,7 @@ function resetForm() {
 
 function startEdit(user) {
     editingId.value = user.id
+    showPassword.value = false
     validationErrors.value = {}
     errorMessage.value = ''
     form.name = user.name ?? ''
@@ -148,7 +192,7 @@ onMounted(async () => {
     >
         <template #actions>
             <div class="users-toolbar__actions">
-                <RouterLink to="/admin/roles" class="button-link">
+                    <RouterLink :to="{ name: 'roles' }" class="button-link">
                     Доступы и роли
                 </RouterLink>
             </div>
@@ -179,8 +223,18 @@ onMounted(async () => {
 
                     <label class="admin-form-label">
                         <span>Password</span>
-                        <input v-model="form.password" class="admin-input" type="password" :placeholder="editingId ? 'Оставить пустым, чтобы не менять' : ''">
+                        <div class="admin-actions-row">
+                            <AdminButton type="button" @click="generateStrongPassword(12)">
+                                Сгенерировать пароль
+                            </AdminButton>
+                            <AdminButton type="button" @click="togglePasswordVisibility">
+                                <span aria-hidden="true">&#128065;</span>
+                                {{ showPassword ? ' Скрыть' : ' Показать' }}
+                            </AdminButton>
+                        </div>
+                        <input v-model="form.password" class="admin-input" :type="showPassword ? 'text' : 'password'" :placeholder="editingId ? 'Оставить пустым, чтобы не менять' : ''">
                         <small v-if="validationErrors.password" class="error-text">{{ validationErrors.password[0] }}</small>
+                        <small class="muted">Минимум 6 символов. Кнопка генерирует сложный пароль от 10 символов.</small>
                     </label>
 
                     <fieldset class="admin-fieldset">

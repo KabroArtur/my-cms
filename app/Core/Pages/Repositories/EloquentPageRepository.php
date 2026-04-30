@@ -8,6 +8,7 @@ use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Models\Page;
 use App\Core\Settings\Services\SettingsManager;
+use App\Core\Support\Services\CmsCacheService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -21,7 +22,12 @@ use Illuminate\Validation\ValidationException;
  */
 class EloquentPageRepository implements PageRepository
 {
-    public function __construct(protected SettingsManager $settings)
+    protected bool $scheduledPublicationsRefreshed = false;
+
+    public function __construct(
+        protected SettingsManager $settings,
+        protected CmsCacheService $cache,
+    )
     {
     }
 
@@ -30,7 +36,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with(['parent', 'featuredMedia'])
+            ->with(['parent', 'featuredMedia', 'creator'])
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get();
@@ -41,7 +47,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with(['parent', 'featuredMedia'])
+            ->with(['parent', 'featuredMedia', 'creator'])
             ->orderBy('sort_order')
             ->orderByDesc('updated_at')
             ->paginate($perPage);
@@ -51,7 +57,7 @@ class EloquentPageRepository implements PageRepository
     {
         return Page::query()
             ->onlyTrashed()
-            ->with(['parent', 'featuredMedia'])
+            ->with(['parent', 'featuredMedia', 'creator'])
             ->orderByDesc('deleted_at')
             ->paginate($perPage);
     }
@@ -61,7 +67,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with(['parent', 'featuredMedia'])
+            ->with(['parent', 'featuredMedia', 'creator'])
             ->find($id);
     }
 
@@ -69,7 +75,7 @@ class EloquentPageRepository implements PageRepository
     {
         return Page::query()
             ->onlyTrashed()
-            ->with(['parent', 'featuredMedia'])
+            ->with(['parent', 'featuredMedia', 'creator'])
             ->find($id);
     }
 
@@ -78,10 +84,12 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with(['parent', 'featuredMedia'])
+            ->with(['parent', 'featuredMedia', 'creator'])
             ->where('slug', $slug)
             ->first();
     }
+
+    protected static bool $homePageAutoSynced = false;
 
     public function findHomePage(): ?Page
     {
@@ -98,10 +106,18 @@ class EloquentPageRepository implements PageRepository
             return $homePage;
         }
 
-        return (clone $query)
+        $fallback = (clone $query)
             ->orderBy('sort_order')
             ->orderBy('title')
             ->first();
+
+        if ($fallback !== null && ! static::$homePageAutoSynced) {
+            static::$homePageAutoSynced = true;
+            $fallback->forceFill(['is_home' => true])->saveQuietly();
+            $this->settings->rememberHomePage($fallback->id);
+        }
+
+        return $fallback;
     }
 
     public function findPublicBySlug(string $slug): ?Page
@@ -138,7 +154,7 @@ class EloquentPageRepository implements PageRepository
      */
     public function publishScheduledPages(): int
     {
-        return Page::query()
+        $updated = Page::query()
             ->where('status', PageStatus::Scheduled->value)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
@@ -146,6 +162,12 @@ class EloquentPageRepository implements PageRepository
                 'status' => PageStatus::Published->value,
                 'updated_at' => now(),
             ]);
+
+        if ($updated > 0) {
+            $this->cache->invalidateAll(reason: 'scheduled-pages-published');
+        }
+
+        return $updated;
     }
 
     /**
@@ -153,7 +175,12 @@ class EloquentPageRepository implements PageRepository
      */
     protected function refreshScheduledPublications(): void
     {
+        if ($this->scheduledPublicationsRefreshed) {
+            return;
+        }
+
         $this->publishScheduledPages();
+        $this->scheduledPublicationsRefreshed = true;
     }
 
     public function create(PageData $data): Page
@@ -166,8 +193,9 @@ class EloquentPageRepository implements PageRepository
         $page = Page::query()->create($attributes);
 
         $this->syncHomePage($page, (bool) $attributes['is_home']);
+        $this->cache->invalidateAll(reason: 'page-created');
 
-        return $page->fresh(['parent', 'featuredMedia']);
+        return $page->fresh(['parent', 'featuredMedia', 'creator']);
     }
 
     public function update(Page $page, PageData $data): Page
@@ -181,8 +209,9 @@ class EloquentPageRepository implements PageRepository
         $page->save();
 
         $this->syncHomePage($page, (bool) $attributes['is_home']);
+        $this->cache->invalidateAll(reason: 'page-updated');
 
-        return $page->fresh(['parent', 'featuredMedia']);
+        return $page->fresh(['parent', 'featuredMedia', 'creator']);
     }
 
     public function delete(Page $page): void
@@ -194,16 +223,19 @@ class EloquentPageRepository implements PageRepository
         if ($wasHomePage) {
             $this->assignFallbackHomePage();
         }
+
+        $this->cache->invalidateAll(reason: 'page-deleted');
     }
 
     public function restore(Page $page): Page
     {
         $page->restore();
 
-        $restoredPage = $page->fresh(['parent', 'featuredMedia']);
+        $restoredPage = $page->fresh(['parent', 'featuredMedia', 'creator']);
         $this->syncHomePage($restoredPage, (bool) $restoredPage->is_home);
+        $this->cache->invalidateAll(reason: 'page-restored');
 
-        return $restoredPage->fresh(['parent', 'featuredMedia']);
+        return $restoredPage->fresh(['parent', 'featuredMedia', 'creator']);
     }
 
     public function forceDelete(Page $page): void
@@ -215,6 +247,8 @@ class EloquentPageRepository implements PageRepository
         if ($wasHomePage) {
             $this->assignFallbackHomePage();
         }
+
+        $this->cache->invalidateAll(reason: 'page-force-deleted');
     }
 
     public function syncTree(array $nodes): void
@@ -282,6 +316,8 @@ class EloquentPageRepository implements PageRepository
                     ]);
             }
         });
+
+        $this->cache->invalidateAll(reason: 'page-tree-updated');
     }
 
     /**

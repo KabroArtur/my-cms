@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Site;
 
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Settings\Services\SettingsManager;
+use App\Core\Support\Services\CmsCacheService;
 use App\Core\Themes\Services\ThemeRuntime;
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -19,6 +19,7 @@ class PageViewController extends Controller
     public function __construct(
         protected SettingsManager $settings,
         protected ThemeRuntime $cms,
+        protected CmsCacheService $cache,
     ) {
     }
 
@@ -27,13 +28,31 @@ class PageViewController extends Controller
      */
     public function home(PageRepository $pages): Response
     {
-        $page = $pages->findHomePage();
+        if (! $this->shouldUseResponseCache()) {
+            $page = $pages->findHomePage();
 
-        if ($page === null) {
-            throw new NotFoundHttpException('Домашняя страница не найдена.');
+            if ($page === null) {
+                throw new NotFoundHttpException('Домашняя страница не найдена.');
+            }
+
+            return response($this->renderThemeHtml($page));
         }
 
-        return $this->renderTheme($page);
+        $html = $this->cache->rememberSite(
+            key: 'public-response:home:'.app()->getLocale().':'.$this->settings->activeTheme(),
+            resolver: function () use ($pages): string {
+                $page = $pages->findHomePage();
+
+                if ($page === null) {
+                    throw new NotFoundHttpException('Домашняя страница не найдена.');
+                }
+
+                return $this->renderThemeHtml($page);
+            },
+            ttlSeconds: $this->responseCacheTtl(),
+        );
+
+        return response($html);
     }
 
     /**
@@ -41,32 +60,59 @@ class PageViewController extends Controller
      */
     public function show(string $slugPath, PageRepository $pages): Response
     {
-        $page = $pages->findPublicBySlug(trim($slugPath, '/'));
+        $slugPath = trim($slugPath, '/');
 
-        if ($page === null) {
-            throw new NotFoundHttpException('Страница не найдена.');
+        if (! $this->shouldUseResponseCache()) {
+            $page = $pages->findPublicBySlug($slugPath);
+
+            if ($page === null) {
+                throw new NotFoundHttpException('Страница не найдена.');
+            }
+
+            return response($this->renderThemeHtml($page));
         }
 
-        return $this->renderTheme($page);
+        $html = $this->cache->rememberSite(
+            key: 'public-response:slug:'.($slugPath !== '' ? $slugPath : '/').':'.app()->getLocale().':'.$this->settings->activeTheme(),
+            resolver: function () use ($pages, $slugPath): string {
+                $page = $pages->findPublicBySlug($slugPath);
+
+                if ($page === null) {
+                    throw new NotFoundHttpException('Страница не найдена.');
+                }
+
+                return $this->renderThemeHtml($page);
+            },
+            ttlSeconds: $this->responseCacheTtl(),
+        );
+
+        return response($html);
     }
 
     /**
      * Контроллер рендерит страницу через blade-файл темы.
      */
-    protected function renderTheme(mixed $page): Response
+    protected function renderThemeHtml(mixed $page): string
     {
-        /** @var View $view */
         $themeSettings = $this->settings->publicPayload();
-        $themePath = $this->settings->themeViewPath();
+        $themePath = $this->settings->themeViewPath((string) ($page?->template ?: 'default'));
 
         view()->replaceNamespace('theme', dirname($themePath));
 
-        $view = view()->file($themePath, [
+        return (string) view()->file($themePath, [
             'page' => $page,
             'settings' => $themeSettings,
             'cms' => $this->cms->usePage($page),
-        ]);
+        ])->render();
+    }
 
-        return response($view);
+    protected function shouldUseResponseCache(): bool
+    {
+        return ! app()->runningUnitTests() && $this->cache->isResponseCacheEnabled();
+    }
+
+    protected function responseCacheTtl(): int
+    {
+        return $this->cache->responseCacheTtl();
     }
 }

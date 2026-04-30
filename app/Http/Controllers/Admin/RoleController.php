@@ -89,11 +89,75 @@ class RoleController extends Controller
      */
     protected function syncPermissions(Role $role, array $permissionSlugs): void
     {
+        $permissionSlugs = $this->normalizePermissionSlugs($permissionSlugs);
+
         $permissionIds = Permission::query()
             ->whereIn('slug', $permissionSlugs)
             ->pluck('id')
             ->all();
 
         $role->permissions()->sync($permissionIds);
+    }
+
+    /**
+     * @param array<int, string> $permissionSlugs
+     * @return array<int, string>
+     */
+    protected function normalizePermissionSlugs(array $permissionSlugs): array
+    {
+        $selected = collect($permissionSlugs)
+            ->filter(fn (mixed $slug): bool => is_string($slug) && $slug !== '')
+            ->unique()
+            ->values();
+
+        $parentChildren = [
+            'pages.access' => [
+                'pages.create',
+                'pages.update',
+                'pages.delete',
+                'pages.additional_fields.manage',
+            ],
+            'users.access' => [
+                'users.create',
+                'users.update',
+                'users.delete',
+                'users.manage_roles',
+            ],
+            'roles.access' => [
+                'roles.create',
+                'roles.update',
+            ],
+            'media.access' => [
+                'media.upload',
+                'media.delete',
+                'media.manage_folders',
+            ],
+            'settings.access' => [
+                'settings.general.manage',
+                'settings.appearance.manage',
+                'settings.cache.manage',
+                'settings.security.manage',
+            ],
+        ];
+
+        $selectedSet = $selected->flip();
+
+        foreach ($parentChildren as $parent => $children) {
+            if (! $selectedSet->has($parent)) {
+                foreach ($children as $child) {
+                    $selectedSet->forget($child);
+                }
+            }
+        }
+
+        foreach ($parentChildren as $parent => $children) {
+            foreach ($children as $child) {
+                if ($selectedSet->has($child)) {
+                    $selectedSet->put($parent, true);
+                }
+            }
+        }
+
+        return $selectedSet->keys()->values()->all();
     }
 }
