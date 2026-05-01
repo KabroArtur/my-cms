@@ -18,6 +18,7 @@ class UpdateMediaFileRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'original_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'title' => ['nullable', 'string', 'max:255'],
             'alt_text' => ['nullable', 'string', 'max:255'],
             'caption' => ['nullable', 'string'],

@@ -84,6 +84,40 @@ it('uploads image files and stores metadata in database', function (): void {
     expect($response->json('data.variants.thumb.url'))->not->toBeNull();
 });
 
+it('uploads multiple image files with custom names and returns per-item results', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files/batch', [
+            'items' => [
+                [
+                    'name' => 'Hero Banner',
+                    'file' => UploadedFile::fake()->image('first.webp', 1200, 630),
+                ],
+                [
+                    'name' => 'Hero Banner',
+                    'file' => UploadedFile::fake()->image('second.webp', 800, 600),
+                ],
+            ],
+        ])
+        ->assertOk();
+
+    expect($response->json('data.results'))->toHaveCount(2);
+    expect($response->json('data.results.0.status'))->toBe('success');
+    expect($response->json('data.results.1.status'))->toBe('success');
+    expect($response->json('data.results.0.data.original_name'))->toBe('Hero Banner.webp');
+    expect($response->json('data.results.1.data.original_name'))->toBe('Hero Banner-1.webp');
+
+    $filenames = MediaFile::query()->orderBy('id')->pluck('filename')->all();
+
+    expect($filenames[0])->toBe('hero-banner.webp');
+    expect($filenames[1])->toBe('hero-banner-1.webp');
+});
+
 it('rejects svg uploads in media library', function (): void {
     $user = User::factory()->create([
         'password' => 'StrongPass123',
@@ -104,6 +138,33 @@ it('rejects svg uploads in media library', function (): void {
         ])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['file']);
+});
+
+it('returns per-item validation errors for invalid files in batch upload', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files/batch', [
+            'items' => [
+                [
+                    'name' => 'Valid file',
+                    'file' => UploadedFile::fake()->image('ok.jpg', 320, 240),
+                ],
+                [
+                    'name' => '../',
+                    'file' => UploadedFile::fake()->image('bad.jpg', 320, 240),
+                ],
+            ],
+        ])
+        ->assertOk();
+
+    expect($response->json('data.results.0.status'))->toBe('success');
+    expect($response->json('data.results.1.status'))->toBe('error');
+    expect($response->json('data.results.1.errors.name.0'))->toContain('Укажите корректное имя файла');
 });
 
 it('deletes uploaded media files with dedicated permission', function (): void {
@@ -169,6 +230,44 @@ it('moves uploaded media files into another folder', function (): void {
     expect($mediaFile->path)->toStartWith('media/gallery/');
     expect($mediaFile->variants['thumb']['path'])->toStartWith('media/gallery/');
     Storage::disk('public')->assertMissing($originalPath);
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+});
+
+it('renames uploaded media files and regenerates variant paths', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => UploadedFile::fake()->image('rename-me.jpg', 640, 480),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
+    $oldPath = $mediaFile->path;
+    $oldThumbPath = $mediaFile->variants['thumb']['path'];
+
+    $this->actingAs($user)
+        ->putJson("/admin/api/media/files/{$mediaFile->id}", [
+            'original_name' => 'Cover Image',
+            'title' => $mediaFile->title,
+            'alt_text' => $mediaFile->alt_text,
+            'caption' => $mediaFile->caption,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.original_name', 'Cover Image.jpg')
+        ->assertJsonPath('data.filename', 'cover-image.jpg');
+
+    $mediaFile->refresh();
+
+    expect($mediaFile->path)->toBe('media/cover-image.jpg');
+    expect($mediaFile->variants['thumb']['path'])->toStartWith('media/thumb-cover-image.');
+    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('public')->assertMissing($oldThumbPath);
     Storage::disk('public')->assertExists($mediaFile->path);
     Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
 });

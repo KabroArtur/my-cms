@@ -73,6 +73,7 @@ Route::middleware(['auth', 'admin.access', 'two_factor', 'throttle:admin-api'])-
     Route::put('/media/folders/{folder}', [MediaController::class, 'updateFolder']);
     Route::delete('/media/folders/{folder}', [MediaController::class, 'destroyFolder']);
     Route::post('/media/files', [MediaController::class, 'storeFile']);
+    Route::post('/media/files/batch', [MediaController::class, 'storeFiles']);
     Route::put('/media/files/{mediaFile}', [MediaController::class, 'updateFile']);
     Route::put('/media/files/{mediaFile}/move', [MediaController::class, 'moveFile']);
     Route::delete('/media/files/{mediaFile}', [MediaController::class, 'destroyFile']);

@@ -17,6 +17,7 @@ class UploadMediaRequest extends FormRequest
     {
         return [
             'folder_id' => ['nullable', 'integer', 'exists:media_folders,id'],
+            'name' => ['nullable', 'string', 'max:255'],
             'file' => [
                 'required',
                 'file',

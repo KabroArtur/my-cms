@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Core\Media\Models\MediaFile;
 use App\Core\Media\Models\MediaFolder;
+use App\Core\Media\Services\MediaUploadService;
 use App\Core\Media\Services\MediaVariantManager;
 use App\Core\Security\Services\SecurityAuditLogger;
 use App\Core\Support\Services\CmsCacheService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Media\StoreMediaFolderRequest;
+use App\Http\Requests\Admin\Media\UploadMediaBatchRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFileRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFolderRequest;
 use App\Http\Requests\Admin\Media\UploadMediaRequest;
@@ -20,12 +22,15 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class MediaController extends Controller
 {
     public function __construct(
         protected MediaVariantManager $variants,
+        protected MediaUploadService $uploads,
         protected CmsCacheService $cache,
     )
     {
@@ -162,31 +167,12 @@ class MediaController extends Controller
             ? MediaFolder::query()->findOrFail($request->integer('folder_id'))
             : null;
 
-        $file = $request->file('file');
-        $extension = strtolower((string) $file->getClientOriginalExtension());
-        $directory = 'media'.($folder ? '/'.$folder->path : '');
-        $storedName = (string) Str::uuid().($extension !== '' ? '.'.$extension : '');
-        $storedPath = $file->storeAs($directory, $storedName, 'public');
-        [$width, $height] = array_pad((array) @getimagesize($file->getRealPath()), 2, null);
-        $variants = $this->variants->generateForUpload($file, 'public', $directory, $storedName);
-
-        $mediaFile = MediaFile::query()->create([
-            'folder_id' => $folder?->id,
-            'created_by' => $request->user()?->id,
-            'disk' => 'public',
-            'directory' => $directory,
-            'filename' => $storedName,
-            'original_name' => $file->getClientOriginalName(),
-            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-            'alt_text' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-            'extension' => $extension !== '' ? $extension : null,
-            'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-            'size' => $file->getSize(),
-            'width' => is_int($width) ? $width : null,
-            'height' => is_int($height) ? $height : null,
-            'path' => $storedPath,
-            'variants' => $variants,
-        ]);
+        $mediaFile = $this->uploads->storeUploadedFile(
+            file: $request->file('file'),
+            folder: $folder,
+            userId: $request->user()?->id,
+            desiredName: $request->input('name'),
+        );
 
         $audit->log('media.files.uploaded', $request->user(), [
             'file_id' => $mediaFile->id,
@@ -201,9 +187,99 @@ class MediaController extends Controller
             ->setStatusCode(201);
     }
 
+    public function storeFiles(UploadMediaBatchRequest $request, SecurityAuditLogger $audit): JsonResponse
+    {
+        $results = [];
+        $uploadedAny = false;
+
+        foreach (array_keys($request->input('items', [])) as $index) {
+            $payload = [
+                'file' => $request->file("items.$index.file"),
+                'name' => $request->input("items.$index.name"),
+                'folder_id' => $request->input("items.$index.folder_id"),
+            ];
+
+            $validator = Validator::make($payload, [
+                'folder_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
+                'name' => ['nullable', 'string', 'max:255'],
+                'file' => [
+                    'required',
+                    'file',
+                    'max:10240',
+                    'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp',
+                ],
+            ]);
+
+            if ($validator->fails()) {
+                $results[] = [
+                    'index' => $index,
+                    'status' => 'error',
+                    'message' => 'Файл не прошел валидацию.',
+                    'errors' => $validator->errors()->toArray(),
+                ];
+
+                continue;
+            }
+
+            $folderId = $validator->validated()['folder_id'] ?? null;
+            $folder = $folderId ? MediaFolder::query()->find($folderId) : null;
+
+            try {
+                $mediaFile = $this->uploads->storeUploadedFile(
+                    file: $payload['file'],
+                    folder: $folder,
+                    userId: $request->user()?->id,
+                    desiredName: $payload['name'],
+                );
+
+                $audit->log('media.files.uploaded', $request->user(), [
+                    'file_id' => $mediaFile->id,
+                    'file_path' => $mediaFile->path,
+                    'folder_id' => $folder?->id,
+                ]);
+
+                $results[] = [
+                    'index' => $index,
+                    'status' => 'success',
+                    'data' => MediaFileResource::make($mediaFile->load('folder'))->resolve(),
+                ];
+                $uploadedAny = true;
+            } catch (ValidationException $exception) {
+                $results[] = [
+                    'index' => $index,
+                    'status' => 'error',
+                    'message' => 'Файл не прошел валидацию.',
+                    'errors' => $exception->errors(),
+                ];
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                $results[] = [
+                    'index' => $index,
+                    'status' => 'error',
+                    'message' => 'Не удалось загрузить файл.',
+                ];
+            }
+        }
+
+        if ($uploadedAny) {
+            $this->cache->invalidateAll(reason: 'media-file-batch-uploaded');
+        }
+
+        return response()->json([
+            'data' => [
+                'results' => $results,
+            ],
+        ]);
+    }
+
     public function updateFile(UpdateMediaFileRequest $request, MediaFile $mediaFile, SecurityAuditLogger $audit): MediaFileResource
     {
         $validated = $request->validated();
+
+        if (array_key_exists('original_name', $validated) && $validated['original_name'] !== null) {
+            $mediaFile = $this->uploads->renameMediaFile($mediaFile->load('folder'), (string) $validated['original_name']);
+        }
 
         $mediaFile->forceFill([
             'title' => $this->nullableString($validated['title'] ?? null),

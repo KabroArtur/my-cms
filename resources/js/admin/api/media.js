@@ -28,8 +28,15 @@ export async function deleteMediaFolder(id) {
 export async function uploadMediaFile({ folderId, file }) {
     const formData = new FormData()
 
+    const name = arguments[0]?.name
+    const onUploadProgress = arguments[0]?.onUploadProgress
+
     if (folderId) {
         formData.append('folder_id', folderId)
+    }
+
+    if (name) {
+        formData.append('name', name)
     }
 
     formData.append('file', file)
@@ -38,6 +45,7 @@ export async function uploadMediaFile({ folderId, file }) {
         headers: {
             'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress,
     })
 
     return response.data
