@@ -90,6 +90,48 @@
 @php($url = $cms->pageUrl($page))
 ```
 
+### 4.8. customField(key, default)
+Возвращает значение дополнительного поля текущей страницы.
+
+Пример:
+
+```php
+@php($heroTitle = $cms->customField('hero_title'))
+<h1>{{ $heroTitle }}</h1>
+```
+
+### 4.9. customFields()
+Возвращает все дополнительные поля текущей страницы одним массивом.
+
+Пример:
+
+```php
+@php($fields = $cms->customFields())
+```
+
+### 4.10. group(key)
+Возвращает group-поле как объект ThemeDataBag, чтобы удобно читать вложенные значения.
+
+Пример:
+
+```php
+@php($hero = $cms->group('hero_group'))
+<h2>{{ $hero->field('title') }}</h2>
+```
+
+### 4.11. imageUrlFromValue(value, size)
+Помогает безопасно получить URL из image-поля. Метод принимает id файла, URL или объект значения поля.
+
+Пример:
+
+```php
+@php($heroImage = $cms->customField('hero_image'))
+<img src="{{ $cms->imageUrlFromValue($heroImage) }}" alt="{{ $cms->imageAltFromValue($heroImage, 'Hero') }}">
+```
+
+### 4.12. imageAltFromValue(value, default)
+Возвращает alt для image-поля. Работает и с MediaFile, и с raw object value, и с URL.
+
 ## 5. Формат пункта меню
 
 Каждый пункт в дереве меню содержит:

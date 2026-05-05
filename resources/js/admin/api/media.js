@@ -9,6 +9,12 @@ export async function fetchMediaLibrary(folderId = null) {
     return response.data
 }
 
+export async function fetchMediaFile(id) {
+    const response = await axios.get(adminApiPath(`media/files/${id}`))
+
+    return response.data
+}
+
 export async function createMediaFolder(payload) {
     const response = await axios.post(adminApiPath('media/folders'), payload)
 

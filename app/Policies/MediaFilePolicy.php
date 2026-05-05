@@ -12,6 +12,11 @@ class MediaFilePolicy
         return $this->allows($user, 'media.access');
     }
 
+    public function view(?User $user, MediaFile $file): bool
+    {
+        return $this->allows($user, 'media.access');
+    }
+
     public function create(?User $user): bool
     {
         return $this->allows($user, 'media.upload');

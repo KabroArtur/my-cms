@@ -24,6 +24,16 @@ class ThemeDataBag
         return Arr::get($this->data, $key, $default);
     }
 
+    public function customField(string $key, mixed $default = null): mixed
+    {
+        return $this->field($key, $default);
+    }
+
+    public function customFields(): array
+    {
+        return $this->all();
+    }
+
     public function hasField(string $key): bool
     {
         return $this->cms->valueExists($this->field($key));

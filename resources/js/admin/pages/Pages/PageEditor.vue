@@ -16,12 +16,15 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { fetchCurrentUser } from '../../api/auth'
+import CustomFieldRenderer from '../../components/custom-fields/CustomFieldRenderer.vue'
+import { cloneValue, defaultValueForField } from '../../components/custom-fields/customFields'
+import MediaPickerField from '../../components/media/MediaPickerField.vue'
+import PageContentToolbar from '../../components/ui/PageContentToolbar.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
 import { fetchApplicableAdditionalFields } from '../../api/additionalFields'
 import { loadCmsSettings } from '../../composables/useCmsSettings'
-import { fetchMediaLibrary } from '../../api/media'
 import { createPage, fetchPage, fetchPageTree, updatePage } from '../../api/pages'
 
 const route = useRoute()
@@ -33,16 +36,8 @@ const errorMessage = ref('')
 const validationErrors = ref({})
 const slugLocked = ref(false)
 const allPages = ref([])
-const mediaLoading = ref(false)
-const mediaErrorMessage = ref('')
-const mediaCurrentFolder = ref(null)
-const mediaBreadcrumbs = ref([])
-const mediaFolders = ref([])
-const mediaFiles = ref([])
-const featuredMedia = ref(null)
 const creatorLabel = ref('Не указан')
 const canUpdatePage = ref(true)
-const mediaInsertSize = ref('original')
 const additionalFieldGroups = ref([])
 const additionalFieldValues = ref({})
 const canManageAdditionalFields = ref(false)
@@ -203,7 +198,6 @@ function fillForm(page) {
     form.meta_description = page.meta_description ?? ''
     form.featured_media_id = page.featured_media_id ?? ''
     form.content = page.content ?? ''
-    featuredMedia.value = page.featured_media ?? null
     creatorLabel.value = page.creator?.name || page.creator?.username || 'Не указан'
     canUpdatePage.value = page.can?.update ?? true
     slugLocked.value = form.slug.trim() !== ''
@@ -214,63 +208,6 @@ function fillForm(page) {
 
     additionalFieldGroups.value = page.additional_fields?.groups ?? []
     additionalFieldValues.value = page.additional_fields?.values ?? {}
-}
-
-function fieldOptions(field) {
-    const options = Array.isArray(field?.settings?.options) ? field.settings.options : []
-
-    return options
-        .map((option) => {
-            if (typeof option === 'string') {
-                return { label: option, value: option }
-            }
-
-            if (option && typeof option === 'object') {
-                const value = String(option.value ?? option.label ?? '')
-
-                return {
-                    label: String(option.label ?? value),
-                    value,
-                }
-            }
-
-            return { label: '', value: '' }
-        })
-        .filter((option) => option.value !== '')
-}
-
-function nestedFieldDefinitions(field) {
-    return Array.isArray(field?.settings?.fields)
-        ? field.settings.fields.filter((item) => item && typeof item === 'object' && item.key)
-        : []
-}
-
-function defaultValueForField(field) {
-    const type = String(field?.type ?? 'text').toLowerCase()
-
-    if (field?.default_value !== null && field?.default_value !== undefined && field?.default_value !== '') {
-        return field.default_value
-    }
-
-    if (type === 'toggle') {
-        return false
-    }
-
-    if (type === 'group') {
-        const value = {}
-
-        nestedFieldDefinitions(field).forEach((nested) => {
-            value[nested.key] = defaultValueForField(nested)
-        })
-
-        return value
-    }
-
-    if (type === 'repeater') {
-        return []
-    }
-
-    return ''
 }
 
 function ensureFieldValue(field) {
@@ -285,48 +222,6 @@ function ensureFieldValue(field) {
     }
 }
 
-function ensureGroupValue(field) {
-    ensureFieldValue(field)
-
-    if (!additionalFieldValues.value[field.key] || typeof additionalFieldValues.value[field.key] !== 'object' || Array.isArray(additionalFieldValues.value[field.key])) {
-        additionalFieldValues.value[field.key] = {}
-    }
-
-    nestedFieldDefinitions(field).forEach((nested) => {
-        if (!(nested.key in additionalFieldValues.value[field.key])) {
-            additionalFieldValues.value[field.key][nested.key] = defaultValueForField(nested)
-        }
-    })
-}
-
-function ensureRepeaterValue(field) {
-    ensureFieldValue(field)
-
-    if (!Array.isArray(additionalFieldValues.value[field.key])) {
-        additionalFieldValues.value[field.key] = []
-    }
-}
-
-function addRepeaterRow(field) {
-    ensureRepeaterValue(field)
-
-    const row = {}
-
-    nestedFieldDefinitions(field).forEach((nested) => {
-        row[nested.key] = defaultValueForField(nested)
-    })
-
-    additionalFieldValues.value[field.key].push(row)
-}
-
-function removeRepeaterRow(fieldKey, index) {
-    if (!Array.isArray(additionalFieldValues.value[fieldKey])) {
-        return
-    }
-
-    additionalFieldValues.value[fieldKey].splice(index, 1)
-}
-
 function hydrateAdditionalFields(groups, values = {}) {
     additionalFieldGroups.value = Array.isArray(groups) ? groups : []
     additionalFieldValues.value = { ...(values || {}) }
@@ -336,6 +231,13 @@ function hydrateAdditionalFields(groups, values = {}) {
 
         fields.forEach((field) => ensureFieldValue(field))
     })
+}
+
+function updateAdditionalFieldValue(key, value) {
+    additionalFieldValues.value = {
+        ...additionalFieldValues.value,
+        [key]: cloneValue(value),
+    }
 }
 
 async function loadApplicableAdditionalFields() {
@@ -356,80 +258,17 @@ async function loadApplicableAdditionalFields() {
     }
 }
 
-async function loadMedia(folderId = null) {
-    mediaLoading.value = true
-    mediaErrorMessage.value = ''
-
+async function loadEditorSettings() {
     try {
         const settingsPayload = await loadCmsSettings()
-        mediaInsertSize.value = settingsPayload.settings?.media_default_insert_variant || 'original'
         templateOptions.value = settingsPayload.options?.page_templates ?? templateOptions.value
-        const payload = await fetchMediaLibrary(folderId)
-        mediaCurrentFolder.value = payload.data?.current_folder ?? null
-        mediaBreadcrumbs.value = payload.data?.breadcrumbs ?? []
-        mediaFolders.value = payload.data?.folders ?? []
-        mediaFiles.value = payload.data?.files ?? []
     } catch (error) {
-        mediaErrorMessage.value = 'Не удалось загрузить медиафайлы.'
         console.error(error)
-    } finally {
-        mediaLoading.value = false
     }
-}
-
-async function openMediaFolder(folder) {
-    await loadMedia(folder.id)
-}
-
-async function openMediaRoot() {
-    await loadMedia(null)
-}
-
-function resolveMediaUrl(file) {
-    if (mediaInsertSize.value === 'original') {
-        return file.url
-    }
-
-    return file.variants?.[mediaInsertSize.value]?.url || file.url
-}
-
-async function insertIntoContent(value) {
-    const insertValue = String(value)
-
-    if (!contentEditor.value) {
-        form.content = `${form.content}${form.content ? '' : ''}${insertValue}`
-        return
-    }
-
-    contentEditor.value.chain().focus().insertContent(insertValue).run()
-    form.content = contentEditor.value.getHTML()
-}
-
-async function insertMediaUrl(file) {
-    await insertIntoContent(resolveMediaUrl(file))
-}
-
-async function insertMediaImage(file) {
-    if (!contentEditor.value) {
-        return
-    }
-
-    contentEditor.value.chain().focus().setImage({
-        src: resolveMediaUrl(file),
-        alt: file.alt_text || file.original_name || '',
-    }).run()
-
-    form.content = contentEditor.value.getHTML()
 }
 
 function setFeaturedMedia(file) {
     form.featured_media_id = file.id
-    featuredMedia.value = file
-}
-
-function clearFeaturedMedia() {
-    form.featured_media_id = ''
-    featuredMedia.value = null
 }
 
 function resetForm() {
@@ -444,68 +283,6 @@ function resetForm() {
     additionalFieldValues.value = {}
     validationErrors.value = {}
     errorMessage.value = ''
-}
-
-function toggleLink() {
-    if (!contentEditor.value) {
-        return
-    }
-
-    const currentHref = contentEditor.value.getAttributes('link').href
-    const nextHref = window.prompt('Введите URL ссылки', currentHref || 'https://')
-
-    if (nextHref === null) {
-        return
-    }
-
-    const normalized = nextHref.trim()
-
-    if (normalized === '') {
-        contentEditor.value.chain().focus().unsetLink().run()
-
-        return
-    }
-
-    contentEditor.value.chain().focus().setLink({ href: normalized }).run()
-}
-
-function setParagraph() {
-    if (!contentEditor.value) {
-        return
-    }
-
-    contentEditor.value.chain().focus().setParagraph().run()
-}
-
-function setHeading(level) {
-    if (!contentEditor.value || !Number.isInteger(level) || level < 1 || level > 6) {
-        return
-    }
-
-    contentEditor.value.chain().focus().setHeading({ level }).run()
-}
-
-function toggleTextAlign(align) {
-    if (!contentEditor.value) {
-        return
-    }
-
-    contentEditor.value.chain().focus().setTextAlign(align).run()
-}
-
-function insertTable() {
-    if (!contentEditor.value) {
-        return
-    }
-
-    contentEditor.value.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-}
-
-function toolbarButtonClass(isActive) {
-    return {
-        'tiptap-toolbar-btn': true,
-        'is-active': isActive,
-    }
 }
 
 async function loadPage() {
@@ -587,8 +364,8 @@ async function submitForm() {
 }
 
 onMounted(() => {
+    loadEditorSettings()
     loadPage()
-    loadMedia()
 })
 
 watch(() => form.template, () => {
@@ -666,97 +443,18 @@ onBeforeUnmount(() => {
                     </label>
 
                     <div class="page-featured-media">
-                        <div class="page-featured-media__header">
-                            <span>Обложка страницы</span>
-                            <input v-model="form.featured_media_id" type="hidden">
-                            <AdminButton v-if="featuredMedia" type="button" @click="clearFeaturedMedia">
-                                Очистить
-                            </AdminButton>
-                        </div>
-
-                        <div v-if="featuredMedia" class="page-featured-media__card">
-                            <div class="page-featured-media__preview">
-                                <img :src="featuredMedia.preview_url || featuredMedia.url" :alt="featuredMedia.alt_text || featuredMedia.original_name">
-                            </div>
-
-                            <div class="page-featured-media__body">
-                                <strong>{{ featuredMedia.original_name }}</strong>
-                                <p class="muted">{{ featuredMedia.size_human }}<span v-if="featuredMedia.width && featuredMedia.height"> | {{ featuredMedia.width }} x {{ featuredMedia.height }}</span></p>
-                            </div>
-                        </div>
-
-                        <p v-else class="muted">Обложка пока не выбрана.</p>
+                        <span>Обложка страницы</span>
+                        <MediaPickerField
+                            v-model="form.featured_media_id"
+                            title="Выбрать обложку страницы"
+                            return-type="id"
+                            :allow-upload="true"
+                        />
                     </div>
 
                     <label class="admin-form-label">
                         <span>Контент</span>
-                        <div class="admin-editor-toolbar">
-                            <div class="tiptap-toolbar-group">
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('paragraph'))" type="button" @click="setParagraph">Параграф</AdminButton>
-                                <AdminButton
-                                    v-for="level in headingLevels"
-                                    :key="`h-${level}`"
-                                    :class="toolbarButtonClass(contentEditor?.isActive('heading', { level }))"
-                                    type="button"
-                                    @click="setHeading(level)"
-                                >
-                                    H{{ level }}
-                                </AdminButton>
-                            </div>
-
-                            <span class="tiptap-toolbar-separator" aria-hidden="true"></span>
-
-                            <div class="tiptap-toolbar-group">
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('bold'))" type="button" @click="contentEditor?.chain().focus().toggleBold().run()">Жирный</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('italic'))" type="button" @click="contentEditor?.chain().focus().toggleItalic().run()">Курсив</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('underline'))" type="button" @click="contentEditor?.chain().focus().toggleUnderline().run()">Подчеркн.</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('strike'))" type="button" @click="contentEditor?.chain().focus().toggleStrike().run()">Зачеркн.</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('code'))" type="button" @click="contentEditor?.chain().focus().toggleCode().run()">Код</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('codeBlock'))" type="button" @click="contentEditor?.chain().focus().toggleCodeBlock().run()">Блок кода</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('highlight'))" type="button" @click="contentEditor?.chain().focus().toggleHighlight().run()">Подсветка</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('link'))" type="button" @click="toggleLink">Ссылка</AdminButton>
-                            </div>
-
-                            <span class="tiptap-toolbar-separator" aria-hidden="true"></span>
-
-                            <div class="tiptap-toolbar-group">
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('bulletList'))" type="button" @click="contentEditor?.chain().focus().toggleBulletList().run()">Список •</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('orderedList'))" type="button" @click="contentEditor?.chain().focus().toggleOrderedList().run()">Список 1.</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('taskList'))" type="button" @click="contentEditor?.chain().focus().toggleTaskList().run()">Чек-лист</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('blockquote'))" type="button" @click="contentEditor?.chain().focus().toggleBlockquote().run()">Цитата</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().setHorizontalRule().run()">Линия</AdminButton>
-                            </div>
-
-                            <span class="tiptap-toolbar-separator" aria-hidden="true"></span>
-
-                            <div class="tiptap-toolbar-group">
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive({ textAlign: 'left' }))" type="button" @click="toggleTextAlign('left')">Слева</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive({ textAlign: 'center' }))" type="button" @click="toggleTextAlign('center')">Центр</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive({ textAlign: 'right' }))" type="button" @click="toggleTextAlign('right')">Справа</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive({ textAlign: 'justify' }))" type="button" @click="toggleTextAlign('justify')">По ширине</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('subscript'))" type="button" @click="contentEditor?.chain().focus().toggleSubscript().run()">x₂</AdminButton>
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('superscript'))" type="button" @click="contentEditor?.chain().focus().toggleSuperscript().run()">x²</AdminButton>
-                            </div>
-
-                            <span class="tiptap-toolbar-separator" aria-hidden="true"></span>
-
-                            <div class="tiptap-toolbar-group">
-                                <AdminButton :class="toolbarButtonClass(contentEditor?.isActive('table'))" type="button" @click="insertTable">Таблица</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().addColumnBefore().run()">+Колонка</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().addRowAfter().run()">+Строка</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().deleteColumn().run()">-Колонка</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().deleteRow().run()">-Строка</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().deleteTable().run()">Удалить таблицу</AdminButton>
-                            </div>
-
-                            <span class="tiptap-toolbar-separator" aria-hidden="true"></span>
-
-                            <div class="tiptap-toolbar-group">
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().undo().run()">Назад</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().redo().run()">Вперед</AdminButton>
-                                <AdminButton type="button" @click="contentEditor?.chain().focus().unsetAllMarks().clearNodes().run()">Сброс</AdminButton>
-                            </div>
-                        </div>
+                        <PageContentToolbar :editor="contentEditor" :heading-levels="headingLevels" />
                         <EditorContent :editor="contentEditor" class="admin-editor tiptap-editor" />
                     </label>
 
@@ -774,142 +472,27 @@ onBeforeUnmount(() => {
 
                         <p v-if="additionalFieldGroups.length === 0" class="muted">Для текущего шаблона нет подключенных наборов полей.</p>
 
-                        <div v-for="group in additionalFieldGroups" :key="group.id" class="additional-fields-group">
-                            <h3>{{ group.name }}</h3>
-                            <p v-if="group.description" class="muted">{{ group.description }}</p>
-
-                            <div class="admin-stack">
-                                <div v-for="field in group.fields" :key="field.key" class="admin-form-label">
-                                    <span>{{ field.label }} <small class="muted">({{ field.key }})</small></span>
-
-                                    <input
-                                        v-if="['text', 'url'].includes(field.type)"
-                                        v-model="additionalFieldValues[field.key]"
-                                        class="admin-input"
-                                        :type="field.type === 'url' ? 'url' : 'text'"
-                                        @focus="ensureFieldValue(field)"
-                                    >
-
-                                    <input
-                                        v-else-if="field.type === 'number'"
-                                        v-model.number="additionalFieldValues[field.key]"
-                                        class="admin-input"
-                                        type="number"
-                                        @focus="ensureFieldValue(field)"
-                                    >
-
-                                    <label v-else-if="field.type === 'toggle'" class="muted">
-                                        <input
-                                            v-model="additionalFieldValues[field.key]"
-                                            type="checkbox"
-                                            @focus="ensureFieldValue(field)"
-                                        >
-                                        Да / Нет
-                                    </label>
-
-                                    <select
-                                        v-else-if="field.type === 'select'"
-                                        v-model="additionalFieldValues[field.key]"
-                                        class="admin-select"
-                                        @focus="ensureFieldValue(field)"
-                                    >
-                                        <option value="">Выберите значение</option>
-                                        <option v-for="option in fieldOptions(field)" :key="option.value" :value="option.value">
-                                            {{ option.label }}
-                                        </option>
-                                    </select>
-
-                                    <input
-                                        v-else-if="field.type === 'image'"
-                                        v-model.number="additionalFieldValues[field.key]"
-                                        class="admin-input"
-                                        type="number"
-                                        placeholder="ID файла из медиатеки"
-                                        @focus="ensureFieldValue(field)"
-                                    >
-
-                                    <div v-else-if="field.type === 'group'" class="additional-fields-nested">
-                                        <div class="admin-actions-row">
-                                            <small class="muted">Группа вложенных полей</small>
-                                            <AdminButton type="button" @click="ensureGroupValue(field)">Инициализировать</AdminButton>
-                                        </div>
-
-                                        <div v-for="nested in nestedFieldDefinitions(field)" :key="`${field.key}-${nested.key}`" class="admin-form-label">
-                                            <span>{{ nested.label || nested.key }}</span>
-                                            <input
-                                                v-if="['text', 'url'].includes(nested.type || 'text')"
-                                                v-model="additionalFieldValues[field.key][nested.key]"
-                                                class="admin-input"
-                                                :type="(nested.type || 'text') === 'url' ? 'url' : 'text'"
-                                                @focus="ensureGroupValue(field)"
-                                            >
-                                            <input
-                                                v-else-if="(nested.type || 'text') === 'number'"
-                                                v-model.number="additionalFieldValues[field.key][nested.key]"
-                                                class="admin-input"
-                                                type="number"
-                                                @focus="ensureGroupValue(field)"
-                                            >
-                                            <label v-else-if="(nested.type || 'text') === 'toggle'" class="muted">
-                                                <input v-model="additionalFieldValues[field.key][nested.key]" type="checkbox" @focus="ensureGroupValue(field)">
-                                                Да / Нет
-                                            </label>
-                                            <textarea
-                                                v-else
-                                                v-model="additionalFieldValues[field.key][nested.key]"
-                                                class="admin-textarea"
-                                                rows="3"
-                                                @focus="ensureGroupValue(field)"
-                                            ></textarea>
-                                        </div>
-                                    </div>
-
-                                    <div v-else-if="field.type === 'repeater'" class="additional-fields-nested">
-                                        <div class="admin-actions-row">
-                                            <small class="muted">Повторяемые элементы</small>
-                                            <AdminButton type="button" @click="addRepeaterRow(field)">+ Добавить элемент</AdminButton>
-                                        </div>
-
-                                        <div
-                                            v-for="(row, rowIndex) in (additionalFieldValues[field.key] || [])"
-                                            :key="`${field.key}-row-${rowIndex}`"
-                                            class="additional-fields-repeater-row"
-                                        >
-                                            <div v-for="nested in nestedFieldDefinitions(field)" :key="`${field.key}-${nested.key}-${rowIndex}`" class="admin-form-label">
-                                                <span>{{ nested.label || nested.key }}</span>
-                                                <input
-                                                    v-if="['text', 'url'].includes(nested.type || 'text')"
-                                                    v-model="row[nested.key]"
-                                                    class="admin-input"
-                                                    :type="(nested.type || 'text') === 'url' ? 'url' : 'text'"
-                                                >
-                                                <input
-                                                    v-else-if="(nested.type || 'text') === 'number'"
-                                                    v-model.number="row[nested.key]"
-                                                    class="admin-input"
-                                                    type="number"
-                                                >
-                                                <label v-else-if="(nested.type || 'text') === 'toggle'" class="muted">
-                                                    <input v-model="row[nested.key]" type="checkbox">
-                                                    Да / Нет
-                                                </label>
-                                                <textarea v-else v-model="row[nested.key]" class="admin-textarea" rows="3"></textarea>
-                                            </div>
-
-                                            <AdminButton type="button" @click="removeRepeaterRow(field.key, rowIndex)">Удалить элемент</AdminButton>
-                                        </div>
-                                    </div>
-
-                                    <textarea
-                                        v-else
-                                        v-model="additionalFieldValues[field.key]"
-                                        class="admin-textarea"
-                                        :rows="field.type === 'editor' ? 6 : 4"
-                                        @focus="ensureFieldValue(field)"
-                                    ></textarea>
+                        <details v-for="group in additionalFieldGroups" :key="group.id" class="additional-fields-group" open>
+                            <summary class="additional-fields-group__summary">
+                                <div>
+                                    <h3>{{ group.name }}</h3>
+                                    <p v-if="group.description" class="muted">{{ group.description }}</p>
                                 </div>
+                                <small class="muted">{{ Array.isArray(group.fields) ? group.fields.length : 0 }} полей</small>
+                            </summary>
+
+                            <div class="admin-stack additional-fields-group__body">
+                                <CustomFieldRenderer
+                                    v-for="field in group.fields"
+                                    :key="field.key"
+                                    :field="field"
+                                    :model-value="additionalFieldValues[field.key]"
+                                    :errors="validationErrors"
+                                    :path="`additional_fields.${field.key}`"
+                                    @update:model-value="(value) => updateAdditionalFieldValue(field.key, value)"
+                                />
                             </div>
-                        </div>
+                        </details>
                     </section>
 
                     <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
@@ -972,80 +555,38 @@ onBeforeUnmount(() => {
                         </label>
                     </div>
 
-                    <div class="page-media-picker">
-                        <div class="page-media-picker__header">
-                            <h2>Медиа для вставки</h2>
-                            <div class="media-breadcrumbs">
-                                <button type="button" class="button-link" @click="openMediaRoot">
-                                    Корень
-                                </button>
-
-                                <template v-for="folder in mediaBreadcrumbs" :key="folder.id">
-                                    <span>/</span>
-                                    <button type="button" class="button-link" @click="openMediaFolder(folder)">
-                                        {{ folder.name }}
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-
-                        <p v-if="mediaLoading" class="muted">Загрузка медиатеки...</p>
-                        <p v-else-if="mediaErrorMessage" class="error-text">{{ mediaErrorMessage }}</p>
-
-                        <div v-if="mediaFolders.length > 0" class="page-media-picker__folders">
-                            <button
-                                v-for="folder in mediaFolders"
-                                :key="folder.id"
-                                type="button"
-                                class="page-media-picker__folder"
-                                @click="openMediaFolder(folder)"
-                            >
-                                {{ folder.name }}
-                            </button>
-                        </div>
-
-                        <div v-if="mediaFiles.length > 0" class="page-media-picker__files">
-                            <label class="admin-form-label">
-                                <span>Размер для вставки</span>
-                                <select v-model="mediaInsertSize" class="admin-select">
-                                    <option value="original">Оригинал</option>
-                                    <option value="large">Large</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="thumb">Mini / Thumb</option>
-                                </select>
-                                <small class="muted">Превью в админке всегда компактное, а здесь выбирается размер URL и img-тега для контента.</small>
-                            </label>
-
-                            <article v-for="file in mediaFiles" :key="file.id" class="page-media-picker__file-card">
-                                <div class="page-media-picker__preview">
-                                    <img :src="file.preview_url || file.url" :alt="file.alt_text || file.original_name">
-                                </div>
-
-                                <div class="page-media-picker__file-body">
-                                    <h3>{{ file.original_name }}</h3>
-                                    <p class="muted">{{ file.size_human }}<span v-if="file.width && file.height"> | {{ file.width }} x {{ file.height }}</span></p>
-
-                                    <div class="admin-actions-row">
-                                        <AdminButton type="button" @click="insertMediaUrl(file)">
-                                            Вставить URL
-                                        </AdminButton>
-
-                                        <AdminButton type="button" variant="primary" @click="insertMediaImage(file)">
-                                            Вставить img
-                                        </AdminButton>
-
-                                        <AdminButton type="button" @click="setFeaturedMedia(file)">
-                                            Сделать обложкой
-                                        </AdminButton>
-                                    </div>
-                                </div>
-                            </article>
-                        </div>
-
-                        <p v-else-if="!mediaLoading" class="muted">В текущей папке пока нет изображений.</p>
-                    </div>
                 </div>
             </AdminCard>
         </div>
     </AdminPage>
 </template>
+
+<style scoped>
+.additional-fields-group {
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 20px;
+    background: rgba(248, 250, 252, 0.9);
+}
+
+.additional-fields-group + .additional-fields-group {
+    margin-top: 0.9rem;
+}
+
+.additional-fields-group__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.additional-fields-group__summary::-webkit-details-marker {
+    display: none;
+}
+
+.additional-fields-group__body {
+    padding: 0 1.1rem 1.1rem;
+}
+</style>

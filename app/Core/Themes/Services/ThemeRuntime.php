@@ -263,6 +263,22 @@ class ThemeRuntime
         return [];
     }
 
+    public function customField(string $key, mixed $default = null, ?Page $page = null): mixed
+    {
+        return $this->field($key, $default, $page);
+    }
+
+    public function customFields(?Page $page = null): array
+    {
+        $page = $this->resolvePage($page);
+
+        if ($page === null) {
+            return [];
+        }
+
+        return $this->additionalFields->combinedValuesForPage($page);
+    }
+
     public function group(string $key, ?Page $page = null): ThemeDataBag
     {
         $value = $this->fieldArray($key, $page);
@@ -875,6 +891,10 @@ class ThemeRuntime
             }
         }
 
+        if (is_string($value) && $value !== '') {
+            return null;
+        }
+
         return null;
     }
 
@@ -904,18 +924,34 @@ class ThemeRuntime
     {
         $media = $this->mediaFromValue($value);
 
-        if ($media === null) {
-            return null;
+        if ($media !== null) {
+            return $size === 'original' ? $media->url() : ($media->variantUrl($size) ?? $media->url());
         }
 
-        return $size === 'original' ? $media->url() : ($media->variantUrl($size) ?? $media->url());
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        if (is_array($value) && is_string($value['url'] ?? null) && $value['url'] !== '') {
+            return $value['url'];
+        }
+
+        return null;
     }
 
     public function imageAltFromValue(mixed $value, string $default = ''): string
     {
         $media = $this->mediaFromValue($value);
 
-        return (string) ($media?->alt_text ?: $media?->title ?: $media?->original_name ?: $default);
+        if ($media !== null) {
+            return (string) ($media->alt_text ?: $media->title ?: $media->original_name ?: $default);
+        }
+
+        if (is_array($value)) {
+            return (string) ($value['alt_text'] ?? $value['title'] ?? $value['original_name'] ?? $default);
+        }
+
+        return $default;
     }
 
     public function valueExists(mixed $value): bool

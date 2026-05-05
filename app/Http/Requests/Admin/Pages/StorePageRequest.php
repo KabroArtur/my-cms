@@ -6,10 +6,12 @@ use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Models\Page;
+use App\Core\Pages\Services\AdditionalFieldsService;
 use App\Core\Settings\Services\SettingsManager;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Запрос валидирует создание страницы в административной зоне.
@@ -55,5 +57,23 @@ class StorePageRequest extends FormRequest
             'is_home' => ['nullable', 'boolean'],
             'additional_fields' => ['nullable', 'array'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $template = trim((string) $this->input('template', ''));
+            $errors = app(AdditionalFieldsService::class)->validatePageValues(
+                null,
+                $template !== '' ? $template : null,
+                (array) $this->input('additional_fields', []),
+            );
+
+            foreach ($errors as $path => $messages) {
+                foreach ((array) $messages as $message) {
+                    $validator->errors()->add($path, $message);
+                }
+            }
+        });
     }
 }

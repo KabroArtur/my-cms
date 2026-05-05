@@ -2,6 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchCurrentUser } from '../../api/auth'
+import FieldDefinitionEditor from '../../components/custom-fields/FieldDefinitionEditor.vue'
+import { emptyFieldDefinition, normalizeFieldDefinition } from '../../components/custom-fields/customFields'
 import { loadCmsSettings } from '../../composables/useCmsSettings'
 import { fetchPageTree } from '../../api/pages'
 import AdminButton from '../../components/ui/AdminButton.vue'
@@ -20,6 +22,7 @@ const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const errorMessage = ref('')
+const validationErrors = ref({})
 const groups = ref([])
 const activeGroupId = ref(null)
 const accessChecked = ref(false)
@@ -29,19 +32,14 @@ const templateOptions = ref([{ value: 'default', label: 'По умолчанию
 
 const ruleFieldOptions = [
     { value: 'template', label: 'Шаблон страницы', placeholder: '', hint: 'Набор появится только у страниц с выбранным шаблоном.' },
-    { value: 'page_id', label: 'Страницы', placeholder: '', hint: 'Выберите конкретные страницы из уже созданных.' },
+    { value: 'page_id', label: 'Конкретные страницы', placeholder: '', hint: 'Выберите одну или несколько страниц.' },
+    { value: 'is_home', label: 'Главная страница', placeholder: '', hint: 'Условие для главной страницы.' },
+    { value: 'page_slug', label: 'Slug страницы', placeholder: 'home,contacts', hint: 'Один или несколько slug через запятую.' },
+    { value: 'page_path', label: 'Путь страницы', placeholder: '/contacts,/about/team', hint: 'Один или несколько путей через запятую.' },
 ]
 
 const emptyRule = () => ({ field: 'template', operator: '=', value: 'default' })
-const emptyField = () => ({
-    label: '',
-    key: '',
-    type: 'text',
-    settings_json: '{}',
-    default_value: '',
-    is_required: false,
-    sort_order: 0,
-})
+const emptyField = () => emptyFieldDefinition()
 
 const form = reactive({
     id: null,
@@ -68,6 +66,7 @@ function resetForm() {
     form.location_rules = []
     form.fields = [emptyField()]
     activeGroupId.value = null
+    validationErrors.value = {}
 }
 
 function hydrateForm(group) {
@@ -91,17 +90,13 @@ function hydrateForm(group) {
 
     const sourceFields = Array.isArray(group.fields) && group.fields.length > 0 ? group.fields : [emptyField()]
 
-    form.fields = sourceFields.map((field, index) => ({
-        label: field.label || '',
-        key: field.key || '',
-        type: field.type || 'text',
-        settings_json: JSON.stringify(field.settings || {}, null, 2),
-        default_value: field.default_value ?? '',
-        is_required: Boolean(field.is_required),
+    form.fields = sourceFields.map((field, index) => normalizeFieldDefinition({
+        ...field,
         sort_order: Number(field.sort_order ?? index),
     }))
 
     activeGroupId.value = group.id
+    validationErrors.value = {}
 }
 
 function addRule() {
@@ -117,6 +112,15 @@ function operatorOptions(field) {
         return [
             { value: 'in', label: 'в списке' },
             { value: 'not_in', label: 'не в списке' },
+        ]
+    }
+
+    if (['page_slug', 'page_path'].includes(field)) {
+        return [
+            { value: 'in', label: 'в списке' },
+            { value: 'not_in', label: 'не в списке' },
+            { value: '=', label: '=' },
+            { value: '!=', label: '!=' },
         ]
     }
 
@@ -169,6 +173,15 @@ function applyPreset(preset) {
         form.location_rules_mode = 'all'
         form.location_rules = [
             { field: 'page_id', operator: 'in', value: '' },
+        ]
+
+        return
+    }
+
+    if (preset === 'home-only') {
+        form.location_rules_mode = 'all'
+        form.location_rules = [
+            { field: 'is_home', operator: '=', value: '1' },
         ]
     }
 }
@@ -264,21 +277,11 @@ function normalizePayload() {
             label: String(field.label || '').trim(),
             key: String(field.key || '').trim().toLowerCase(),
             type: String(field.type || 'text'),
-            settings: parseSettings(field.settings_json),
-            default_value: field.default_value === '' ? null : field.default_value,
+            settings: field.settings || {},
+            default_value: field.default_value,
             is_required: Boolean(field.is_required),
             sort_order: Number(field.sort_order ?? index),
         })),
-    }
-}
-
-function parseSettings(settingsJson) {
-    try {
-        const parsed = JSON.parse(settingsJson || '{}')
-
-        return typeof parsed === 'object' && parsed !== null ? parsed : {}
-    } catch {
-        return {}
     }
 }
 
@@ -329,6 +332,7 @@ async function ensureAccess() {
 async function saveGroup() {
     saving.value = true
     errorMessage.value = ''
+    validationErrors.value = {}
 
     try {
         const payload = normalizePayload()
@@ -351,7 +355,12 @@ async function saveGroup() {
             resetForm()
         }
     } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'Не удалось сохранить набор.'
+        if (error.response?.status === 422) {
+            validationErrors.value = error.response.data.errors ?? {}
+            errorMessage.value = error.response?.data?.message || 'Исправьте ошибки в форме.'
+        } else {
+            errorMessage.value = error.response?.data?.message || 'Не удалось сохранить набор.'
+        }
         console.error(error)
     } finally {
         saving.value = false
@@ -421,11 +430,13 @@ onMounted(async () => {
                     <label class="admin-form-label">
                         <span>Название набора</span>
                         <input v-model="form.name" class="admin-input" type="text" placeholder="Hero">
+                        <small v-if="validationErrors.name" class="error-text">{{ validationErrors.name[0] }}</small>
                     </label>
 
                     <label class="admin-form-label">
                         <span>Ключ набора</span>
                         <input v-model="form.key" class="admin-input" type="text" placeholder="hero_fields">
+                        <small v-if="validationErrors.key" class="error-text">{{ validationErrors.key[0] }}</small>
                     </label>
 
                     <label class="admin-form-label">
@@ -455,6 +466,7 @@ onMounted(async () => {
                             <AdminButton type="button" @click="applyPreset('all-pages')">Все страницы</AdminButton>
                             <AdminButton type="button" @click="applyPreset('template-only')">Только шаблон</AdminButton>
                             <AdminButton type="button" @click="applyPreset('selected-pages')">Выбранные страницы</AdminButton>
+                            <AdminButton type="button" @click="applyPreset('home-only')">Только главная</AdminButton>
                         </div>
 
                         <label class="admin-form-label">
@@ -495,7 +507,16 @@ onMounted(async () => {
                                 <small class="muted">{{ ruleMeta(rule.field).hint }}</small>
                             </label>
 
-                            <label v-else class="admin-form-label">
+                            <label v-else-if="rule.field === 'is_home'" class="admin-form-label">
+                                <span>Значение</span>
+                                <select v-model="rule.value" class="admin-select">
+                                    <option value="1">Только главная</option>
+                                    <option value="0">Все кроме главной</option>
+                                </select>
+                                <small class="muted">{{ ruleMeta(rule.field).hint }}</small>
+                            </label>
+
+                            <label v-else-if="rule.field === 'page_id'" class="admin-form-label">
                                 <span>Страницы</span>
                                 <input
                                     v-model="pageSearch[index]"
@@ -516,6 +537,12 @@ onMounted(async () => {
                                 <small class="muted">Можно выбрать несколько страниц. Значения ID скрыты, в правиле сохраняется привязка к выбранным страницам.</small>
                             </label>
 
+                            <label v-else class="admin-form-label">
+                                <span>Значение</span>
+                                <input v-model="rule.value" class="admin-input" type="text" :placeholder="ruleMeta(rule.field).placeholder || 'Введите значение'">
+                                <small class="muted">{{ ruleMeta(rule.field).hint }}</small>
+                            </label>
+
                             <div class="admin-form-label">
                                 <span>&nbsp;</span>
                                 <AdminButton type="button" @click="removeRule(index)">Удалить правило</AdminButton>
@@ -526,72 +553,13 @@ onMounted(async () => {
                     </section>
 
                     <section class="admin-stack">
-                        <div class="admin-actions-row">
-                            <h3>Поля набора</h3>
-                            <AdminButton type="button" @click="addField">+ Добавить поле</AdminButton>
-                        </div>
-
-                        <article
-                            v-for="(field, index) in form.fields"
-                            :key="`field-${index}`"
-                            class="page-featured-media"
-                        >
-                            <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span>Label</span>
-                                    <input v-model="field.label" class="admin-input" type="text" placeholder="Hero title">
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>Key</span>
-                                    <input v-model="field.key" class="admin-input" type="text" placeholder="hero_title">
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>Type</span>
-                                    <select v-model="field.type" class="admin-select">
-                                        <option value="text">text</option>
-                                        <option value="textarea">textarea</option>
-                                        <option value="editor">editor</option>
-                                        <option value="image">image</option>
-                                        <option value="url">url</option>
-                                        <option value="number">number</option>
-                                        <option value="toggle">toggle</option>
-                                        <option value="select">select</option>
-                                        <option value="group">group</option>
-                                        <option value="repeater">repeater</option>
-                                    </select>
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>Порядок</span>
-                                    <input v-model.number="field.sort_order" class="admin-input" type="number" min="0">
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>Обязательное</span>
-                                    <input v-model="field.is_required" type="checkbox">
-                                </label>
-                            </div>
-
-                            <label class="admin-form-label">
-                                <span>Default value</span>
-                                <input v-model="field.default_value" class="admin-input" type="text" placeholder="Значение по умолчанию">
-                            </label>
-
-                            <label class="admin-form-label">
-                                <span>Settings (JSON)</span>
-                                <textarea
-                                    v-model="field.settings_json"
-                                    class="admin-textarea"
-                                    rows="5"
-                                    placeholder='Например: {"options":[{"label":"A","value":"a"}]}'
-                                ></textarea>
-                                <small class="muted">Для select передайте settings.options, для group/repeater - settings.fields.</small>
-                            </label>
-
-                            <AdminButton type="button" @click="removeField(index)">Удалить поле</AdminButton>
-                        </article>
+                        <FieldDefinitionEditor
+                            v-model="form.fields"
+                            :errors="validationErrors"
+                            path-prefix="fields"
+                            title="Поля набора"
+                            empty-text="Поля пока не добавлены."
+                        />
                     </section>
 
                     <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>

@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchCurrentUser } from '../../api/auth'
-import MediaFilePickerModal from '../../components/media/MediaFilePickerModal.vue'
+import MediaPickerField from '../../components/media/MediaPickerField.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
@@ -16,8 +16,6 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const activeSettingsTab = ref('general')
 const adminPathNoticeUrl = ref('')
-const faviconPickerOpen = ref(false)
-const currentFavicon = ref(null)
 const canManageAdditionalFields = ref(false)
 const canManageGeneral = ref(false)
 const canManageAppearance = ref(false)
@@ -74,14 +72,6 @@ const form = reactive({
     security_login_ban_seconds: 1800,
     security_emergency_mode: false,
     security_emergency_message: 'Сайт временно переведен в аварийный режим обслуживания. Попробуйте позже.',
-})
-
-const selectedFavicon = computed(() => {
-    if (currentFavicon.value && String(currentFavicon.value.value) === String(form.favicon_media_id)) {
-        return currentFavicon.value
-    }
-
-    return null
 })
 
 const adminEntryPreviewUrl = computed(() => {
@@ -143,11 +133,6 @@ function applySecurityProfile(profile) {
     Object.assign(form, profile.values)
 }
 
-function pickFavicon(file) {
-    form.favicon_media_id = file?.value ?? ''
-    currentFavicon.value = file ?? null
-}
-
 function fillForm(payload) {
     const settings = payload.settings ?? {}
 
@@ -183,7 +168,6 @@ function fillForm(payload) {
     form.security_login_ban_seconds = settings.security_login_ban_seconds ?? 1800
     form.security_emergency_mode = settings.security_emergency_mode ?? false
     form.security_emergency_message = settings.security_emergency_message ?? 'Сайт временно переведен в аварийный режим обслуживания. Попробуйте позже.'
-    currentFavicon.value = payload.current_favicon ?? null
     Object.assign(cacheStats, payload.cache ?? {
         site_version: null,
         cms_version: null,
@@ -375,33 +359,14 @@ onMounted(loadSettings)
 
                     <label class="admin-form-label">
                         <span>Favicon</span>
-                        <div class="admin-actions-row">
-                            <AdminButton type="button" @click="faviconPickerOpen = true">
-                                Выбрать из медиатеки
-                            </AdminButton>
-
-                            <AdminButton v-if="form.favicon_media_id" type="button" @click="pickFavicon(null)">
-                                Очистить
-                            </AdminButton>
-                        </div>
-                        <small class="muted">Сейчас это отдельный компонент выбора изображения. Дальше его можно переиспользовать как полноценную modal-медиатеку и для других полей.</small>
+                        <MediaPickerField
+                            v-model="form.favicon_media_id"
+                            title="Выбрать favicon"
+                            return-type="id"
+                            :allow-upload="true"
+                        />
+                        <small class="muted">Поле использует общую медиатеку CMS и может быть вызвано из любого другого раздела.</small>
                     </label>
-
-                    <div class="settings-favicon-picker">
-                        <div class="settings-favicon-picker__current">
-                            <span class="eyebrow">Текущий favicon</span>
-                            <div class="settings-favicon-picker__current-card">
-                                <div class="settings-favicon-picker__preview">
-                                    <img v-if="selectedFavicon" :src="selectedFavicon.preview_url || selectedFavicon.url" :alt="selectedFavicon.label">
-                                    <span v-else>Нет</span>
-                                </div>
-                                <div>
-                                    <strong>{{ selectedFavicon?.label || 'Favicon не выбран' }}</strong>
-                                    <p class="muted">{{ selectedFavicon ? 'Источник: медиатека' : 'Будет использоваться favicon браузера по умолчанию.' }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="page-meta-grid">
                         <label class="admin-form-label">
@@ -629,15 +594,6 @@ onMounted(loadSettings)
                         </AdminButton>
                     </div>
                 </form>
-
-                <MediaFilePickerModal
-                    :open="faviconPickerOpen"
-                    :model-value="form.favicon_media_id"
-                    title="Выбрать favicon"
-                    @update:model-value="(value) => { form.favicon_media_id = value }"
-                    @select="pickFavicon"
-                    @close="faviconPickerOpen = false"
-                />
             </AdminCard>
         </section>
     </AdminPage>

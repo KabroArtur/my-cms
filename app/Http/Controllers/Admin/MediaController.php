@@ -70,6 +70,13 @@ class MediaController extends Controller
         ]);
     }
 
+    public function showFile(MediaFile $mediaFile): MediaFileResource
+    {
+        $this->authorize('view', $mediaFile);
+
+        return MediaFileResource::make($mediaFile->load('folder'));
+    }
+
     public function storeFolder(StoreMediaFolderRequest $request, SecurityAuditLogger $audit): JsonResponse
     {
         $parent = $request->integer('parent_id') > 0

@@ -280,3 +280,334 @@ it('resolves field values through theme runtime with fallback defaults', functio
 
     expect($freshRuntime->field('hero_title'))->toBe('Hero Override');
 });
+
+it('stores modern field types and preserves repeater order', function (): void {
+    $editor = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $editor->permissions()->sync(Permission::query()->whereIn('slug', [
+        'pages.access',
+        'pages.update',
+        'pages.create',
+        'pages.additional_fields.manage',
+    ])->pluck('id')->all());
+
+    $page = Page::query()->create([
+        'title' => 'Home',
+        'slug' => 'home',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'template' => 'home',
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $group = AdditionalFieldGroup::query()->create([
+        'name' => 'Flexible home',
+        'key' => 'flexible_home',
+        'location_rules' => [
+            'rules' => [
+                ['field' => 'entity_type', 'operator' => '=', 'value' => 'page'],
+                ['field' => 'template', 'operator' => '=', 'value' => 'home'],
+            ],
+        ],
+        'is_active' => true,
+        'sort_order' => 0,
+    ]);
+
+    app(AdditionalFieldsService::class)->replaceGroupFields($group, [
+        [
+            'label' => 'Hero image',
+            'key' => 'hero_image',
+            'type' => 'image',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Attachment',
+            'key' => 'attachment_file',
+            'type' => 'file',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Gallery',
+            'key' => 'hero_gallery',
+            'type' => 'gallery',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Theme',
+            'key' => 'theme_variant',
+            'type' => 'radio',
+            'settings' => [
+                'options' => [
+                    ['label' => 'Light', 'value' => 'light'],
+                    ['label' => 'Dark', 'value' => 'dark'],
+                ],
+            ],
+        ],
+        [
+            'label' => 'Accent',
+            'key' => 'accent_color',
+            'type' => 'color',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Launch date',
+            'key' => 'launch_date',
+            'type' => 'date',
+            'settings' => [],
+        ],
+        [
+            'label' => 'CTA URL',
+            'key' => 'cta_url',
+            'type' => 'url',
+            'settings' => [],
+        ],
+        [
+            'label' => 'CTA email',
+            'key' => 'cta_email',
+            'type' => 'email',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Noindex',
+            'key' => 'noindex',
+            'type' => 'checkbox',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Hero group',
+            'key' => 'hero_group',
+            'type' => 'group',
+            'settings' => [
+                'fields' => [
+                    ['label' => 'Title', 'key' => 'title', 'type' => 'text', 'settings' => []],
+                    ['label' => 'Subtitle', 'key' => 'subtitle', 'type' => 'textarea', 'settings' => []],
+                ],
+            ],
+        ],
+        [
+            'label' => 'FAQ',
+            'key' => 'faq_items',
+            'type' => 'repeater',
+            'settings' => [
+                'fields' => [
+                    ['label' => 'Question', 'key' => 'question', 'type' => 'text', 'settings' => []],
+                    ['label' => 'Answer', 'key' => 'answer', 'type' => 'textarea', 'settings' => []],
+                ],
+            ],
+        ],
+    ]);
+
+    $payload = [
+        'title' => 'Home',
+        'slug' => 'home',
+        'status' => 'published',
+        'visibility' => 'public',
+        'template' => 'home',
+        'additional_fields' => [
+            'hero_image' => ['url' => '/uploads/hero.webp', 'title' => 'Hero'],
+            'attachment_file' => ['url' => '/uploads/spec.pdf', 'title' => 'Spec'],
+            'hero_gallery' => [
+                ['url' => '/uploads/one.webp', 'title' => 'One'],
+                ['url' => '/uploads/two.webp', 'title' => 'Two'],
+            ],
+            'theme_variant' => 'dark',
+            'accent_color' => '#ff6600',
+            'launch_date' => '2026-05-01',
+            'cta_url' => '/contacts',
+            'cta_email' => 'info@example.test',
+            'noindex' => true,
+            'hero_group' => [
+                'title' => 'Main title',
+                'subtitle' => 'Main subtitle',
+            ],
+            'faq_items' => [
+                ['question' => 'Second', 'answer' => 'Answer 2'],
+                ['question' => 'First', 'answer' => 'Answer 1'],
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($editor)
+        ->putJson('/admin/api/pages/'.$page->id, $payload)
+        ->assertOk();
+
+    $values = $response->json('data.additional_fields.values');
+
+    expect($values['theme_variant'])->toBe('dark')
+        ->and($values['accent_color'])->toBe('#ff6600')
+        ->and($values['launch_date'])->toBe('2026-05-01')
+        ->and($values['cta_url'])->toBe('/contacts')
+        ->and($values['cta_email'])->toBe('info@example.test')
+        ->and($values['noindex'])->toBeTrue()
+        ->and($values['hero_group']['title'])->toBe('Main title')
+        ->and($values['faq_items'][0]['question'])->toBe('Second')
+        ->and($values['faq_items'][1]['question'])->toBe('First')
+        ->and($values['hero_gallery'])->toHaveCount(2);
+
+    $storedFaq = AdditionalFieldValue::query()
+        ->where('entity_type', 'page')
+        ->where('entity_id', $page->id)
+        ->where('field_key', 'faq_items')
+        ->first();
+
+    expect(json_decode((string) $storedFaq?->value, true)[0]['question'])->toBe('Second');
+});
+
+it('validates required and invalid custom field values on page save', function (): void {
+    $editor = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $editor->permissions()->sync(Permission::query()->whereIn('slug', [
+        'pages.access',
+        'pages.update',
+        'pages.create',
+        'pages.additional_fields.manage',
+    ])->pluck('id')->all());
+
+    $page = Page::query()->create([
+        'title' => 'Landing',
+        'slug' => 'landing',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'template' => 'landing',
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $group = AdditionalFieldGroup::query()->create([
+        'name' => 'Landing fields',
+        'key' => 'landing_fields',
+        'location_rules' => [
+            'rules' => [
+                ['field' => 'entity_type', 'operator' => '=', 'value' => 'page'],
+                ['field' => 'template', 'operator' => '=', 'value' => 'landing'],
+            ],
+        ],
+        'is_active' => true,
+        'sort_order' => 0,
+    ]);
+
+    app(AdditionalFieldsService::class)->replaceGroupFields($group, [
+        [
+            'label' => 'Hero title',
+            'key' => 'hero_title',
+            'type' => 'text',
+            'is_required' => true,
+            'settings' => [],
+        ],
+        [
+            'label' => 'Theme',
+            'key' => 'theme_variant',
+            'type' => 'radio',
+            'settings' => [
+                'options' => [
+                    ['label' => 'Light', 'value' => 'light'],
+                    ['label' => 'Dark', 'value' => 'dark'],
+                ],
+            ],
+        ],
+        [
+            'label' => 'Accent',
+            'key' => 'accent_color',
+            'type' => 'color',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Launch date',
+            'key' => 'launch_date',
+            'type' => 'date',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Contact URL',
+            'key' => 'cta_url',
+            'type' => 'url',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Contact email',
+            'key' => 'cta_email',
+            'type' => 'email',
+            'settings' => [],
+        ],
+    ]);
+
+    $this->actingAs($editor)
+        ->putJson('/admin/api/pages/'.$page->id, [
+            'title' => 'Landing',
+            'slug' => 'landing',
+            'status' => 'published',
+            'visibility' => 'public',
+            'template' => 'landing',
+            'additional_fields' => [
+                'theme_variant' => 'blue',
+                'accent_color' => 'orange',
+                'launch_date' => 'not-a-date',
+                'cta_url' => 'javascript:alert(1)',
+                'cta_email' => 'broken-email',
+            ],
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'additional_fields.hero_title',
+            'additional_fields.theme_variant',
+            'additional_fields.accent_color',
+            'additional_fields.launch_date',
+            'additional_fields.cta_url',
+            'additional_fields.cta_email',
+        ]);
+});
+
+it('exposes custom field helpers and raw image urls through theme runtime', function (): void {
+    $page = Page::query()->create([
+        'title' => 'Landing',
+        'slug' => 'landing-runtime',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'template' => 'landing',
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $group = AdditionalFieldGroup::query()->create([
+        'name' => 'Runtime fields',
+        'key' => 'runtime_fields',
+        'location_rules' => [
+            'rules' => [
+                ['field' => 'entity_type', 'operator' => '=', 'value' => 'page'],
+                ['field' => 'template', 'operator' => '=', 'value' => 'landing'],
+            ],
+        ],
+        'is_active' => true,
+        'sort_order' => 0,
+    ]);
+
+    app(AdditionalFieldsService::class)->replaceGroupFields($group, [
+        [
+            'label' => 'Hero title',
+            'key' => 'hero_title',
+            'type' => 'text',
+            'settings' => [],
+        ],
+        [
+            'label' => 'Hero image',
+            'key' => 'hero_image',
+            'type' => 'image',
+            'settings' => [],
+        ],
+    ]);
+
+    app(AdditionalFieldsService::class)->syncPageValues($page, [
+        'hero_title' => 'Runtime title',
+        'hero_image' => '/uploads/runtime-hero.webp',
+    ]);
+
+    $runtime = app(ThemeRuntime::class)->usePage($page->fresh());
+    $data = $runtime->group('hero_group');
+
+    expect($runtime->customField('hero_title'))->toBe('Runtime title')
+        ->and($runtime->customFields()['hero_title'])->toBe('Runtime title')
+        ->and($runtime->imageUrlFromValue('/uploads/runtime-hero.webp'))->toBe('/uploads/runtime-hero.webp')
+        ->and($data->customFields())->toBeArray();
+});

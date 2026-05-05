@@ -1,0 +1,178 @@
+export const DEFAULT_MEDIA_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp'
+
+const mimeByExtension = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    avif: 'image/avif',
+    bmp: 'image/bmp',
+}
+
+export function normalizeToArray(value) {
+    if (Array.isArray(value)) {
+        return value
+    }
+
+    if (value === null || value === undefined || value === '') {
+        return []
+    }
+
+    return [value]
+}
+
+export function isNumericLike(value) {
+    return value !== null && value !== '' && Number.isFinite(Number(value))
+}
+
+export function toNumericId(value) {
+    return isNumericLike(value) ? Number(value) : null
+}
+
+export function getExtension(filename = '') {
+    const value = String(filename)
+    const lastDot = value.lastIndexOf('.')
+
+    if (lastDot <= 0 || lastDot === value.length - 1) {
+        return ''
+    }
+
+    return value.slice(lastDot + 1).toLowerCase()
+}
+
+export function stripExtension(filename = '') {
+    const value = String(filename)
+    const lastDot = value.lastIndexOf('.')
+
+    if (lastDot <= 0) {
+        return value
+    }
+
+    return value.slice(0, lastDot)
+}
+
+export function buildFilename(baseName, extension) {
+    const normalizedBase = String(baseName ?? '').trim()
+    const normalizedExtension = String(extension ?? '').trim().replace(/^\./, '')
+
+    if (normalizedBase === '') {
+        return ''
+    }
+
+    return normalizedExtension === '' ? normalizedBase : `${normalizedBase}.${normalizedExtension}`
+}
+
+export function resolveMimeTypeByExtension(extension = '') {
+    return mimeByExtension[String(extension).toLowerCase()] ?? 'application/octet-stream'
+}
+
+export function formatBytes(size) {
+    const bytes = Number(size)
+
+    if (!Number.isFinite(bytes) || bytes < 0) {
+        return '0 B'
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB']
+    let index = 0
+    let value = bytes
+
+    while (value >= 1024 && index < units.length - 1) {
+        value /= 1024
+        index += 1
+    }
+
+    return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
+
+export function basenameFromUrl(url = '') {
+    const fallback = 'image'
+
+    try {
+        const pathname = new URL(String(url), window.location.origin).pathname
+        const segments = pathname.split('/').filter(Boolean)
+
+        return decodeURIComponent(segments.at(-1) || fallback)
+    } catch {
+        const segments = String(url).split('/').filter(Boolean)
+
+        return segments.at(-1) || fallback
+    }
+}
+
+export function createMediaSelection(file = {}) {
+    const id = toNumericId(file.id ?? file.value)
+    const url = String(file.url ?? '')
+    const originalName = String(file.original_name ?? file.filename ?? basenameFromUrl(url))
+    const label = String(file.label ?? file.title ?? originalName ?? 'Изображение')
+
+    return {
+        ...file,
+        id,
+        value: id,
+        label,
+        url,
+        preview_url: file.preview_url || url,
+        original_name: originalName,
+        title: file.title ?? null,
+        alt_text: file.alt_text ?? null,
+        caption: file.caption ?? null,
+        folder_id: toNumericId(file.folder_id),
+        folder_name: file.folder_name ?? null,
+        size: Number.isFinite(Number(file.size)) ? Number(file.size) : null,
+        size_human: file.size_human ?? formatBytes(file.size),
+        width: Number.isFinite(Number(file.width)) ? Number(file.width) : null,
+        height: Number.isFinite(Number(file.height)) ? Number(file.height) : null,
+        created_at: file.created_at ?? null,
+        extension: file.extension ?? getExtension(originalName),
+        mime_type: file.mime_type ?? resolveMimeTypeByExtension(getExtension(originalName)),
+        variants: file.variants ?? {},
+    }
+}
+
+export function createExternalMediaReference(url) {
+    const normalizedUrl = String(url ?? '').trim()
+    const name = basenameFromUrl(normalizedUrl)
+
+    return createMediaSelection({
+        id: null,
+        url: normalizedUrl,
+        preview_url: normalizedUrl,
+        original_name: name,
+        title: stripExtension(name),
+        label: name,
+    })
+}
+
+export function normalizeAcceptList(accept = DEFAULT_MEDIA_ACCEPT) {
+    return String(accept)
+        .split(',')
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean)
+}
+
+export function isAcceptedUpload(file, accept = DEFAULT_MEDIA_ACCEPT) {
+    const accepted = normalizeAcceptList(accept)
+
+    if (accepted.length === 0) {
+        return true
+    }
+
+    const fileMimeType = String(file?.type ?? '').toLowerCase()
+    const extension = getExtension(file?.name ?? '')
+
+    return accepted.some((rule) => {
+        if (rule.endsWith('/*')) {
+            const prefix = rule.slice(0, -1)
+
+            return fileMimeType.startsWith(prefix)
+        }
+
+        if (rule.startsWith('.')) {
+            return extension === rule.slice(1)
+        }
+
+        return fileMimeType === rule || resolveMimeTypeByExtension(extension) === rule
+    })
+}
