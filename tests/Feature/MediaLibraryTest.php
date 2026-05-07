@@ -384,17 +384,74 @@ it('updates media file metadata through admin api', function (): void {
             'title' => 'Homepage hero',
             'alt_text' => 'Main homepage hero image',
             'caption' => 'Spring campaign visual',
+            'description' => 'Primary asset for homepage hero block.',
         ])
         ->assertOk()
         ->assertJsonPath('data.title', 'Homepage hero')
         ->assertJsonPath('data.alt_text', 'Main homepage hero image')
-        ->assertJsonPath('data.caption', 'Spring campaign visual');
+        ->assertJsonPath('data.caption', 'Spring campaign visual')
+        ->assertJsonPath('data.description', 'Primary asset for homepage hero block.');
 
     $mediaFile->refresh();
 
     expect($mediaFile->title)->toBe('Homepage hero');
     expect($mediaFile->alt_text)->toBe('Main homepage hero image');
     expect($mediaFile->caption)->toBe('Spring campaign visual');
+    expect($mediaFile->description)->toBe('Primary asset for homepage hero block.');
+});
+
+it('creates media folders with manual slug when provided', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.manage_folders'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->postJson('/admin/api/media/folders', [
+            'name' => 'Hero Images',
+            'slug' => 'homepage-banners',
+        ])
+        ->assertCreated();
+
+    expect($response->json('data.slug'))->toBe('homepage-banners');
+    expect($response->json('data.path'))->toBe('homepage-banners');
+});
+
+it('replaces uploaded media files and regenerates variants', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => UploadedFile::fake()->image('replace-me.jpg', 640, 480),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
+    $oldPath = $mediaFile->path;
+    $oldMime = $mediaFile->mime_type;
+
+    $this->actingAs($user)
+        ->post("/admin/api/media/files/{$mediaFile->id}/replace", [
+            'file' => UploadedFile::fake()->image('new-source.png', 1200, 800),
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.mime_type', 'image/png')
+        ->assertJsonPath('data.width', 1200)
+        ->assertJsonPath('data.height', 800);
+
+    $mediaFile->refresh();
+
+    expect($mediaFile->mime_type)->not->toBe($oldMime);
+    expect($mediaFile->extension)->toBe('png');
+    expect($mediaFile->path)->not->toBe($oldPath);
+    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
 });
 
 it('regenerates variants for existing media files via artisan command', function (): void {

@@ -213,7 +213,7 @@ function clearSelection() {
                     <span v-else>{{ item.extension || 'file' }}</span>
                 </div>
                 <div>
-                    <strong>{{ item.title || item.original_name }}</strong>
+                    <strong>{{ item.original_name }}</strong>
                     <p class="muted">{{ item.url }}</p>
                 </div>
             </article>

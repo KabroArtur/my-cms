@@ -1,9 +1,12 @@
 import axios from 'axios'
 import { adminApiPath } from '../utils/adminPath'
 
-export async function fetchMediaLibrary(folderId = null) {
+export async function fetchMediaLibrary(folderId = null, options = {}) {
     const response = await axios.get(adminApiPath('media'), {
-        params: folderId ? { folder_id: folderId } : undefined,
+        params: {
+            ...(folderId ? { folder_id: folderId } : {}),
+            ...(options.scope ? { scope: options.scope } : {}),
+        },
     })
 
     return response.data
@@ -65,6 +68,20 @@ export async function moveMediaFile(id, payload) {
 
 export async function updateMediaFile(id, payload) {
     const response = await axios.put(adminApiPath(`media/files/${id}`), payload)
+
+    return response.data
+}
+
+export async function replaceMediaFile(id, { file }) {
+    const formData = new FormData()
+
+    formData.append('file', file)
+
+    const response = await axios.post(adminApiPath(`media/files/${id}/replace`), formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    })
 
     return response.data
 }

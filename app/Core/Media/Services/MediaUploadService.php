@@ -4,7 +4,6 @@ namespace App\Core\Media\Services;
 
 use App\Core\Media\Models\MediaFile;
 use App\Core\Media\Models\MediaFolder;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -93,6 +92,55 @@ class MediaUploadService
         ])->save();
 
         return $mediaFile;
+    }
+
+    public function replaceMediaFile(MediaFile $mediaFile, UploadedFile $file): MediaFile
+    {
+        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $baseName = pathinfo($mediaFile->original_name ?: $mediaFile->filename, PATHINFO_FILENAME);
+        $names = $this->resolveNames(
+            folder: $mediaFile->folder,
+            desiredName: $baseName,
+            fallbackName: $baseName,
+            extension: $extension,
+            ignoreFileId: $mediaFile->id,
+        );
+
+        $previousPath = $mediaFile->path;
+        $targetPath = $mediaFile->directory.'/'.$names['filename'];
+        $storedPath = null;
+
+        try {
+            $storedPath = $file->storeAs($mediaFile->directory, $names['filename'], $mediaFile->disk);
+            [$width, $height] = array_pad((array) @getimagesize($file->getRealPath()), 2, null);
+
+            $this->variants->deleteVariants($mediaFile);
+            $variants = $this->variants->generateForUpload($file, $mediaFile->disk, $mediaFile->directory, $names['filename']);
+
+            if ($previousPath !== $storedPath) {
+                Storage::disk($mediaFile->disk)->delete($previousPath);
+            }
+
+            $mediaFile->forceFill([
+                'filename' => $names['filename'],
+                'original_name' => $names['original_name'],
+                'extension' => $extension !== '' ? $extension : null,
+                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+                'size' => $file->getSize(),
+                'width' => is_int($width) ? $width : null,
+                'height' => is_int($height) ? $height : null,
+                'path' => $targetPath,
+                'variants' => $variants,
+            ])->save();
+
+            return $mediaFile;
+        } catch (Throwable $exception) {
+            if (is_string($storedPath) && $storedPath !== '' && $storedPath !== $previousPath) {
+                Storage::disk($mediaFile->disk)->delete($storedPath);
+            }
+
+            throw $exception;
+        }
     }
 
     protected function resolveNames(?MediaFolder $folder, ?string $desiredName, string $fallbackName, string $extension, ?int $ignoreFileId = null): array

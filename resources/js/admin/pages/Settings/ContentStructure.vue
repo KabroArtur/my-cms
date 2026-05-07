@@ -336,21 +336,24 @@ async function saveGroup() {
 
     try {
         const payload = normalizePayload()
+        let savedGroupId = form.id
 
         if (isEditing.value) {
-            await updateFieldGroup(form.id, payload)
+            const response = await updateFieldGroup(form.id, payload)
+            savedGroupId = response.data?.id ?? form.id
         } else {
-            await createFieldGroup(payload)
+            const response = await createFieldGroup(payload)
+            savedGroupId = response.data?.id ?? null
         }
 
         await loadGroups()
 
-        if (isEditing.value) {
-            const next = groups.value.find((group) => group.id === form.id)
+        const next = savedGroupId === null
+            ? null
+            : groups.value.find((group) => group.id === savedGroupId)
 
-            if (next) {
-                hydrateForm(next)
-            }
+        if (next) {
+            hydrateForm(next)
         } else {
             resetForm()
         }

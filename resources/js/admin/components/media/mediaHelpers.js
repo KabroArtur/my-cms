@@ -105,7 +105,7 @@ export function createMediaSelection(file = {}) {
     const id = toNumericId(file.id ?? file.value)
     const url = String(file.url ?? '')
     const originalName = String(file.original_name ?? file.filename ?? basenameFromUrl(url))
-    const label = String(file.label ?? file.title ?? originalName ?? 'Изображение')
+    const label = String(file.label ?? originalName ?? 'Изображение')
 
     return {
         ...file,

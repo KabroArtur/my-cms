@@ -146,21 +146,21 @@ class AdditionalFieldsService
         return $values;
     }
 
-    public function hasPageValue(Page $page, string $key): bool
+    public function hasPageValue(Page $page, string $key, ?string $template = null): bool
     {
-        return array_key_exists($key, $this->combinedValuesForPage($page));
+        return array_key_exists($key, $this->combinedValuesForPage($page, $template));
     }
 
-    public function pageValue(Page $page, string $key, mixed $default = null): mixed
+    public function pageValue(Page $page, string $key, mixed $default = null, ?string $template = null): mixed
     {
-        $values = $this->combinedValuesForPage($page);
+        $values = $this->combinedValuesForPage($page, $template);
 
         return array_key_exists($key, $values) ? $values[$key] : $default;
     }
 
-    public function combinedValuesForPage(Page $page): array
+    public function combinedValuesForPage(Page $page, ?string $template = null): array
     {
-        $groups = $this->resolveApplicableGroupsForPage($page);
+        $groups = $this->resolveApplicableGroupsForPage($page, $template);
         $values = $this->valuesForPage($page);
         $result = [];
 

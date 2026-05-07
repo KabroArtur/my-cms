@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import AdminButton from '../ui/AdminButton.vue'
 
 const props = defineProps({
@@ -29,10 +29,10 @@ const props = defineProps({
     },
 })
 
-const emit = defineEmits(['open-root', 'open-folder', 'create-folder', 'rename-folder', 'delete-folder'])
+const emit = defineEmits(['open-root', 'open-folder', 'rename-folder', 'delete-folder'])
 
-const createName = ref('')
 const editingId = ref(null)
+const activeMenuId = ref(null)
 const renameForm = reactive({
     name: '',
     parent_id: '',
@@ -40,12 +40,9 @@ const renameForm = reactive({
 
 const rootOption = computed(() => [{ id: null, name: 'Корень', path: 'media' }, ...props.folderOptions])
 
-watch(() => props.currentFolder?.id, () => {
-    createName.value = ''
-})
-
-function startRename(folder) {
+function startEdit(folder) {
     editingId.value = folder.id
+    activeMenuId.value = null
     renameForm.name = folder.name
     renameForm.parent_id = folder.parent_id ?? ''
 }
@@ -54,16 +51,6 @@ function cancelRename() {
     editingId.value = null
     renameForm.name = ''
     renameForm.parent_id = ''
-}
-
-function submitCreate() {
-    const name = createName.value.trim()
-
-    if (name === '') {
-        return
-    }
-
-    emit('create-folder', name)
 }
 
 function submitRename(folder) {
@@ -78,6 +65,10 @@ function submitRename(folder) {
         name,
         parent_id: renameForm.parent_id === '' ? null : Number(renameForm.parent_id),
     })
+}
+
+function toggleMenu(folderId) {
+    activeMenuId.value = activeMenuId.value === folderId ? null : folderId
 }
 </script>
 
@@ -95,18 +86,6 @@ function submitRename(folder) {
                 </button>
             </template>
         </div>
-
-        <form class="media-folders__create" @submit.prevent="submitCreate">
-            <label class="admin-form-label">
-                <span>Новая папка</span>
-                <input v-model="createName" class="admin-input" type="text" placeholder="Например, Homepage banners">
-                <small v-if="createErrors.name" class="error-text">{{ createErrors.name[0] }}</small>
-            </label>
-
-            <AdminButton type="submit" variant="primary" :disabled="busy">
-                {{ busy ? 'Сохранение...' : 'Создать папку' }}
-            </AdminButton>
-        </form>
 
         <div v-if="folders.length > 0" class="media-folders__list">
             <article v-for="folder in folders" :key="folder.id" class="media-folders__card">
@@ -143,17 +122,38 @@ function submitRename(folder) {
 
                 <template v-else>
                     <button type="button" class="media-folders__open" @click="emit('open-folder', folder)">
-                        <strong>{{ folder.name }}</strong>
-                        <span>{{ folder.files_count || 0 }} файлов | {{ folder.children_count || 0 }} вложенных папок</span>
+                        <span class="media-folders__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 7c0-1.4 0-2.1.272-2.635a2.5 2.5 0 0 1 1.093-1.093C3.9 3 4.6 3 6 3h1.431c.94 0 1.409 0 1.835.13a3 3 0 0 1 1.033.552c.345.283.605.674 1.126 1.455L12 6h6c1.4 0 2.1 0 2.635.272a2.5 2.5 0 0 1 1.092 1.093C22 7.9 22 8.6 22 10v5c0 1.4 0 2.1-.273 2.635a2.5 2.5 0 0 1-1.092 1.092C20.1 19 19.4 19 18 19H6c-1.4 0-2.1 0-2.635-.273a2.5 2.5 0 0 1-1.093-1.092C2 17.1 2 16.4 2 15V7z" fill="currentColor"/>
+                            </svg>
+                        </span>
+
+                        <span class="media-folders__copy">
+                            <strong>{{ folder.name }}</strong>
+                            <small>{{ folder.path }}</small>
+                            <span>{{ folder.files_count || 0 }} файлов · {{ folder.children_count || 0 }} вложенных папок</span>
+                        </span>
                     </button>
 
-                    <div class="admin-actions-row media-folders__actions">
-                        <button type="button" class="button-link" @click="startRename(folder)">
-                            Переименовать
+                    <div class="media-folders__menu-wrap">
+                        <button type="button" class="media-folders__menu-button" @click.stop="toggleMenu(folder.id)">
+                            ...
                         </button>
-                        <button type="button" class="button-link media-folders__danger" @click="emit('delete-folder', folder)">
-                            Удалить
-                        </button>
+
+                        <div v-if="activeMenuId === folder.id" class="media-folders__menu">
+                            <button type="button" @click="emit('open-folder', folder)">
+                                Открыть
+                            </button>
+                            <button type="button" @click="startEdit(folder)">
+                                Переименовать
+                            </button>
+                            <button type="button" @click="startEdit(folder)">
+                                Переместить
+                            </button>
+                            <button type="button" class="media-folders__danger" @click="emit('delete-folder', folder)">
+                                Удалить
+                            </button>
+                        </div>
                     </div>
                 </template>
             </article>
@@ -169,13 +169,6 @@ function submitRename(folder) {
     gap: 1rem;
 }
 
-.media-folders__create {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.9rem;
-    align-items: end;
-}
-
 .media-folders__list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -183,26 +176,103 @@ function submitRename(folder) {
 }
 
 .media-folders__card {
+    display: grid;
+    gap: 0.9rem;
+    position: relative;
     padding: 0.9rem;
     border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+}
+
+.media-folders__menu-wrap {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+}
+
+.media-folders__menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    color: rgba(51, 65, 85, 0.92);
+}
+
+.media-folders__menu {
+    position: absolute;
+    top: calc(100% + 0.45rem);
+    right: 0;
+    z-index: 4;
+    display: grid;
+    min-width: 180px;
+    padding: 0.45rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 16px;
-    background: rgba(248, 250, 252, 0.78);
+    background: white;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.media-folders__menu button {
+    padding: 0.7rem 0.85rem;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    border-radius: 12px;
+}
+
+.media-folders__menu button:hover {
+    background: rgba(239, 246, 255, 0.9);
 }
 
 .media-folders__open {
     display: grid;
-    gap: 0.25rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: start;
     width: 100%;
     text-align: left;
+}
+
+.media-folders__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(219, 234, 254, 0.95), rgba(191, 219, 254, 0.86));
+    color: #1d4ed8;
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.14);
+}
+
+.media-folders__icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.media-folders__copy {
+    display: grid;
+    gap: 0.18rem;
+    min-width: 0;
+}
+
+.media-folders__copy strong {
+    overflow-wrap: anywhere;
+}
+
+.media-folders__copy small {
+    color: rgba(71, 85, 105, 0.78);
 }
 
 .media-folders__open span {
     color: rgba(100, 116, 139, 0.92);
     font-size: 0.88rem;
-}
-
-.media-folders__actions {
-    margin-top: 0.6rem;
 }
 
 .media-folders__rename {
@@ -215,8 +285,9 @@ function submitRename(folder) {
 }
 
 @media (max-width: 720px) {
-    .media-folders__create {
-        grid-template-columns: 1fr;
+    .media-folders__menu-wrap {
+        top: 0.75rem;
+        right: 0.75rem;
     }
 }
 </style>

@@ -1,5 +1,13 @@
 <?php
 
+$sharedHostingFlatPublicDisk = filter_var(env('SHARED_HOSTING_FLAT_PUBLIC_DISK', false), FILTER_VALIDATE_BOOL);
+
+$publicDiskRoot = $sharedHostingFlatPublicDisk
+    ? base_path('storage')
+    : storage_path('app/public');
+
+$publicDiskUrl = rtrim(env('APP_URL', 'http://localhost'), '/').'/storage';
+
 return [
 
     /*
@@ -40,8 +48,8 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            'root' => $publicDiskRoot,
+            'url' => $publicDiskUrl,
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
@@ -73,8 +81,10 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    'links' => $sharedHostingFlatPublicDisk
+        ? []
+        : [
+            public_path('storage') => storage_path('app/public'),
+        ],
 
 ];

@@ -230,13 +230,113 @@ it('matches additional field groups by page, template and home-page rules', func
         ->and($landingKeys)->not->toContain('not_landing_page_group');
 });
 
+it('returns applicable field values using the requested template override', function (): void {
+    $editor = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $editor->permissions()->sync(Permission::query()->whereIn('slug', [
+        'pages.access',
+        'pages.update',
+        'pages.create',
+        'pages.additional_fields.manage',
+    ])->pluck('id')->all());
+
+    $page = Page::query()->create([
+        'title' => 'Template switch',
+        'slug' => 'template-switch',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'template' => 'default',
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $defaultGroup = AdditionalFieldGroup::query()->create([
+        'name' => 'Default fields',
+        'key' => 'default_fields',
+        'location_rules' => [
+            'rules' => [
+                ['field' => 'entity_type', 'operator' => '=', 'value' => 'page'],
+                ['field' => 'template', 'operator' => '=', 'value' => 'default'],
+            ],
+        ],
+        'is_active' => true,
+        'sort_order' => 0,
+    ]);
+
+    $homeGroup = AdditionalFieldGroup::query()->create([
+        'name' => 'Home fields',
+        'key' => 'home_fields',
+        'location_rules' => [
+            'rules' => [
+                ['field' => 'entity_type', 'operator' => '=', 'value' => 'page'],
+                ['field' => 'template', 'operator' => '=', 'value' => 'home'],
+            ],
+        ],
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+
+    app(AdditionalFieldsService::class)->replaceGroupFields($defaultGroup, [
+        [
+            'label' => 'Default title',
+            'key' => 'default_title',
+            'type' => 'text',
+            'settings' => [],
+            'default_value' => 'Default title value',
+        ],
+    ]);
+
+    app(AdditionalFieldsService::class)->replaceGroupFields($homeGroup, [
+        [
+            'label' => 'Home title',
+            'key' => 'home_title',
+            'type' => 'text',
+            'settings' => [],
+            'default_value' => 'Home title value',
+        ],
+        [
+            'label' => 'Home hero image',
+            'key' => 'home_hero_image',
+            'type' => 'image',
+            'settings' => [],
+        ],
+    ]);
+
+    AdditionalFieldValue::query()->create([
+        'entity_type' => 'page',
+        'entity_id' => $page->id,
+        'field_key' => 'home_title',
+        'value' => json_encode('Draft home title', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+
+    AdditionalFieldValue::query()->create([
+        'entity_type' => 'page',
+        'entity_id' => $page->id,
+        'field_key' => 'home_hero_image',
+        'value' => json_encode([
+            'url' => '/uploads/home-hero.webp',
+            'preview_url' => '/uploads/home-hero.webp',
+            'title' => 'Draft home hero',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+
+    $this->actingAs($editor)
+        ->getJson('/admin/api/field-groups/applicable?page_id='.$page->id.'&template=home')
+        ->assertOk()
+        ->assertJsonPath('data.groups.0.key', 'home_fields')
+        ->assertJsonMissingPath('data.values.default_title')
+        ->assertJsonPath('data.values.home_title', 'Draft home title')
+        ->assertJsonPath('data.values.home_hero_image.url', '/uploads/home-hero.webp');
+});
+
 it('resolves field values through theme runtime with fallback defaults', function (): void {
     $page = Page::query()->create([
         'title' => 'Landing',
         'slug' => 'landing',
         'status' => PageStatus::Published,
         'visibility' => PageVisibility::Public,
-        'template' => 'landing',
+        'template' => 'home',
         'published_at' => now()->subMinute(),
     ]);
 
@@ -246,7 +346,7 @@ it('resolves field values through theme runtime with fallback defaults', functio
         'location_rules' => [
             'rules' => [
                 ['field' => 'entity_type', 'operator' => '=', 'value' => 'page'],
-                ['field' => 'template', 'operator' => '=', 'value' => 'landing'],
+                ['field' => 'template', 'operator' => '=', 'value' => 'home'],
             ],
         ],
         'is_active' => true,
@@ -383,6 +483,7 @@ it('stores modern field types and preserves repeater order', function (): void {
                 'fields' => [
                     ['label' => 'Title', 'key' => 'title', 'type' => 'text', 'settings' => []],
                     ['label' => 'Subtitle', 'key' => 'subtitle', 'type' => 'textarea', 'settings' => []],
+                    ['label' => 'Image', 'key' => 'image', 'type' => 'image', 'settings' => []],
                 ],
             ],
         ],
@@ -421,6 +522,11 @@ it('stores modern field types and preserves repeater order', function (): void {
             'hero_group' => [
                 'title' => 'Main title',
                 'subtitle' => 'Main subtitle',
+                'image' => [
+                    'url' => '/uploads/group.webp',
+                    'preview_url' => '/uploads/group.webp',
+                    'title' => 'Group image',
+                ],
             ],
             'faq_items' => [
                 ['question' => 'Second', 'answer' => 'Answer 2'],
@@ -442,6 +548,7 @@ it('stores modern field types and preserves repeater order', function (): void {
         ->and($values['cta_email'])->toBe('info@example.test')
         ->and($values['noindex'])->toBeTrue()
         ->and($values['hero_group']['title'])->toBe('Main title')
+        ->and($values['hero_group']['image']['url'])->toBe('/uploads/group.webp')
         ->and($values['faq_items'][0]['question'])->toBe('Second')
         ->and($values['faq_items'][1]['question'])->toBe('First')
         ->and($values['hero_gallery'])->toHaveCount(2);

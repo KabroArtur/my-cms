@@ -19,6 +19,7 @@ class MediaFile extends Model
         'title',
         'alt_text',
         'caption',
+        'description',
         'extension',
         'mime_type',
         'size',

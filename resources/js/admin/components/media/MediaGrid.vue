@@ -37,7 +37,7 @@ const accentMap = computed(() => new Set(props.accentIds.map((id) => String(id))
             </div>
 
             <div class="media-grid__meta">
-                <strong>{{ file.title || file.original_name }}</strong>
+                <strong>{{ file.original_name }}</strong>
                 <span>{{ file.size_human }}<template v-if="file.width && file.height"> | {{ file.width }} x {{ file.height }}</template></span>
             </div>
         </button>

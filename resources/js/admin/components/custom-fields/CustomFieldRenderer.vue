@@ -70,7 +70,7 @@ function updateColorText(event) {
     updateValue(event.target.value)
 }
 
-function ensureGroupValue() {
+function currentGroupValue() {
     const current = props.modelValue && typeof props.modelValue === 'object' && !Array.isArray(props.modelValue)
         ? cloneValue(props.modelValue)
         : {}
@@ -81,26 +81,21 @@ function ensureGroupValue() {
         }
     })
 
-    updateValue(current)
-
     return current
 }
 
 function updateGroupField(key, value) {
-    const next = ensureGroupValue()
+    const next = currentGroupValue()
     next[key] = value
     updateValue(next)
 }
 
-function ensureRepeaterValue() {
-    const current = Array.isArray(props.modelValue) ? cloneValue(props.modelValue) : []
-    updateValue(current)
-
-    return current
+function currentRepeaterValue() {
+    return Array.isArray(props.modelValue) ? cloneValue(props.modelValue) : []
 }
 
 function addRepeaterItem() {
-    const next = ensureRepeaterValue()
+    const next = currentRepeaterValue()
     const row = {}
 
     nestedFields.value.forEach((nested) => {
@@ -112,7 +107,7 @@ function addRepeaterItem() {
 }
 
 function updateRepeaterItem(index, key, value) {
-    const next = ensureRepeaterValue()
+    const next = currentRepeaterValue()
     next[index] = {
         ...(next[index] || {}),
         [key]: value,
@@ -121,13 +116,13 @@ function updateRepeaterItem(index, key, value) {
 }
 
 function removeRepeaterItem(index) {
-    const next = ensureRepeaterValue()
+    const next = currentRepeaterValue()
     next.splice(index, 1)
     updateValue(next)
 }
 
 function moveRepeaterItem(index, offset) {
-    updateValue(moveArrayItem(ensureRepeaterValue(), index, index + offset))
+    updateValue(moveArrayItem(currentRepeaterValue(), index, index + offset))
 }
 
 const mediaAccept = computed(() => type.value === 'image' || type.value === 'gallery' ? 'image/*' : '')

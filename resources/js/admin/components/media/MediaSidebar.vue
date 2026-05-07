@@ -26,17 +26,13 @@ const emit = defineEmits(['close', 'save', 'select', 'copy-url', 'delete', 'move
 
 const form = reactive({
     original_name: '',
-    title: '',
     alt_text: '',
-    caption: '',
     folder_id: '',
 })
 
 watch(() => props.file, (file) => {
     form.original_name = stripExtension(file?.original_name || file?.filename || '')
-    form.title = file?.title ?? ''
     form.alt_text = file?.alt_text ?? ''
-    form.caption = file?.caption ?? ''
     form.folder_id = file?.folder_id ?? ''
 }, { immediate: true })
 
@@ -47,9 +43,7 @@ function submit() {
 
     emit('save', {
         original_name: form.original_name,
-        title: form.title,
         alt_text: form.alt_text,
-        caption: form.caption,
     })
 }
 
@@ -106,19 +100,6 @@ function moveFile(event) {
             </div>
         </div>
 
-        <label class="admin-form-label">
-            <span>Переместить в папку</span>
-            <select class="admin-select" :value="form.folder_id" @change="moveFile">
-                <option
-                    v-for="folderOption in moveFolderOptions"
-                    :key="folderOption.id ?? 'root'"
-                    :value="folderOption.id ?? ''"
-                >
-                    {{ folderOption.path || folderOption.name }}
-                </option>
-            </select>
-        </label>
-
         <form class="admin-form-stack" @submit.prevent="submit">
             <label class="admin-form-label">
                 <span>Название файла</span>
@@ -126,18 +107,21 @@ function moveFile(event) {
             </label>
 
             <label class="admin-form-label">
-                <span>Title</span>
-                <input v-model="form.title" class="admin-input" type="text">
-            </label>
-
-            <label class="admin-form-label">
-                <span>Alt</span>
+                <span>Alt текст</span>
                 <input v-model="form.alt_text" class="admin-input" type="text">
             </label>
 
             <label class="admin-form-label">
-                <span>Описание</span>
-                <textarea v-model="form.caption" class="admin-textarea" rows="3"></textarea>
+                <span>Переместить в папку</span>
+                <select class="admin-select" :value="form.folder_id" @change="moveFile">
+                    <option
+                        v-for="folderOption in moveFolderOptions"
+                        :key="folderOption.id ?? 'root'"
+                        :value="folderOption.id ?? ''"
+                    >
+                        {{ folderOption.path || folderOption.name }}
+                    </option>
+                </select>
             </label>
 
             <div class="admin-actions-row media-sidebar__actions">

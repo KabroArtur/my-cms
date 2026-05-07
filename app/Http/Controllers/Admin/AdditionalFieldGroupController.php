@@ -37,7 +37,7 @@ class AdditionalFieldGroupController extends Controller
         $groups = $fields->resolveApplicableGroupsForPage($page, $template !== '' ? $template : null)->load('fields');
 
         $values = $page !== null
-            ? $fields->combinedValuesForPage($page)
+            ? $fields->combinedValuesForPage($page, $template !== '' ? $template : null)
             : $groups->flatMap(fn (AdditionalFieldGroup $group) => $group->fields)
                 ->mapWithKeys(fn ($field): array => [$field->key => null])
                 ->all();

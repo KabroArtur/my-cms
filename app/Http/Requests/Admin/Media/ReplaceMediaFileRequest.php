@@ -5,7 +5,7 @@ namespace App\Http\Requests\Admin\Media;
 use App\Core\Media\Models\MediaFile;
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateMediaFileRequest extends FormRequest
+class ReplaceMediaFileRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,11 +18,12 @@ class UpdateMediaFileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'original_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'title' => ['nullable', 'string', 'max:255'],
-            'alt_text' => ['nullable', 'string', 'max:255'],
-            'caption' => ['nullable', 'string'],
-            'description' => ['nullable', 'string'],
+            'file' => [
+                'required',
+                'file',
+                'max:10240',
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp',
+            ],
         ];
     }
 }

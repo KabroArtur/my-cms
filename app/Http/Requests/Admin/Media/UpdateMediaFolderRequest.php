@@ -19,6 +19,7 @@ class UpdateMediaFolderRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:255'],
             'parent_id' => ['nullable', 'integer', 'exists:media_folders,id'],
         ];
     }

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import AdminButton from '../ui/AdminButton.vue'
 import MediaFolders from './MediaFolders.vue'
 import MediaGrid from './MediaGrid.vue'
@@ -84,6 +84,12 @@ const mainPanelRef = ref(null)
 const uploadSectionRef = ref(null)
 const recentUploadIds = ref([])
 const recentOnly = ref(false)
+const folderModalOpen = ref(false)
+const folderForm = reactive({
+    name: '',
+    slug: '',
+    slugTouched: false,
+})
 
 const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase())
 const filteredFiles = computed(() => {
@@ -95,7 +101,7 @@ const filteredFiles = computed(() => {
         return baseFiles
     }
 
-    return baseFiles.filter((file) => [file.original_name, file.title, file.alt_text, file.folder_name, file.mime_type]
+    return baseFiles.filter((file) => [file.original_name, file.alt_text, file.folder_name, file.mime_type]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedSearch.value)))
 })
@@ -121,6 +127,14 @@ const hasFiles = computed(() => filteredFiles.value.length > 0)
 const dragOverlayVisible = computed(() => dragDepth.value > 0)
 const queueCount = computed(() => uploadQueue.value.length)
 const hasRecentUploads = computed(() => recentUploadIds.value.length > 0)
+
+watch(() => folderForm.name, (value) => {
+    if (!folderModalOpen.value || folderForm.slugTouched) {
+        return
+    }
+
+    folderForm.slug = slugify(value)
+})
 
 watch(() => props.open, async (isOpen) => {
     if (!isOpen) {
@@ -249,6 +263,55 @@ async function createFolder(name) {
     }
 }
 
+function openCreateFolderModal() {
+    createErrors.value = {}
+    folderForm.name = ''
+    folderForm.slug = ''
+    folderForm.slugTouched = false
+    folderModalOpen.value = true
+}
+
+function closeCreateFolderModal() {
+    if (saving.value) {
+        return
+    }
+
+    folderModalOpen.value = false
+}
+
+async function submitCreateFolderModal() {
+    const name = folderForm.name.trim()
+
+    if (name === '') {
+        return
+    }
+
+    createErrors.value = {}
+    saving.value = true
+
+    try {
+        await createMediaFolder({
+            name,
+            slug: folderForm.slug || null,
+            parent_id: currentFolderId.value,
+        })
+
+        folderModalOpen.value = false
+        noticeMessage.value = 'Папка создана.'
+        await loadLibrary(currentFolderId.value)
+    } catch (error) {
+        if (error.response?.status === 422) {
+            createErrors.value = error.response.data.errors ?? {}
+        } else {
+            errorMessage.value = error.response?.data?.message ?? 'Не удалось создать папку.'
+        }
+
+        console.error(error)
+    } finally {
+        saving.value = false
+    }
+}
+
 async function renameFolder({ folder, name, parent_id }) {
     saving.value = true
     errorMessage.value = ''
@@ -317,9 +380,7 @@ async function saveFileMeta(payload) {
     try {
         await updateMediaFile(selectedFile.value.id, {
             original_name: buildFilename(payload.original_name || stripExtension(selectedFile.value.original_name), selectedFile.value.extension),
-            title: payload.title,
             alt_text: payload.alt_text,
-            caption: payload.caption,
         })
 
         noticeMessage.value = 'Данные изображения обновлены.'
@@ -557,6 +618,18 @@ function closeModal() {
     emit('close')
 }
 
+function markFolderSlugTouched() {
+    folderForm.slugTouched = true
+}
+
+function slugify(value) {
+    return String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, '-')
+        .replace(/^-+|-+$/g, '')
+}
+
 function submitSelection() {
     const ids = props.multiple
         ? selectedIdsState.value
@@ -584,6 +657,9 @@ function submitSelection() {
                 </div>
 
                 <div class="admin-actions-row">
+                    <button type="button" class="button-link" @click="openCreateFolderModal">
+                        Создать папку
+                    </button>
                     <AdminButton type="button" :disabled="!selectedFile && !multiple" variant="primary" @click="submitSelection">
                         {{ multiple ? `Выбрать (${selectedIdsState.length})` : 'Выбрать' }}
                     </AdminButton>
@@ -630,16 +706,17 @@ function submitSelection() {
                             </div>
                         </section>
 
-                        <p v-if="loading" class="muted">Загрузка медиатеки...</p>
-                        <p v-else-if="errorMessage" class="error-text">{{ errorMessage }}</p>
-                        <p v-else-if="noticeMessage" class="muted">{{ noticeMessage }}</p>
+                        <section class="media-library-modal__section media-library-modal__section--folders">
+                            <div class="media-library-modal__section-head">
+                                <div>
+                                    <strong>Папки</strong>
+                                    <span>Сначала структура: выберите нужную папку, затем переходите к файлам.</span>
+                                </div>
 
-                        <MediaGrid v-if="hasFiles" :files="filteredFiles" :selected-ids="selectedIdsState" :accent-ids="recentUploadIds" @select="handleFileClick" />
-
-                        <p v-else-if="!loading" class="muted">В текущей папке пока нет изображений.</p>
-
-                        <details class="media-library-modal__section" :open="folders.length > 0 || currentFolder !== null">
-                            <summary>Папки и структура</summary>
+                                <button type="button" class="button-link media-library-modal__section-button" @click="openCreateFolderModal">
+                                    Создать папку
+                                </button>
+                            </div>
                             <MediaFolders
                                 :breadcrumbs="breadcrumbs"
                                 :folders="folders"
@@ -647,13 +724,21 @@ function submitSelection() {
                                 :current-folder="currentFolder"
                                 :create-errors="createErrors"
                                 :busy="saving"
+                                :show-create="false"
                                 @open-root="openRoot"
                                 @open-folder="openFolder"
-                                @create-folder="createFolder"
                                 @rename-folder="renameFolder"
                                 @delete-folder="removeFolder"
                             />
-                        </details>
+                        </section>
+
+                        <p v-if="loading" class="muted">Загрузка медиатеки...</p>
+                        <p v-else-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+                        <p v-else-if="noticeMessage" class="muted">{{ noticeMessage }}</p>
+
+                        <MediaGrid v-if="hasFiles" :files="filteredFiles" :selected-ids="selectedIdsState" :accent-ids="recentUploadIds" @select="handleFileClick" />
+
+                        <p v-else-if="!loading" class="muted">В текущей папке пока нет изображений.</p>
 
                         <details v-if="allowUpload" ref="uploadSectionRef" class="media-library-modal__section" :open="uploadPanelOpen || queueCount > 0">
                             <summary>Загрузка и очередь</summary>
@@ -695,13 +780,60 @@ function submitSelection() {
                 </div>
             </div>
         </div>
+
+        <div v-if="folderModalOpen" class="admin-modal media-library-modal__nested-modal" @click.self="closeCreateFolderModal">
+            <div class="admin-modal__dialog media-library-modal__folder-dialog">
+                <div class="admin-modal__header">
+                    <div>
+                        <p class="eyebrow">Folder</p>
+                        <h2>Создать папку</h2>
+                    </div>
+
+                    <button type="button" class="button-link" :disabled="saving" @click="closeCreateFolderModal">
+                        Отмена
+                    </button>
+                </div>
+
+                <div class="admin-modal__body">
+                    <form class="admin-form-stack" @submit.prevent="submitCreateFolderModal">
+                        <label class="admin-form-label">
+                            <span>Название папки</span>
+                            <input v-model="folderForm.name" class="admin-input" type="text" placeholder="Например, Баннеры">
+                            <small v-if="createErrors.name" class="error-text">{{ createErrors.name[0] }}</small>
+                        </label>
+
+                        <label class="admin-form-label">
+                            <span>Slug</span>
+                            <input v-model="folderForm.slug" class="admin-input" type="text" placeholder="bannery" @input="markFolderSlugTouched">
+                            <small v-if="createErrors.slug" class="error-text">{{ createErrors.slug[0] }}</small>
+                        </label>
+
+                        <p class="muted media-library-modal__folder-hint">
+                            Родительская папка: {{ currentFolder?.path || 'media' }}
+                        </p>
+
+                        <div class="admin-actions-row">
+                            <AdminButton type="submit" variant="primary" :disabled="saving">
+                                {{ saving ? 'Создание...' : 'Создать' }}
+                            </AdminButton>
+                            <button type="button" class="button-link" :disabled="saving" @click="closeCreateFolderModal">
+                                Отмена
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <style scoped>
 .media-library-modal {
+    display: flex;
+    flex-direction: column;
     width: min(1380px, calc(100vw - 2rem));
     max-height: calc(100vh - 2rem);
+    overflow-y: auto;
 }
 
 .media-library-modal__header {
@@ -709,7 +841,8 @@ function submitSelection() {
 }
 
 .media-library-modal__body {
-    overflow: hidden;
+    overflow: auto;
+    min-height: 0;
     padding: 0;
 }
 
@@ -723,7 +856,13 @@ function submitSelection() {
     position: relative;
     display: grid;
     gap: 1rem;
+    min-height: 0;
     padding: 1.25rem;
+    overflow: auto;
+}
+
+.media-library-modal :deep(.media-sidebar) {
+    min-height: 0;
     overflow: auto;
 }
 
@@ -778,6 +917,33 @@ function submitSelection() {
     overflow: hidden;
 }
 
+.media-library-modal__section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1rem 0;
+}
+
+.media-library-modal__section-head div {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.media-library-modal__section-head strong {
+    color: #1e3a5f;
+    font-size: 0.98rem;
+}
+
+.media-library-modal__section-head span {
+    color: rgba(71, 85, 105, 0.9);
+    font-size: 0.88rem;
+}
+
+.media-library-modal__section-button {
+    white-space: nowrap;
+}
+
 .media-library-modal__section summary {
     padding: 0.95rem 1rem;
     cursor: pointer;
@@ -793,6 +959,10 @@ function submitSelection() {
 .media-library-modal__section :deep(.media-folders),
 .media-library-modal__section :deep(.media-uploader) {
     margin: 0 1rem 1rem;
+}
+
+.media-library-modal__section--folders :deep(.media-folders) {
+    margin-top: 0.85rem;
 }
 
 .media-library-modal__drag-overlay {
@@ -827,6 +997,18 @@ function submitSelection() {
     color: rgba(51, 65, 85, 0.92);
 }
 
+.media-library-modal__folder-dialog {
+    width: min(520px, calc(100vw - 2rem));
+}
+
+.media-library-modal__folder-hint {
+    margin: 0;
+}
+
+.media-library-modal__nested-modal {
+    z-index: 81;
+}
+
 .media-drag-overlay-enter-active,
 .media-drag-overlay-leave-active {
     transition: opacity 0.18s ease, transform 0.18s ease;
@@ -849,6 +1031,11 @@ function submitSelection() {
 
     .media-library-modal__actions {
         justify-content: flex-start;
+    }
+
+    .media-library-modal__section-head {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 </style>

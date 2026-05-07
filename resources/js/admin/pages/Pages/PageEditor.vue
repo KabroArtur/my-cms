@@ -40,6 +40,7 @@ const creatorLabel = ref('Не указан')
 const canUpdatePage = ref(true)
 const additionalFieldGroups = ref([])
 const additionalFieldValues = ref({})
+const additionalFieldsRequestToken = ref(0)
 const canManageAdditionalFields = ref(false)
 const templateOptions = ref([{ value: 'default', label: 'По умолчанию', description: 'Основной шаблон темы' }])
 const headingLevels = [1, 2, 3, 4, 5, 6]
@@ -154,13 +155,13 @@ function formatDateTimeLocalValue(value) {
     return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16)
 }
 
-function normalizeSlug(value) {
+function normalizeSlug(value, { trimEdges = true } = {}) {
     const source = String(value)
         .split('')
         .map((character) => transliterationMap[character] ?? character)
         .join('')
 
-    return source
+    const normalized = source
         .toLowerCase()
         .trim()
         .replace(/['’]+/g, '')
@@ -168,7 +169,12 @@ function normalizeSlug(value) {
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]+/g, '-')
         .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
+
+    if (!trimEdges) {
+        return normalized
+    }
+
+    return normalized.replace(/^-|-$/g, '')
 }
 
 function syncSlugFromTitle() {
@@ -180,7 +186,7 @@ function syncSlugFromTitle() {
 }
 
 function handleSlugInput() {
-    form.slug = normalizeSlug(form.slug)
+    form.slug = normalizeSlug(form.slug, { trimEdges: false })
     slugLocked.value = form.slug.trim() !== ''
 }
 
@@ -224,7 +230,9 @@ function ensureFieldValue(field) {
 
 function hydrateAdditionalFields(groups, values = {}) {
     additionalFieldGroups.value = Array.isArray(groups) ? groups : []
-    additionalFieldValues.value = { ...(values || {}) }
+    additionalFieldValues.value = Object.fromEntries(
+        Object.entries(values || {}).map(([key, value]) => [key, cloneValue(value)]),
+    )
 
     additionalFieldGroups.value.forEach((group) => {
         const fields = Array.isArray(group.fields) ? group.fields : []
@@ -240,18 +248,44 @@ function updateAdditionalFieldValue(key, value) {
     }
 }
 
+function applicableFieldKeys(groups) {
+    return new Set(
+        (Array.isArray(groups) ? groups : [])
+            .flatMap((group) => Array.isArray(group.fields) ? group.fields : [])
+            .map((field) => String(field?.key ?? ''))
+            .filter(Boolean),
+    )
+}
+
+function valuesForApplicableGroups(values, groups) {
+    const keys = applicableFieldKeys(groups)
+
+    return Object.fromEntries(
+        Object.entries(values || {}).filter(([key]) => keys.has(key)),
+    )
+}
+
 async function loadApplicableAdditionalFields() {
+    const requestToken = additionalFieldsRequestToken.value + 1
+    additionalFieldsRequestToken.value = requestToken
+
     try {
         const payload = await fetchApplicableAdditionalFields({
             page_id: isCreateMode.value ? undefined : pageId.value,
             template: form.template || 'default',
         })
 
+        if (additionalFieldsRequestToken.value !== requestToken) {
+            return
+        }
+
         const groups = payload.data?.groups ?? []
         const values = payload.data?.values ?? {}
+        const currentValues = valuesForApplicableGroups(additionalFieldValues.value, groups)
+
         hydrateAdditionalFields(groups, {
             ...values,
-            ...additionalFieldValues.value,
+            ...currentValues,
         })
     } catch (error) {
         console.error(error)

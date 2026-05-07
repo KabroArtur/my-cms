@@ -10,6 +10,7 @@ use App\Core\Security\Services\SecurityAuditLogger;
 use App\Core\Support\Services\CmsCacheService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Media\StoreMediaFolderRequest;
+use App\Http\Requests\Admin\Media\ReplaceMediaFileRequest;
 use App\Http\Requests\Admin\Media\UploadMediaBatchRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFileRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFolderRequest;
@@ -41,6 +42,7 @@ class MediaController extends Controller
         Gate::authorize('viewAny', MediaFile::class);
 
         $folderId = $request->integer('folder_id');
+        $scope = $request->string('scope')->toString();
         $currentFolder = $folderId > 0 ? MediaFolder::query()->findOrFail($folderId) : null;
 
         $folders = MediaFolder::query()
@@ -55,7 +57,7 @@ class MediaController extends Controller
 
         $files = MediaFile::query()
             ->with('folder')
-            ->where('folder_id', $currentFolder?->id)
+            ->when($scope !== 'all', fn ($query) => $query->where('folder_id', $currentFolder?->id))
             ->orderByDesc('id')
             ->get();
 
@@ -83,7 +85,7 @@ class MediaController extends Controller
             ? MediaFolder::query()->findOrFail($request->integer('parent_id'))
             : null;
 
-        $slug = $this->resolveUniqueFolderSlug($parent, (string) $request->string('name'));
+        $slug = $this->resolveUniqueFolderSlug($parent, (string) $request->string('name'), customSlug: $request->input('slug'));
         $path = $parent === null ? $slug : $parent->path.'/'.$slug;
 
         $folder = MediaFolder::query()->create([
@@ -138,7 +140,7 @@ class MediaController extends Controller
         abort_if($targetParent !== null && $this->isDescendantOf($targetParent, $folder), 422, 'Нельзя переместить папку во вложенную папку.');
 
         $previousPath = $folder->path;
-        $slug = $this->resolveUniqueFolderSlug($targetParent, (string) $request->string('name'), $folder->id);
+        $slug = $this->resolveUniqueFolderSlug($targetParent, (string) $request->string('name'), $folder->id, $request->input('slug'));
         $nextPath = $targetParent === null ? $slug : $targetParent->path.'/'.$slug;
 
         if ($previousPath !== $nextPath) {
@@ -292,6 +294,7 @@ class MediaController extends Controller
             'title' => $this->nullableString($validated['title'] ?? null),
             'alt_text' => $this->nullableString($validated['alt_text'] ?? null),
             'caption' => $this->nullableString($validated['caption'] ?? null),
+            'description' => $this->nullableString($validated['description'] ?? null),
         ])->save();
 
         $audit->log('media.files.updated', $request->user(), [
@@ -300,6 +303,20 @@ class MediaController extends Controller
         ]);
 
         $this->cache->invalidateAll(reason: 'media-file-updated');
+
+        return MediaFileResource::make($mediaFile->fresh()->load('folder'));
+    }
+
+    public function replaceFile(ReplaceMediaFileRequest $request, MediaFile $mediaFile, SecurityAuditLogger $audit): MediaFileResource
+    {
+        $mediaFile = $this->uploads->replaceMediaFile($mediaFile->load('folder'), $request->file('file'));
+
+        $audit->log('media.files.replaced', $request->user(), [
+            'file_id' => $mediaFile->id,
+            'file_path' => $mediaFile->path,
+        ]);
+
+        $this->cache->invalidateAll(reason: 'media-file-replaced');
 
         return MediaFileResource::make($mediaFile->fresh()->load('folder'));
     }
@@ -376,9 +393,9 @@ class MediaController extends Controller
         return $breadcrumbs;
     }
 
-    protected function resolveUniqueFolderSlug(?MediaFolder $parent, string $name, ?int $ignoreFolderId = null): string
+    protected function resolveUniqueFolderSlug(?MediaFolder $parent, string $name, ?int $ignoreFolderId = null, ?string $customSlug = null): string
     {
-        $baseSlug = Str::slug($name);
+        $baseSlug = Str::slug((string) ($customSlug ?: $name));
         $baseSlug = $baseSlug !== '' ? $baseSlug : 'folder';
         $slug = $baseSlug;
         $index = 2;

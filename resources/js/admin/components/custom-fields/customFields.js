@@ -1,3 +1,5 @@
+import { toRaw } from 'vue'
+
 export const FIELD_TYPE_OPTIONS = [
     { value: 'text', label: 'Text' },
     { value: 'textarea', label: 'Textarea' },
@@ -34,11 +36,17 @@ export function cloneValue(value) {
         return value
     }
 
+    const rawValue = typeof value === 'object' ? toRaw(value) : value
+
     if (typeof structuredClone === 'function') {
-        return structuredClone(value)
+        try {
+            return structuredClone(rawValue)
+        } catch {
+            // Vue proxies and some browser-backed objects cannot be structured-cloned.
+        }
     }
 
-    return JSON.parse(JSON.stringify(value))
+    return JSON.parse(JSON.stringify(rawValue))
 }
 
 export function sanitizeFieldKey(value = '') {

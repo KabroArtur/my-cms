@@ -1,105 +1,121 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { adminBasePath } from './utils/adminPath'
+import AdminLayout from './layout/AdminLayout.vue'
+import BlogCategoriesIndex from './pages/Blog/BlogCategoriesIndex.vue'
+import BlogPostsIndex from './pages/Blog/BlogPostsIndex.vue'
+import BlogTagsIndex from './pages/Blog/BlogTagsIndex.vue'
+import DashboardIndex from './pages/Dashboard/DashboardIndex.vue'
+import MediaLibrary from './pages/Media/MediaLibrary.vue'
+import PagesIndex from './pages/Pages/PagesIndex.vue'
+import PageEditor from './pages/Pages/PageEditor.vue'
+import PluginsIndex from './pages/Plugins/PluginsIndex.vue'
+import RecordSectionsIndex from './pages/Records/RecordSectionsIndex.vue'
+import RecordSectionWorkspace from './pages/Records/RecordSectionWorkspace.vue'
+import RolesIndex from './pages/Roles/RolesIndex.vue'
+import SettingsIndex from './pages/Settings/SettingsIndex.vue'
+import ContentStructure from './pages/Settings/ContentStructure.vue'
+import AdminNotFound from './pages/System/AdminNotFound.vue'
+import UsersIndex from './pages/Users/UsersIndex.vue'
 
 const routes = [
     {
         path: adminBasePath(),
-        component: () => import('./layout/AdminLayout.vue'),
+        component: AdminLayout,
         children: [
             {
                 path: '',
                 name: 'dashboard',
-                component: () => import('./pages/Dashboard/DashboardIndex.vue'),
+                component: DashboardIndex,
             },
             {
                 path: 'pages',
                 name: 'pages',
-                component: () => import('./pages/Pages/PagesIndex.vue'),
+                component: PagesIndex,
             },
             {
                 path: 'pages/create',
                 name: 'page-create',
-                component: () => import('./pages/Pages/PageEditor.vue'),
+                component: PageEditor,
             },
             {
                 path: 'pages/:id',
                 name: 'page-edit',
-                component: () => import('./pages/Pages/PageEditor.vue'),
+                component: PageEditor,
             },
             {
                 path: 'users',
                 name: 'users',
-                component: () => import('./pages/Users/UsersIndex.vue'),
+                component: UsersIndex,
             },
             {
                 path: 'roles',
                 name: 'roles',
-                component: () => import('./pages/Roles/RolesIndex.vue'),
+                component: RolesIndex,
             },
             {
                 path: 'media',
                 name: 'media',
-                component: () => import('./pages/Media/MediaLibrary.vue'),
+                component: MediaLibrary,
             },
             {
                 path: 'settings',
                 name: 'settings',
-                component: () => import('./pages/Settings/SettingsIndex.vue'),
+                component: SettingsIndex,
             },
             {
                 path: 'settings/content-structure',
                 name: 'content-structure',
-                component: () => import('./pages/Settings/ContentStructure.vue'),
+                component: ContentStructure,
             },
             {
                 path: 'plugins',
                 name: 'plugins',
-                component: () => import('./pages/Plugins/PluginsIndex.vue'),
+                component: PluginsIndex,
             },
             {
                 path: 'records/sections',
                 name: 'records-sections',
-                component: () => import('./pages/Records/RecordSectionsIndex.vue'),
+                component: RecordSectionsIndex,
             },
             {
                 path: 'records/:sectionSlug/posts',
                 name: 'records-posts',
-                component: () => import('./pages/Records/RecordSectionWorkspace.vue'),
+                component: RecordSectionWorkspace,
             },
             {
                 path: 'records/:sectionSlug/categories',
                 name: 'records-categories',
-                component: () => import('./pages/Records/RecordSectionWorkspace.vue'),
+                component: RecordSectionWorkspace,
             },
             {
                 path: 'records/:sectionSlug/tags',
                 name: 'records-tags',
-                component: () => import('./pages/Records/RecordSectionWorkspace.vue'),
+                component: RecordSectionWorkspace,
             },
             {
                 path: 'records/:sectionSlug/settings',
                 name: 'records-settings',
-                component: () => import('./pages/Records/RecordSectionWorkspace.vue'),
+                component: RecordSectionWorkspace,
             },
             {
                 path: 'blog/posts',
                 name: 'blog-posts',
-                component: () => import('./pages/Blog/BlogPostsIndex.vue'),
+                component: BlogPostsIndex,
             },
             {
                 path: 'blog/categories',
                 name: 'blog-categories',
-                component: () => import('./pages/Blog/BlogCategoriesIndex.vue'),
+                component: BlogCategoriesIndex,
             },
             {
                 path: 'blog/tags',
                 name: 'blog-tags',
-                component: () => import('./pages/Blog/BlogTagsIndex.vue'),
+                component: BlogTagsIndex,
             },
             {
                 path: ':pathMatch(.*)*',
                 name: 'admin-not-found',
-                component: () => import('./pages/System/AdminNotFound.vue'),
+                component: AdminNotFound,
             },
         ],
     },
