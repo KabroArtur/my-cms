@@ -15,14 +15,16 @@ class UploadMediaRequest extends FormRequest
 
     public function rules(): array
     {
+        $maxUploadKb = (int) config('settings.defaults.media_upload_max_kb', 20480);
+
         return [
             'folder_id' => ['nullable', 'integer', 'exists:media_folders,id'],
             'name' => ['nullable', 'string', 'max:255'],
             'file' => [
                 'required',
                 'file',
-                'max:10240',
-                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp',
+                'max:'.$maxUploadKb,
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,image/svg+xml',
             ],
         ];
     }

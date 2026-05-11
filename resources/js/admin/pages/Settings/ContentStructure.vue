@@ -9,6 +9,7 @@ import { fetchPageTree } from '../../api/pages'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import {
     createFieldGroup,
     deleteFieldGroup,
@@ -29,6 +30,7 @@ const accessChecked = ref(false)
 const pageOptions = ref([])
 const pageSearch = reactive({})
 const templateOptions = ref([{ value: 'default', label: 'По умолчанию', description: 'Основной шаблон темы' }])
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const ruleFieldOptions = [
     { value: 'template', label: 'Шаблон страницы', placeholder: '', hint: 'Набор появится только у страниц с выбранным шаблоном.' },
@@ -357,12 +359,15 @@ async function saveGroup() {
         } else {
             resetForm()
         }
+
+        notifySuccess(isEditing.value ? 'Набор обновлен.' : 'Набор создан.')
     } catch (error) {
         if (error.response?.status === 422) {
             validationErrors.value = error.response.data.errors ?? {}
             errorMessage.value = error.response?.data?.message || 'Исправьте ошибки в форме.'
         } else {
             errorMessage.value = error.response?.data?.message || 'Не удалось сохранить набор.'
+            notifyError(errorMessage.value)
         }
         console.error(error)
     } finally {
@@ -382,8 +387,10 @@ async function removeGroup() {
         await deleteFieldGroup(form.id)
         await loadGroups()
         resetForm()
+        notifySuccess('Набор удален.')
     } catch (error) {
         errorMessage.value = 'Не удалось удалить набор.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         deleting.value = false

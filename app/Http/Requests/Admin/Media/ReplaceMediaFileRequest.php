@@ -17,12 +17,14 @@ class ReplaceMediaFileRequest extends FormRequest
 
     public function rules(): array
     {
+        $maxUploadKb = (int) config('settings.defaults.media_upload_max_kb', 20480);
+
         return [
             'file' => [
                 'required',
                 'file',
-                'max:10240',
-                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp',
+                'max:'.$maxUploadKb,
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,image/svg+xml',
             ],
         ];
     }

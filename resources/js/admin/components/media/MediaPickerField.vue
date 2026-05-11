@@ -154,6 +154,7 @@ function encodeSelection(items) {
 function handleModalSelect(selection) {
     const items = normalizeToArray(selection).map((item) => createMediaSelection(item))
 
+    modalOpen.value = false
     resolvedItems.value = items
     manualUrl.value = allowManualUrl.value ? (items[0]?.url ?? '') : ''
 

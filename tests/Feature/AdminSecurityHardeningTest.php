@@ -414,7 +414,8 @@ it('sanitizes page html content before storing and rendering it publicly', funct
     $this->get('/safe-content-page')
         ->assertOk()
         ->assertSee('<strong>world</strong>', false)
-        ->assertDontSee('<script', false)
+        ->assertDontSee('<script>alert(1)</script>', false)
+        ->assertDontSee('alert(1)', false)
         ->assertDontSee('onerror', false)
         ->assertDontSee('javascript:', false);
 });
@@ -550,6 +551,7 @@ it('adds baseline security headers to auth responses', function (): void {
     expect($policy)->toContain("object-src 'none'");
     expect($policy)->toContain("frame-ancestors 'self'");
     expect($policy)->toContain("form-action 'self'");
+    expect($policy)->toContain("'nonce-");
     expect($policy)->not->toContain("script-src 'self' 'unsafe-inline'");
 });
 

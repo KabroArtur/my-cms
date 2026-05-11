@@ -76,6 +76,7 @@ Route::middleware(['auth', 'admin.access', 'two_factor', 'throttle:admin-api'])-
     Route::post('/media/files', [MediaController::class, 'storeFile']);
     Route::post('/media/files/batch', [MediaController::class, 'storeFiles']);
     Route::put('/media/files/{mediaFile}', [MediaController::class, 'updateFile']);
+    Route::post('/media/files/{mediaFile}/transform', [MediaController::class, 'transformFile']);
     Route::post('/media/files/{mediaFile}/replace', [MediaController::class, 'replaceFile']);
     Route::put('/media/files/{mediaFile}/move', [MediaController::class, 'moveFile']);
     Route::delete('/media/files/{mediaFile}', [MediaController::class, 'destroyFile']);

@@ -19,6 +19,16 @@ class ThemeDataBag
         return $this->data;
     }
 
+    public function __get(string $key): mixed
+    {
+        return $this->field($key);
+    }
+
+    public function __isset(string $key): bool
+    {
+        return $this->hasField($key);
+    }
+
     public function field(string $key, mixed $default = null): mixed
     {
         return Arr::get($this->data, $key, $default);

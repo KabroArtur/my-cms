@@ -23,6 +23,7 @@ import PageContentToolbar from '../../components/ui/PageContentToolbar.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import { fetchApplicableAdditionalFields } from '../../api/additionalFields'
 import { loadCmsSettings } from '../../composables/useCmsSettings'
 import { createPage, fetchPage, fetchPageTree, updatePage } from '../../api/pages'
@@ -44,6 +45,7 @@ const additionalFieldsRequestToken = ref(0)
 const canManageAdditionalFields = ref(false)
 const templateOptions = ref([{ value: 'default', label: 'По умолчанию', description: 'Основной шаблон темы' }])
 const headingLevels = [1, 2, 3, 4, 5, 6]
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const form = reactive({
     title: '',
@@ -381,14 +383,17 @@ async function submitForm() {
         if (isCreateMode.value) {
             await router.replace({ name: 'page-edit', params: { id: payload.data.id } })
             await loadPage()
+            notifySuccess('Страница создана.')
         } else {
             fillForm(payload.data)
+            notifySuccess('Страница сохранена.')
         }
     } catch (error) {
         if (error.response?.status === 422) {
             validationErrors.value = error.response.data.errors ?? {}
         } else {
             errorMessage.value = 'Не удалось сохранить страницу.'
+            notifyError(errorMessage.value)
         }
 
         console.error(error)

@@ -131,16 +131,23 @@ write_deploy_note() {
 1. Upload the contents of this archive into the domain root.
 2. Copy `.env.production.example` to `.env` and fill real values.
 3. Ensure `storage` and `bootstrap/cache` are writable.
-4. Import the production database dump.
-5. Do not delete the root `build` directory: browser assets are loaded from `/build/...`, while Laravel reads the manifest from `public/build/manifest.json`.
-6. Shared-hosting package uses `SHARED_HOSTING_FLAT_PUBLIC_DISK=true`, so uploaded media will be written directly into the web-accessible `storage` directory.
-7. If SSH is available, run:
+4. Ensure the root `build` directory is writable: theme bundles are generated there as `/build/theme-assets/...`.
+5. Import the production database dump.
+6. Do not delete the root `build` directory: browser assets are loaded from `/build/...`, while Laravel reads the manifest from `public/build/manifest.json`.
+7. Shared-hosting package uses `SHARED_HOSTING_FLAT_PUBLIC_DISK=true`, so uploaded media will be written directly into the web-accessible `storage` directory.
+8. If SSH is available, run:
 
    php artisan key:generate --force
    php artisan migrate --force
    php artisan optimize
 
+    If you want to enable JS obfuscation from CMS settings, also run:
+
+    npm install --omit=dev
+
 If SSH is not available, generate `APP_KEY` locally and put it into `.env`, then import a DB that already contains migrated tables.
+
+If Node.js or javascript-obfuscator is unavailable on the server, the CMS falls back to regular JS minification and keeps the site working.
 MD
 }
 
@@ -156,6 +163,14 @@ rm -f "$ZIP_PATH"
 for item in app artisan bootstrap config database modules plugins resources routes storage themes vendor composer.json composer.lock; do
     copy_item "$item"
 done
+
+if [[ -f "$ROOT_DIR/package.json" ]]; then
+    copy_item "package.json"
+fi
+
+if [[ -f "$ROOT_DIR/package-lock.json" ]]; then
+    copy_item "package-lock.json"
+fi
 
 rsync -a \
     --exclude '.DS_Store' \

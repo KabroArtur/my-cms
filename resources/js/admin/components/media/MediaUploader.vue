@@ -65,15 +65,12 @@ function handleDrop(event) {
         <div class="media-uploader__header">
             <div>
                 <h3>Очередь загрузки</h3>
-                <p class="muted">Добавьте файлы кнопкой или перетащите их в рабочую область медиатеки.</p>
+                <p class="muted">Добавьте файлы кнопкой или перетащите их в рабочую область медиатеки. Загрузка начнется автоматически.</p>
             </div>
 
             <div class="admin-actions-row">
                 <AdminButton type="button" @click="triggerFileDialog">
                     Добавить файлы
-                </AdminButton>
-                <AdminButton type="button" variant="primary" :disabled="queue.length === 0 || uploading" @click="emit('upload')">
-                    {{ uploading ? 'Загрузка...' : 'Загрузить' }}
                 </AdminButton>
             </div>
         </div>
@@ -94,6 +91,9 @@ function handleDrop(event) {
                 <div class="media-uploader__thumb">
                     <img v-if="item.previewUrl" :src="item.previewUrl" :alt="item.originalName">
                     <span v-else>{{ item.extension.toUpperCase() }}</span>
+                    <div v-if="item.status === 'uploading'" class="media-uploader__thumb-overlay">
+                        <span class="media-uploader__spinner"></span>
+                    </div>
                 </div>
 
                 <div class="media-uploader__body">
@@ -213,6 +213,7 @@ function handleDrop(event) {
 }
 
 .media-uploader__thumb {
+    position: relative;
     width: 72px;
     height: 72px;
     flex: 0 0 72px;
@@ -227,6 +228,29 @@ function handleDrop(event) {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.media-uploader__thumb-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(15, 23, 42, 0.36);
+}
+
+.media-uploader__spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 999px;
+    animation: media-uploader-spin 0.75s linear infinite;
+}
+
+@keyframes media-uploader-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .media-uploader__body {

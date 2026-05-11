@@ -145,6 +145,26 @@ export function createExternalMediaReference(url) {
     })
 }
 
+export function withMediaCacheBust(file, token = Date.now()) {
+    const appendToken = (url) => {
+        const normalizedUrl = String(url ?? '').trim()
+
+        if (normalizedUrl === '') {
+            return ''
+        }
+
+        const separator = normalizedUrl.includes('?') ? '&' : '?'
+
+        return `${normalizedUrl}${separator}v=${encodeURIComponent(String(token))}`
+    }
+
+    return createMediaSelection({
+        ...file,
+        url: appendToken(file?.url),
+        preview_url: appendToken(file?.preview_url ?? file?.url),
+    })
+}
+
 export function normalizeAcceptList(accept = DEFAULT_MEDIA_ACCEPT) {
     return String(accept)
         .split(',')

@@ -6,6 +6,7 @@ import MediaPickerField from '../../components/media/MediaPickerField.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import { clearCmsCache, fetchSiteSettings, updateSiteSettings } from '../../api/settings'
 import { rememberCmsSettings } from '../../composables/useCmsSettings'
 
@@ -13,7 +14,6 @@ const loading = ref(true)
 const saving = ref(false)
 const clearingCache = ref(false)
 const errorMessage = ref('')
-const successMessage = ref('')
 const activeSettingsTab = ref('general')
 const adminPathNoticeUrl = ref('')
 const canManageAdditionalFields = ref(false)
@@ -30,6 +30,7 @@ const options = reactive({
     admin_theme_modes: [],
     admin_light_palettes: [],
     admin_dark_palettes: [],
+    theme_asset_obfuscation_presets: [],
     home_pages: [],
     favicon_files: [],
 })
@@ -49,12 +50,22 @@ const form = reactive({
     site_theme: 'default',
     site_featured_media_variant: 'original',
     media_default_insert_variant: 'original',
+    media_image_optimize: true,
+    media_image_max_width: 1920,
+    media_image_max_height: 1920,
+    media_image_jpg_quality: 82,
+    media_image_webp_quality: 80,
+    media_image_convert_to_webp: true,
+    media_image_keep_original: true,
+    media_image_create_thumbnails: true,
     admin_theme_mode: 'dark',
     admin_light_palette: 'slate',
     admin_dark_palette: 'midnight',
     cms_palette: 'slate',
     theme_assets_minify_css: true,
     theme_assets_minify_js: true,
+    theme_assets_obfuscate_js: false,
+    theme_assets_obfuscation_preset: 'balanced',
     theme_assets_combine_css: true,
     theme_assets_combine_js: true,
     theme_assets_defer_scripts: true,
@@ -128,6 +139,7 @@ const securityProfiles = [
         },
     },
 ]
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 function applySecurityProfile(profile) {
     Object.assign(form, profile.values)
@@ -144,12 +156,22 @@ function fillForm(payload) {
     form.site_theme = settings.site_theme ?? 'default'
     form.site_featured_media_variant = settings.site_featured_media_variant ?? 'original'
     form.media_default_insert_variant = settings.media_default_insert_variant ?? 'original'
+    form.media_image_optimize = settings.media_image_optimize ?? true
+    form.media_image_max_width = settings.media_image_max_width ?? 1920
+    form.media_image_max_height = settings.media_image_max_height ?? 1920
+    form.media_image_jpg_quality = settings.media_image_jpg_quality ?? 82
+    form.media_image_webp_quality = settings.media_image_webp_quality ?? 80
+    form.media_image_convert_to_webp = settings.media_image_convert_to_webp ?? true
+    form.media_image_keep_original = settings.media_image_keep_original ?? true
+    form.media_image_create_thumbnails = settings.media_image_create_thumbnails ?? true
     form.admin_theme_mode = settings.admin_theme_mode ?? 'dark'
     form.admin_light_palette = settings.admin_light_palette ?? 'slate'
     form.admin_dark_palette = settings.admin_dark_palette ?? 'midnight'
     form.cms_palette = settings.cms_palette ?? 'slate'
     form.theme_assets_minify_css = settings.theme_assets_minify_css ?? true
     form.theme_assets_minify_js = settings.theme_assets_minify_js ?? true
+    form.theme_assets_obfuscate_js = settings.theme_assets_obfuscate_js ?? false
+    form.theme_assets_obfuscation_preset = settings.theme_assets_obfuscation_preset ?? 'balanced'
     form.theme_assets_combine_css = settings.theme_assets_combine_css ?? true
     form.theme_assets_combine_js = settings.theme_assets_combine_js ?? true
     form.theme_assets_defer_scripts = settings.theme_assets_defer_scripts ?? true
@@ -222,7 +244,6 @@ async function loadSettings() {
 async function submitForm() {
     saving.value = true
     errorMessage.value = ''
-    successMessage.value = ''
     adminPathNoticeUrl.value = ''
 
     try {
@@ -244,12 +265,22 @@ async function submitForm() {
         if (!canManageAppearance.value) {
             delete submitPayload.site_featured_media_variant
             delete submitPayload.media_default_insert_variant
+            delete submitPayload.media_image_optimize
+            delete submitPayload.media_image_max_width
+            delete submitPayload.media_image_max_height
+            delete submitPayload.media_image_jpg_quality
+            delete submitPayload.media_image_webp_quality
+            delete submitPayload.media_image_convert_to_webp
+            delete submitPayload.media_image_keep_original
+            delete submitPayload.media_image_create_thumbnails
             delete submitPayload.admin_theme_mode
             delete submitPayload.admin_light_palette
             delete submitPayload.admin_dark_palette
             delete submitPayload.cms_palette
             delete submitPayload.theme_assets_minify_css
             delete submitPayload.theme_assets_minify_js
+            delete submitPayload.theme_assets_obfuscate_js
+            delete submitPayload.theme_assets_obfuscation_preset
             delete submitPayload.theme_assets_combine_css
             delete submitPayload.theme_assets_combine_js
             delete submitPayload.theme_assets_defer_scripts
@@ -284,15 +315,16 @@ async function submitForm() {
 
         if (typeof nextUrl === 'string' && nextUrl !== '') {
             adminPathNoticeUrl.value = nextUrl
-            successMessage.value = 'Путь входа изменен. Новый URL показан один раз ниже.'
+            notifySuccess('Путь входа изменен. Новый URL показан ниже.', { duration: 7000 })
             setTimeout(() => {
                 window.location.href = nextUrl
             }, 1200)
         } else {
-            successMessage.value = 'Настройки сохранены.'
+            notifySuccess('Настройки сохранены.')
         }
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось сохранить настройки.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         saving.value = false
@@ -302,14 +334,14 @@ async function submitForm() {
 async function clearCache() {
     clearingCache.value = true
     errorMessage.value = ''
-    successMessage.value = ''
 
     try {
         const payload = await clearCmsCache()
         Object.assign(cacheStats, payload.data?.cache ?? {})
-        successMessage.value = payload.message ?? 'Кэш очищен.'
+        notifySuccess(payload.message ?? 'Кэш очищен.')
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось очистить кэш.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         clearingCache.value = false
@@ -459,6 +491,48 @@ onMounted(loadSettings)
                     </div>
 
                     <div class="settings-cache-card">
+                        <p class="settings-cache-card__title">Обработка изображений</p>
+                        <div class="page-meta-grid">
+                            <label class="admin-form-label">
+                                <span><input v-model="form.media_image_optimize" type="checkbox"> Автоматически оптимизировать изображения</span>
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span><input v-model="form.media_image_keep_original" type="checkbox"> Сохранять оригинал</span>
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span><input v-model="form.media_image_convert_to_webp" type="checkbox"> Конвертировать производные версии в WebP</span>
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span><input v-model="form.media_image_create_thumbnails" type="checkbox"> Создавать дополнительные размеры</span>
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span>Максимальная ширина</span>
+                                <input v-model.number="form.media_image_max_width" class="admin-input" type="number" min="320" max="12000" step="1" :disabled="!form.media_image_optimize">
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span>Максимальная высота</span>
+                                <input v-model.number="form.media_image_max_height" class="admin-input" type="number" min="320" max="12000" step="1" :disabled="!form.media_image_optimize">
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span>Качество JPG</span>
+                                <input v-model.number="form.media_image_jpg_quality" class="admin-input" type="number" min="30" max="100" step="1" :disabled="!form.media_image_optimize">
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span>Качество WebP</span>
+                                <input v-model.number="form.media_image_webp_quality" class="admin-input" type="number" min="30" max="100" step="1" :disabled="!form.media_image_optimize || !form.media_image_convert_to_webp">
+                            </label>
+                        </div>
+                        <p class="muted">Дополнительные размеры берутся из конфигурации media.images.sizes. Здесь вы управляете оптимизацией, ограничением исходника и созданием производных файлов.</p>
+                    </div>
+
+                    <div class="settings-cache-card">
                         <p class="settings-cache-card__title">Ассеты темы (CSS/JS)</p>
                         <div class="page-meta-grid">
                             <label class="admin-form-label">
@@ -466,6 +540,17 @@ onMounted(loadSettings)
                             </label>
                             <label class="admin-form-label">
                                 <span><input v-model="form.theme_assets_minify_js" type="checkbox"> Сжимать JS</span>
+                            </label>
+                            <label class="admin-form-label">
+                                <span><input v-model="form.theme_assets_obfuscate_js" type="checkbox"> Обфусцировать JS</span>
+                            </label>
+                            <label class="admin-form-label">
+                                <span>Профиль obfuscation</span>
+                                <select v-model="form.theme_assets_obfuscation_preset" class="admin-input" :disabled="!form.theme_assets_obfuscate_js">
+                                    <option v-for="preset in options.theme_asset_obfuscation_presets" :key="preset.value" :value="preset.value">
+                                        {{ preset.label }}
+                                    </option>
+                                </select>
                             </label>
                             <label class="admin-form-label">
                                 <span><input v-model="form.theme_assets_combine_css" type="checkbox"> Объединять CSS</span>
@@ -480,11 +565,11 @@ onMounted(loadSettings)
                                 <span><input v-model="form.theme_assets_use_hash" type="checkbox"> Добавлять hash в URL</span>
                             </label>
                         </div>
+                        <p class="muted">Obfuscation применяется только к JS-ассетам темы. Для работы нужен установленный javascript-obfuscator на сервере; если runtime-obfuscator недоступен, CMS автоматически вернется к обычному minify без падения сайта.</p>
                     </div>
                     </section>
 
                     <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
-                    <p v-if="successMessage" class="muted">{{ successMessage }}</p>
                     <p v-if="adminPathNoticeUrl" class="muted">
                         Новый URL админки: <a :href="adminPathNoticeUrl">{{ adminPathNoticeUrl }}</a>
                     </p>

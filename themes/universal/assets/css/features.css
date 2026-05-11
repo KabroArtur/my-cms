@@ -1,0 +1,124 @@
+.features {
+  padding: var(--section-padding);
+  background: linear-gradient(180deg, var(--main-bg) 0%, var(--color-light) 100%);
+}
+
+.features__inner {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: var(--gap-lg);
+  align-items: start;
+}
+
+.features__head {
+  position: sticky;
+  top: 100px;
+  margin-bottom: 0;
+}
+
+.features__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gap-md);
+}
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
+  padding: 32px;
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-lg);
+  background: var(--bg-light);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition), border-color var(--transition);
+}
+
+.feature-card--large {
+  grid-row: span 2;
+  min-height: 100%;
+  background: var(--main-accent);
+  color: var(--bg-light);
+}
+
+.feature-card::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: var(--color-light);
+}
+
+.feature-card--large::after {
+  width: 220px;
+  height: 220px;
+  background: var(--color-08);
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--main-accent);
+}
+
+.feature-card__icon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  margin-bottom: 28px;
+  color: var(--main-accent);
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: var(--opacity);
+}
+
+.feature-card--large .feature-card__icon {
+  color: var(--bg-light);
+}
+
+.feature-card__title {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 14px;
+  color: inherit;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.feature-card__text {
+  position: relative;
+  z-index: 1;
+  color: inherit;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  opacity: var(--opacity);
+}
+
+@media (max-width: 1024px) {
+  .features__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .features__head {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .features {
+    padding: 70px 0;
+  }
+
+  .features__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card--large {
+    grid-row: auto;
+    min-height: 260px;
+  }
+}

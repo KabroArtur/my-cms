@@ -19,7 +19,7 @@ class MediaUploadService
 
     public function storeUploadedFile(UploadedFile $file, ?MediaFolder $folder, ?int $userId = null, ?string $desiredName = null): MediaFile
     {
-        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $extension = $this->variants->preferredUploadExtension($file);
         $directory = $this->directoryForFolder($folder);
         $names = $this->resolveNames(
             folder: $folder,
@@ -27,38 +27,25 @@ class MediaUploadService
             fallbackName: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             extension: $extension,
         );
+        $processed = $this->variants->processUploadedFile($file, 'public', $directory, $names['filename']);
 
-        $storedPath = null;
-
-        try {
-            $storedPath = $file->storeAs($directory, $names['filename'], 'public');
-            [$width, $height] = array_pad((array) @getimagesize($file->getRealPath()), 2, null);
-            $variants = $this->variants->generateForUpload($file, 'public', $directory, $names['filename']);
-
-            return MediaFile::query()->create([
-                'folder_id' => $folder?->id,
-                'created_by' => $userId,
-                'disk' => 'public',
-                'directory' => $directory,
-                'filename' => $names['filename'],
-                'original_name' => $names['original_name'],
-                'title' => $names['title'],
-                'alt_text' => $names['title'],
-                'extension' => $extension !== '' ? $extension : null,
-                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-                'size' => $file->getSize(),
-                'width' => is_int($width) ? $width : null,
-                'height' => is_int($height) ? $height : null,
-                'path' => $storedPath,
-                'variants' => $variants,
-            ]);
-        } catch (Throwable $exception) {
-            if (is_string($storedPath) && $storedPath !== '') {
-                Storage::disk('public')->delete($storedPath);
-            }
-
-            throw $exception;
-        }
+        return MediaFile::query()->create([
+            'folder_id' => $folder?->id,
+            'created_by' => $userId,
+            'disk' => 'public',
+            'directory' => $directory,
+            'filename' => $processed['primary']['filename'],
+            'original_name' => $names['original_name'],
+            'title' => $names['title'],
+            'alt_text' => $names['title'],
+            'extension' => $processed['primary']['extension'] !== '' ? $processed['primary']['extension'] : null,
+            'mime_type' => $processed['primary']['mime_type'],
+            'size' => $processed['primary']['size'],
+            'width' => $processed['primary']['width'],
+            'height' => $processed['primary']['height'],
+            'path' => $processed['primary']['path'],
+            'variants' => $processed['variants'],
+        ]);
     }
 
     public function renameMediaFile(MediaFile $mediaFile, string $desiredName): MediaFile
@@ -96,7 +83,7 @@ class MediaUploadService
 
     public function replaceMediaFile(MediaFile $mediaFile, UploadedFile $file): MediaFile
     {
-        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $extension = $this->variants->preferredUploadExtension($file);
         $baseName = pathinfo($mediaFile->original_name ?: $mediaFile->filename, PATHINFO_FILENAME);
         $names = $this->resolveNames(
             folder: $mediaFile->folder,
@@ -108,39 +95,55 @@ class MediaUploadService
 
         $previousPath = $mediaFile->path;
         $targetPath = $mediaFile->directory.'/'.$names['filename'];
-        $storedPath = null;
 
         try {
-            $storedPath = $file->storeAs($mediaFile->directory, $names['filename'], $mediaFile->disk);
-            [$width, $height] = array_pad((array) @getimagesize($file->getRealPath()), 2, null);
-
             $this->variants->deleteVariants($mediaFile);
-            $variants = $this->variants->generateForUpload($file, $mediaFile->disk, $mediaFile->directory, $names['filename']);
+            $processed = $this->variants->processUploadedFile($file, $mediaFile->disk, $mediaFile->directory, $names['filename']);
 
-            if ($previousPath !== $storedPath) {
+            if ($previousPath !== $processed['primary']['path']) {
                 Storage::disk($mediaFile->disk)->delete($previousPath);
             }
 
             $mediaFile->forceFill([
-                'filename' => $names['filename'],
+                'filename' => $processed['primary']['filename'],
                 'original_name' => $names['original_name'],
-                'extension' => $extension !== '' ? $extension : null,
-                'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-                'size' => $file->getSize(),
-                'width' => is_int($width) ? $width : null,
-                'height' => is_int($height) ? $height : null,
-                'path' => $targetPath,
-                'variants' => $variants,
+                'extension' => $processed['primary']['extension'] !== '' ? $processed['primary']['extension'] : null,
+                'mime_type' => $processed['primary']['mime_type'],
+                'size' => $processed['primary']['size'],
+                'width' => $processed['primary']['width'],
+                'height' => $processed['primary']['height'],
+                'path' => $processed['primary']['path'],
+                'variants' => $processed['variants'],
             ])->save();
 
             return $mediaFile;
         } catch (Throwable $exception) {
-            if (is_string($storedPath) && $storedPath !== '' && $storedPath !== $previousPath) {
-                Storage::disk($mediaFile->disk)->delete($storedPath);
-            }
-
             throw $exception;
         }
+    }
+
+    public function transformMediaFile(MediaFile $mediaFile, array $options): MediaFile
+    {
+        $processed = $this->variants->transformMediaFile($mediaFile, $options);
+        $previousPath = $mediaFile->path;
+
+        if ($previousPath !== $processed['primary']['path']) {
+            Storage::disk($mediaFile->disk)->delete($previousPath);
+        }
+
+        $mediaFile->forceFill([
+            'filename' => $processed['primary']['filename'],
+            'original_name' => $this->replaceExtension($mediaFile->original_name ?: $mediaFile->filename, $processed['primary']['extension']),
+            'extension' => $processed['primary']['extension'] !== '' ? $processed['primary']['extension'] : null,
+            'mime_type' => $processed['primary']['mime_type'],
+            'size' => $processed['primary']['size'],
+            'width' => $processed['primary']['width'],
+            'height' => $processed['primary']['height'],
+            'path' => $processed['primary']['path'],
+            'variants' => $processed['variants'],
+        ])->save();
+
+        return $mediaFile;
     }
 
     protected function resolveNames(?MediaFolder $folder, ?string $desiredName, string $fallbackName, string $extension, ?int $ignoreFileId = null): array
@@ -224,5 +227,12 @@ class MediaUploadService
     protected function directoryForFolder(?MediaFolder $folder): string
     {
         return 'media'.($folder ? '/'.$folder->path : '');
+    }
+
+    protected function replaceExtension(string $filename, string $extension): string
+    {
+        $base = pathinfo($filename, PATHINFO_FILENAME);
+
+        return $extension !== '' ? $base.'.'.$extension : $base;
     }
 }

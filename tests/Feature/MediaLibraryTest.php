@@ -14,6 +14,11 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     $this->seed(AccessSeeder::class);
     Storage::fake('public');
+    config()->set('media.preview_variant', 'thumbnail');
+    config()->set('media.images.optimize', true);
+    config()->set('media.images.keep_original', true);
+    config()->set('media.images.convert_to_webp', true);
+    config()->set('media.images.create_thumbnails', true);
 });
 
 it('loads media library for users with media access permission', function (): void {
@@ -76,12 +81,14 @@ it('uploads image files and stores metadata in database', function (): void {
     expect($mediaFile->height)->toBe(630);
     expect($mediaFile->variants)->toBeArray()->not->toBeEmpty();
     Storage::disk('public')->assertExists($mediaFile->path);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['optimized']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
     Storage::disk('public')->assertExists($mediaFile->variants['medium']['path']);
     Storage::disk('public')->assertExists($mediaFile->variants['large']['path']);
 
     expect($response->json('data.preview_url'))->not->toBeNull();
-    expect($response->json('data.variants.thumb.url'))->not->toBeNull();
+    expect($response->json('data.variants.thumbnail.url'))->not->toBeNull();
+    expect($response->json('data.variants.optimized.url'))->not->toBeNull();
 });
 
 it('uploads multiple image files with custom names and returns per-item results', function (): void {
@@ -118,7 +125,7 @@ it('uploads multiple image files with custom names and returns per-item results'
     expect($filenames[1])->toBe('hero-banner-1.webp');
 });
 
-it('rejects svg uploads in media library', function (): void {
+it('uploads svg files without raster variants', function (): void {
     $user = User::factory()->create([
         'password' => 'StrongPass123',
     ]);
@@ -130,14 +137,19 @@ it('rejects svg uploads in media library', function (): void {
         '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
     );
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->post('/admin/api/media/files', [
             'file' => $file,
         ], [
             'Accept' => 'application/json',
         ])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['file']);
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
+
+    expect($mediaFile->mime_type)->toBe('image/svg+xml');
+    expect($mediaFile->variants ?? [])->toBeArray()->toBeEmpty();
+    Storage::disk('public')->assertExists($mediaFile->path);
 });
 
 it('returns per-item validation errors for invalid files in batch upload', function (): void {
@@ -228,10 +240,10 @@ it('moves uploaded media files into another folder', function (): void {
 
     expect($mediaFile->folder_id)->toBe($targetFolder->id);
     expect($mediaFile->path)->toStartWith('media/gallery/');
-    expect($mediaFile->variants['thumb']['path'])->toStartWith('media/gallery/');
+    expect($mediaFile->variants['thumbnail']['path'])->toStartWith('media/gallery/');
     Storage::disk('public')->assertMissing($originalPath);
     Storage::disk('public')->assertExists($mediaFile->path);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
 });
 
 it('renames uploaded media files and regenerates variant paths', function (): void {
@@ -249,7 +261,7 @@ it('renames uploaded media files and regenerates variant paths', function (): vo
 
     $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
     $oldPath = $mediaFile->path;
-    $oldThumbPath = $mediaFile->variants['thumb']['path'];
+    $oldThumbPath = $mediaFile->variants['thumbnail']['path'];
 
     $this->actingAs($user)
         ->putJson("/admin/api/media/files/{$mediaFile->id}", [
@@ -265,11 +277,11 @@ it('renames uploaded media files and regenerates variant paths', function (): vo
     $mediaFile->refresh();
 
     expect($mediaFile->path)->toBe('media/cover-image.jpg');
-    expect($mediaFile->variants['thumb']['path'])->toStartWith('media/thumb-cover-image.');
+    expect($mediaFile->variants['thumbnail']['path'])->toStartWith('media/thumbnail-cover-image.');
     Storage::disk('public')->assertMissing($oldPath);
     Storage::disk('public')->assertMissing($oldThumbPath);
     Storage::disk('public')->assertExists($mediaFile->path);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
 });
 
 it('renames media folders and updates nested file paths', function (): void {
@@ -310,10 +322,10 @@ it('renames media folders and updates nested file paths', function (): void {
 
     expect($folder->path)->toBe('portfolio');
     expect($mediaFile->path)->toStartWith('media/portfolio/');
-    expect($mediaFile->variants['thumb']['path'])->toStartWith('media/portfolio/');
+    expect($mediaFile->variants['thumbnail']['path'])->toStartWith('media/portfolio/');
     Storage::disk('public')->assertMissing($originalPath);
     Storage::disk('public')->assertExists($mediaFile->path);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
 });
 
 it('moves media folders under another parent and updates nested paths', function (): void {
@@ -361,7 +373,7 @@ it('moves media folders under another parent and updates nested paths', function
     expect($folder->path)->toBe('sections/gallery');
     expect($mediaFile->path)->toStartWith('media/sections/gallery/');
     Storage::disk('public')->assertExists($mediaFile->path);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
 });
 
 it('updates media file metadata through admin api', function (): void {
@@ -451,7 +463,52 @@ it('replaces uploaded media files and regenerates variants', function (): void {
     expect($mediaFile->path)->not->toBe($oldPath);
     Storage::disk('public')->assertMissing($oldPath);
     Storage::disk('public')->assertExists($mediaFile->path);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['optimized']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
+});
+
+it('transforms uploaded media files with crop resize and format conversion', function (): void {
+    $user = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $user->permissions()->sync(Permission::query()->whereIn('slug', ['media.access', 'media.upload'])->pluck('id')->all());
+
+    $response = $this->actingAs($user)
+        ->post('/admin/api/media/files', [
+            'file' => UploadedFile::fake()->image('edit-me.jpg', 1200, 800),
+        ])
+        ->assertCreated();
+
+    $mediaFile = MediaFile::query()->findOrFail($response->json('data.id'));
+    $oldPath = $mediaFile->path;
+
+    $this->actingAs($user)
+        ->postJson("/admin/api/media/files/{$mediaFile->id}/transform", [
+            'crop_enabled' => true,
+            'crop_x' => 0.25,
+            'crop_y' => 0.125,
+            'crop_width' => 0.5,
+            'crop_height' => 0.75,
+            'resize_width' => 300,
+            'resize_height' => 300,
+            'maintain_aspect_ratio' => true,
+            'quality' => 76,
+            'format' => 'webp',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.extension', 'webp')
+        ->assertJsonPath('data.mime_type', 'image/webp')
+        ->assertJsonPath('data.width', 300)
+        ->assertJsonPath('data.height', 300);
+
+    $mediaFile->refresh();
+
+    expect($mediaFile->path)->not->toBe($oldPath);
+    expect($mediaFile->extension)->toBe('webp');
+    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('public')->assertExists($mediaFile->path);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
 });
 
 it('regenerates variants for existing media files via artisan command', function (): void {
@@ -478,8 +535,9 @@ it('regenerates variants for existing media files via artisan command', function
 
     $mediaFile->refresh();
 
-    expect($mediaFile->variants)->toBeArray()->toHaveKeys(['thumb', 'medium', 'large']);
-    Storage::disk('public')->assertExists($mediaFile->variants['thumb']['path']);
+    expect($mediaFile->variants)->toBeArray()->toHaveKeys(['optimized', 'thumbnail', 'medium', 'large']);
+    Storage::disk('public')->assertExists($mediaFile->variants['optimized']['path']);
+    Storage::disk('public')->assertExists($mediaFile->variants['thumbnail']['path']);
     Storage::disk('public')->assertExists($mediaFile->variants['medium']['path']);
     Storage::disk('public')->assertExists($mediaFile->variants['large']['path']);
 });

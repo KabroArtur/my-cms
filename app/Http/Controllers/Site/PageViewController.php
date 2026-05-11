@@ -95,7 +95,7 @@ class PageViewController extends Controller
     protected function renderThemeHtml(mixed $page): string
     {
         $themeSettings = $this->settings->publicPayload();
-        $themePath = $this->settings->themeViewPath((string) ($page?->template ?: 'default'));
+        $themePath = $this->settings->themeViewPath();
 
         view()->replaceNamespace('theme', dirname($themePath));
 

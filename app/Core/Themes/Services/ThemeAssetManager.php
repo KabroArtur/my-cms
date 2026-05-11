@@ -29,7 +29,7 @@ class ThemeAssetManager
 
         $theme = $this->settings->activeTheme();
         $shouldMinify = $this->settingBool('theme_assets_minify_css', true);
-        $shouldCombine = $this->settingBool('theme_assets_combine_css', true);
+        $shouldCombine = $this->shouldCombineAssets('css');
         $withHash = $this->settingBool('theme_assets_use_hash', true);
 
         if ($shouldCombine) {
@@ -71,12 +71,14 @@ class ThemeAssetManager
 
         $theme = $this->settings->activeTheme();
         $shouldMinify = $this->settingBool('theme_assets_minify_js', true);
-        $shouldCombine = $this->settingBool('theme_assets_combine_js', true);
+        $shouldObfuscate = $this->settingBool('theme_assets_obfuscate_js', false);
+        $obfuscationPreset = $this->settingString('theme_assets_obfuscation_preset', 'balanced');
+        $shouldCombine = $this->shouldCombineAssets('js');
         $deferByDefault = $this->settingBool('theme_assets_defer_scripts', true);
         $withHash = $this->settingBool('theme_assets_use_hash', true);
 
         if ($shouldCombine) {
-            $bundle = $this->buildCombinedBundle($theme, 'js', $assets, $shouldMinify, $withHash);
+            $bundle = $this->buildCombinedBundle($theme, 'js', $assets, $shouldMinify, $withHash, $shouldObfuscate, $obfuscationPreset);
             $defer = $deferByDefault || collect($assets)->contains(fn (array $item): bool => (bool) ($item['defer'] ?? false));
             $async = collect($assets)->contains(fn (array $item): bool => (bool) ($item['async'] ?? false));
 
@@ -86,7 +88,7 @@ class ThemeAssetManager
         $markup = [];
 
         foreach ($assets as $asset) {
-            $built = $this->buildSingleAsset($theme, 'js', $asset, $shouldMinify, $withHash);
+            $built = $this->buildSingleAsset($theme, 'js', $asset, $shouldMinify, $withHash, $shouldObfuscate, $obfuscationPreset);
             $defer = $deferByDefault || (bool) ($asset['defer'] ?? false);
             $async = (bool) ($asset['async'] ?? false);
 
@@ -330,10 +332,10 @@ class ThemeAssetManager
         return 'assets/'.$source;
     }
 
-    protected function buildCombinedBundle(string $theme, string $type, array $assets, bool $minify, bool $withHash): array
+    protected function buildCombinedBundle(string $theme, string $type, array $assets, bool $minify, bool $withHash, bool $obfuscate = false, string $obfuscationPreset = 'balanced'): array
     {
         $extension = $type === 'css' ? 'css' : 'js';
-        $hashSeed = [$theme, $type, $minify ? '1' : '0'];
+        $hashSeed = [$theme, $type, $minify ? '1' : '0', $obfuscate ? '1' : '0', $obfuscationPreset];
         $content = [];
 
         foreach ($assets as $asset) {
@@ -344,12 +346,9 @@ class ThemeAssetManager
 
         $hash = sha1(implode('|', $hashSeed));
         $compiled = implode("\n", $content);
+        $compiled = $this->compileAssetContent($compiled, $type, $minify, $obfuscate, $obfuscationPreset);
 
-        if ($minify) {
-            $compiled = $this->minify($compiled, $type);
-        }
-
-        $directory = public_path('build/theme-assets/'.$theme.'/'.$type);
+        $directory = $this->compiledAssetDirectory($theme, $type);
         File::ensureDirectoryExists($directory);
 
         $baseName = $this->readableBundleName($assets);
@@ -368,12 +367,12 @@ class ThemeAssetManager
         ];
     }
 
-    protected function buildSingleAsset(string $theme, string $type, array $asset, bool $minify, bool $withHash): array
+    protected function buildSingleAsset(string $theme, string $type, array $asset, bool $minify, bool $withHash, bool $obfuscate = false, string $obfuscationPreset = 'balanced'): array
     {
         $extension = $type === 'css' ? 'css' : 'js';
         $sourceHash = $this->sourceHash($asset['source_absolute']);
-        $hash = sha1($type.'|'.$asset['handle'].'|'.$sourceHash.'|'.($minify ? '1' : '0'));
-        $directory = public_path('build/theme-assets/'.$theme.'/'.$type);
+        $hash = sha1($type.'|'.$asset['handle'].'|'.$sourceHash.'|'.($minify ? '1' : '0').'|'.($obfuscate ? '1' : '0').'|'.$obfuscationPreset);
+        $directory = $this->compiledAssetDirectory($theme, $type);
 
         File::ensureDirectoryExists($directory);
 
@@ -382,11 +381,7 @@ class ThemeAssetManager
             ? $asset['handle'].'-'.$hash.'.'.$extension
             : $baseName.($minify ? '.min' : '').'.'.$extension;
         $absoluteTarget = $directory.'/'.$fileName;
-        $compiled = (string) File::get($asset['source_absolute']);
-
-        if ($minify) {
-            $compiled = $this->minify($compiled, $type);
-        }
+        $compiled = $this->compileAssetContent((string) File::get($asset['source_absolute']), $type, $minify, $obfuscate, $obfuscationPreset);
 
         if (! is_file($absoluteTarget) || (string) File::get($absoluteTarget) !== $compiled) {
             File::put($absoluteTarget, $compiled);
@@ -396,6 +391,31 @@ class ThemeAssetManager
             'url' => asset('build/theme-assets/'.$theme.'/'.$type.'/'.$fileName),
             'version' => substr($hash, 0, 12),
         ];
+    }
+
+    protected function compiledAssetDirectory(string $theme, string $type): string
+    {
+        $relativePath = 'build/theme-assets/'.$theme.'/'.$type;
+
+        if ($this->sharedHostingFlatPublicDisk()) {
+            return base_path($relativePath);
+        }
+
+        return public_path($relativePath);
+    }
+
+    protected function sharedHostingFlatPublicDisk(): bool
+    {
+        return filter_var(env('SHARED_HOSTING_FLAT_PUBLIC_DISK', false), FILTER_VALIDATE_BOOL);
+    }
+
+    protected function shouldCombineAssets(string $type): bool
+    {
+        if ($this->sharedHostingFlatPublicDisk()) {
+            return true;
+        }
+
+        return $this->settingBool($type === 'css' ? 'theme_assets_combine_css' : 'theme_assets_combine_js', true);
     }
 
     protected function minify(string $content, string $type): string
@@ -424,6 +444,148 @@ class ThemeAssetManager
         }
 
         return trim($joined);
+    }
+
+    protected function compileAssetContent(string $content, string $type, bool $minify, bool $obfuscate, string $obfuscationPreset): string
+    {
+        if ($minify) {
+            $content = $this->minify($content, $type);
+        }
+
+        if ($type === 'js' && $obfuscate) {
+            $content = $this->obfuscateJavaScript($content, $obfuscationPreset);
+        }
+
+        return $content;
+    }
+
+    protected function obfuscateJavaScript(string $content, string $preset): string
+    {
+        if (trim($content) === '') {
+            return '';
+        }
+
+        $binary = $this->javascriptObfuscatorBinary();
+
+        if ($binary === null) {
+            return $content;
+        }
+
+        $inputFile = tempnam(sys_get_temp_dir(), 'cms-js-src-');
+        $outputFile = tempnam(sys_get_temp_dir(), 'cms-js-out-');
+        $configFile = tempnam(sys_get_temp_dir(), 'cms-js-cfg-');
+
+        if ($inputFile === false || $outputFile === false || $configFile === false) {
+            foreach ([$inputFile, $outputFile, $configFile] as $path) {
+                if (is_string($path) && $path !== '' && is_file($path)) {
+                    @unlink($path);
+                }
+            }
+
+            return $content;
+        }
+
+        try {
+            File::put($inputFile, $content);
+            File::put($configFile, json_encode($this->javascriptObfuscatorOptions($preset), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+
+            $command = sprintf(
+                '%s %s --output %s --config %s 2>&1',
+                escapeshellarg($binary),
+                escapeshellarg($inputFile),
+                escapeshellarg($outputFile),
+                escapeshellarg($configFile),
+            );
+
+            exec($command, $output, $exitCode);
+
+            if ($exitCode !== 0 || ! is_file($outputFile)) {
+                return $content;
+            }
+
+            $obfuscated = (string) File::get($outputFile);
+
+            return trim($obfuscated) !== '' ? $obfuscated : $content;
+        } finally {
+            @unlink($inputFile);
+            @unlink($outputFile);
+            @unlink($configFile);
+        }
+    }
+
+    protected function javascriptObfuscatorBinary(): ?string
+    {
+        foreach ([
+            base_path('node_modules/.bin/javascript-obfuscator'),
+            base_path('node_modules/javascript-obfuscator/bin/javascript-obfuscator.js'),
+        ] as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    protected function javascriptObfuscatorOptions(string $preset): array
+    {
+        $preset = in_array($preset, ['safe', 'balanced', 'aggressive'], true) ? $preset : 'balanced';
+
+        $base = [
+            'compact' => true,
+            'identifierNamesGenerator' => 'hexadecimal',
+            'ignoreImports' => true,
+            'numbersToExpressions' => true,
+            'renameGlobals' => false,
+            'renameProperties' => false,
+            'simplify' => true,
+            'splitStrings' => false,
+            'stringArray' => true,
+            'stringArrayCallsTransform' => true,
+            'stringArrayEncoding' => ['base64'],
+            'stringArrayIndexesType' => ['hexadecimal-number'],
+            'stringArrayRotate' => true,
+            'stringArrayShuffle' => true,
+            'stringArrayWrappersType' => 'function',
+            'target' => 'browser',
+            'transformObjectKeys' => false,
+            'unicodeEscapeSequence' => false,
+        ];
+
+        if ($preset === 'safe') {
+            return $base + [
+                'controlFlowFlattening' => false,
+                'deadCodeInjection' => false,
+                'splitStringsChunkLength' => 8,
+                'stringArrayThreshold' => 0.8,
+                'stringArrayWrappersCount' => 1,
+            ];
+        }
+
+        if ($preset === 'aggressive') {
+            return $base + [
+                'controlFlowFlattening' => true,
+                'controlFlowFlatteningThreshold' => 0.75,
+                'deadCodeInjection' => true,
+                'deadCodeInjectionThreshold' => 0.2,
+                'splitStrings' => true,
+                'splitStringsChunkLength' => 6,
+                'stringArrayThreshold' => 1,
+                'stringArrayWrappersCount' => 3,
+                'transformObjectKeys' => true,
+            ];
+        }
+
+        return $base + [
+            'controlFlowFlattening' => true,
+            'controlFlowFlatteningThreshold' => 0.35,
+            'deadCodeInjection' => false,
+            'splitStrings' => true,
+            'splitStringsChunkLength' => 8,
+            'stringArrayThreshold' => 1,
+            'stringArrayWrappersCount' => 2,
+            'transformObjectKeys' => true,
+        ];
     }
 
     protected function sourceHash(string $absolutePath): string
@@ -489,6 +651,13 @@ class ThemeAssetManager
     protected function settingBool(string $key, bool $default = false): bool
     {
         return filter_var($this->settings->publicPayload()[$key] ?? $default, FILTER_VALIDATE_BOOL);
+    }
+
+    protected function settingString(string $key, string $default = ''): string
+    {
+        $value = $this->settings->publicPayload()[$key] ?? $default;
+
+        return is_string($value) && trim($value) !== '' ? trim($value) : $default;
     }
 
     protected function themeManifest(string $theme): array
