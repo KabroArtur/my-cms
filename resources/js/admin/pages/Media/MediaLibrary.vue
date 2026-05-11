@@ -1116,6 +1116,23 @@ function hasImagePreview(file) {
     return resolveFileKind(file) === 'images' && Boolean(file.preview_url || file.url)
 }
 
+function mediaImageRenderKey(file, preferPreview = false) {
+    if (!file) {
+        return 'media-image-empty'
+    }
+
+    const primaryUrl = preferPreview ? (file.preview_url || file.url) : (file.url || file.preview_url)
+
+    return [
+        file.id ?? 'new',
+        primaryUrl ?? '',
+        file.preview_url ?? '',
+        file.width ?? '',
+        file.height ?? '',
+        file.size ?? '',
+    ].join('|')
+}
+
 function handleWindowDragEnter(event) {
     if (!hasDraggedFiles(event)) {
         return
@@ -1468,7 +1485,7 @@ onBeforeUnmount(() => {
                                     @click="openFileDetails(file)"
                                 >
                                     <div class="media-library-page__file-preview">
-                                        <img v-if="hasImagePreview(file)" :src="file.preview_url || file.url" :alt="file.alt_text || file.original_name">
+                                        <img v-if="hasImagePreview(file)" :key="mediaImageRenderKey(file, true)" :src="file.preview_url || file.url" :alt="file.alt_text || file.original_name">
                                         <span v-else class="media-library-page__file-fallback">{{ filePreviewLabel(file) }}</span>
                                     </div>
 
@@ -1502,7 +1519,7 @@ onBeforeUnmount(() => {
                                             <td>
                                                 <div class="media-library-page__row-file">
                                                     <div class="media-library-page__row-preview">
-                                                        <img v-if="hasImagePreview(file)" :src="file.preview_url || file.url" :alt="file.alt_text || file.original_name">
+                                                        <img v-if="hasImagePreview(file)" :key="mediaImageRenderKey(file, true)" :src="file.preview_url || file.url" :alt="file.alt_text || file.original_name">
                                                         <span v-else>{{ filePreviewLabel(file) }}</span>
                                                     </div>
                                                     <div>
@@ -1543,7 +1560,7 @@ onBeforeUnmount(() => {
                     <div class="media-library-page__editor-stage-panel">
                         <div class="media-library-page__editor-stage-shell">
                             <div ref="transformStageRef" class="media-library-page__editor-stage" :class="{ 'is-editing': transformTool === 'crop' && canTransformSelectedFile }">
-                                <img v-if="hasImagePreview(selectedFile)" :src="selectedFile.url" :alt="selectedFile.alt_text || selectedFile.original_name" draggable="false">
+                                <img v-if="hasImagePreview(selectedFile)" :key="mediaImageRenderKey(selectedFile)" :src="selectedFile.url" :alt="selectedFile.alt_text || selectedFile.original_name" draggable="false">
                                 <div v-else class="media-library-page__file-modal-fallback">{{ filePreviewLabel(selectedFile) }}</div>
 
                                 <div

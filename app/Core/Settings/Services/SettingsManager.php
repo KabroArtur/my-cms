@@ -647,7 +647,11 @@ class SettingsManager
 
     protected function resolveMediaVariant(string $variant): string
     {
-        return in_array($variant, ['original', 'large', 'medium', 'thumb'], true) ? $variant : 'original';
+        if ($variant === 'thumb') {
+            return 'thumbnail';
+        }
+
+        return in_array($variant, ['original', 'large', 'medium', 'thumbnail'], true) ? $variant : 'original';
     }
 
     protected function resolveThemeAssetObfuscationPreset(string $preset): string

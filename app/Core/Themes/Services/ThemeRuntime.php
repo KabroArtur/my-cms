@@ -624,7 +624,9 @@ class ThemeRuntime
             'directory' => $media->directory,
             'path' => $media->path,
             'url' => $media->url(),
-            'preview_url' => $media->variantUrl((string) config('media.preview_variant', 'thumb')) ?? $media->url(),
+            'preview_url' => $media->variantUrl((string) config('media.preview_variant', 'thumbnail'))
+                ?? $media->variantUrl('thumb')
+                ?? $media->url(),
             'variants' => is_array($media->variants) ? $media->variants : [],
         ]);
     }
