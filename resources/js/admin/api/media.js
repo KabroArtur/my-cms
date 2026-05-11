@@ -86,6 +86,12 @@ export async function replaceMediaFile(id, { file }) {
     return response.data
 }
 
+export async function transformMediaFile(id, payload) {
+    const response = await axios.post(adminApiPath(`media/files/${id}/transform`), payload)
+
+    return response.data
+}
+
 export async function deleteMediaFile(id) {
     await axios.delete(adminApiPath(`media/files/${id}`))
 }

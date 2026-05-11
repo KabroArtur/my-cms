@@ -214,7 +214,117 @@
     max-height: calc(min(86vh, 920px) - 82px);
 }
 
+.admin-notifications {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 140;
+    display: grid;
+    gap: 8px;
+    width: min(420px, calc(100vw - 20px));
+    pointer-events: none;
+}
+
+.admin-notification {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-color-border);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--admin-color-surface) 96%, white);
+    pointer-events: auto;
+}
+
+.admin-notification__body {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.admin-notification p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.admin-notification__progress {
+    display: block;
+    overflow: hidden;
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--admin-color-border) 70%, transparent);
+}
+
+.admin-notification__progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0.75;
+}
+
+.admin-notification.is-success {
+    border-color: color-mix(in srgb, var(--admin-color-primary) 30%, var(--admin-color-border));
+    color: color-mix(in srgb, var(--admin-color-primary) 78%, var(--admin-color-text));
+}
+
+.admin-notification.is-error {
+    border-color: var(--admin-color-danger-border);
+    background: color-mix(in srgb, var(--admin-color-danger-bg) 44%, white);
+    color: var(--admin-color-danger);
+}
+
+.admin-notification.is-warning {
+    border-color: color-mix(in srgb, #d97706 36%, var(--admin-color-border));
+    background: color-mix(in srgb, #fef3c7 72%, white);
+    color: #b45309;
+}
+
+.admin-notification.is-info {
+    border-color: color-mix(in srgb, #2563eb 30%, var(--admin-color-border));
+    background: color-mix(in srgb, #dbeafe 68%, white);
+    color: #1d4ed8;
+}
+
+.admin-notification__close {
+    padding: 6px 10px;
+    border: 1px solid color-mix(in srgb, var(--admin-color-primary) 36%, var(--admin-color-border));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--admin-color-primary) 10%, white);
+    color: var(--admin-color-text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.admin-notification-enter-active,
+.admin-notification-leave-active {
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.admin-notification-enter-from,
+.admin-notification-leave-to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+}
+
 @media (max-width: 768px) {
+    .admin-notifications {
+        top: 10px;
+        right: 10px;
+        width: calc(100vw - 20px);
+    }
+
+    .admin-notification {
+        grid-template-columns: 1fr;
+        padding: 10px 12px;
+        border-radius: 16px;
+    }
+
     .panel-header {
         flex-direction: column;
     }

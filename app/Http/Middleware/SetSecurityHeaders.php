@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Core\Security\Services\AdminPathManager;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,9 +16,14 @@ class SetSecurityHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $cspNonce = $this->generateNonce();
+
+        $request->attributes->set('csp_nonce', $cspNonce);
+        View::share('cspNonce', $cspNonce);
+
         /** @var Response $response */
         $response = $next($request);
-        $contentSecurityPolicy = $this->buildContentSecurityPolicy();
+        $contentSecurityPolicy = $this->buildContentSecurityPolicy($cspNonce);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
@@ -38,14 +44,14 @@ class SetSecurityHeaders
         return $response;
     }
 
-    protected function buildContentSecurityPolicy(): string
+    protected function buildContentSecurityPolicy(string $cspNonce): string
     {
         $viteOrigin = $this->viteDevServerOrigin();
 
         $imgSources = ["'self'", 'data:', 'blob:'];
         $fontSources = ["'self'", 'data:'];
         $mediaSources = ["'self'", 'data:', 'blob:'];
-        $scriptSources = ["'self'", 'blob:'];
+        $scriptSources = ["'self'", 'blob:', sprintf("'nonce-%s'", $cspNonce)];
         $styleSources = ["'self'", "'unsafe-inline'"];
         $connectSources = ["'self'"];
 
@@ -77,6 +83,11 @@ class SetSecurityHeaders
             'style-src '.implode(' ', array_unique($styleSources)),
             'connect-src '.implode(' ', array_unique($connectSources)),
         ]);
+    }
+
+    protected function generateNonce(): string
+    {
+        return rtrim(strtr(base64_encode(random_bytes(18)), '+/', '-_'), '=');
     }
 
     protected function viteDevServerOrigin(): ?string

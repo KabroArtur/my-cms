@@ -5,6 +5,7 @@ import AdminBadge from '../../components/ui/AdminBadge.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import { fetchRoles } from '../../api/roles'
 import { createUser, deleteUser, fetchUsers, updateUser } from '../../api/users'
 
@@ -16,6 +17,7 @@ const saving = ref(false)
 const validationErrors = ref({})
 const editingId = ref(null)
 const showPassword = ref(false)
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const form = reactive({
     name: '',
@@ -136,9 +138,12 @@ async function submitForm() {
             if (index !== -1) {
                 users.value[index] = payload.data
             }
+
+            notifySuccess('Пользователь обновлен.')
         } else {
             const payload = await createUser(form)
             users.value.push(payload.data)
+            notifySuccess('Пользователь создан.')
         }
 
         resetForm()
@@ -149,6 +154,7 @@ async function submitForm() {
             errorMessage.value = editingId.value
                 ? 'Не удалось обновить пользователя.'
                 : 'Не удалось создать пользователя.'
+            notifyError(errorMessage.value)
         }
 
         console.error(error)
@@ -169,12 +175,14 @@ async function removeUser(user) {
     try {
         await deleteUser(user.id)
         users.value = users.value.filter((item) => item.id !== user.id)
+        notifySuccess('Пользователь удален.')
 
         if (editingId.value === user.id) {
             resetForm()
         }
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось удалить пользователя.'
+        notifyError(errorMessage.value)
         console.error(error)
     }
 }

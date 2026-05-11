@@ -22,6 +22,7 @@
 - установлен `vendor`
 - выполнен `npm run build`
 - проект проверен локально
+- если планируете включать JS obfuscation через настройки сайта, на сервере должен быть доступен Node.js и установлен `javascript-obfuscator`
 
 Что нужно сделать после загрузки архива на хостинг:
 
@@ -29,16 +30,18 @@
 2. Скопировать `.env.production.example` в `.env`.
 3. Прописать реальные `APP_URL`, `DB_*`, почту и остальные prod-настройки.
 4. Убедиться, что `storage` и `bootstrap/cache` доступны на запись.
-5. Для fallback-архива используется `SHARED_HOSTING_FLAT_PUBLIC_DISK=true`: это нужно, чтобы загруженные изображения были доступны по URL вида `/storage/...` без symlink.
-6. Если есть SSH, выполнить:
+5. Убедиться, что корневая папка `build` тоже доступна на запись: в shared-hosting режиме theme assets генерируются в `/build/theme-assets/...`.
+6. Для fallback-архива используется `SHARED_HOSTING_FLAT_PUBLIC_DISK=true`: это нужно, чтобы загруженные изображения были доступны по URL вида `/storage/...` без symlink.
+7. Если есть SSH, выполнить:
 
 ```bash
 php artisan key:generate --force
 php artisan migrate --force
 php artisan optimize
+npm install --omit=dev
 ```
 
-7. Если SSH нет, то:
+8. Если SSH нет, то:
 
 - сгенерируйте `APP_KEY` локально и вставьте его в `.env`
 - импортируйте уже подготовленную боевую базу данных
@@ -47,4 +50,5 @@ php artisan optimize
 Что важно понимать:
 
 - один только архив не создаст базу и не заполнит `.env` автоматически
+- если на хостинге нет Node.js или не установлен `javascript-obfuscator`, переключатель JS obfuscation не уронит сайт: CMS автоматически откатится к обычному minify JS
 - если у провайдера можно выбрать document root, лучше не использовать этот fallback-пакет, а деплоить обычную структуру Laravel с веб-корнем в `public`

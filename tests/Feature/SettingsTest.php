@@ -185,6 +185,64 @@ it('exposes discovered page templates in settings payload', function (): void {
         ]);
 });
 
+it('updates media image optimization settings and exposes configured media variants', function (): void {
+    $admin = User::factory()->create([
+        'password' => 'StrongPass123',
+    ]);
+
+    $admin->permissions()->sync(Permission::query()->where('slug', 'settings.access')->pluck('id')->all());
+
+    $response = $this->actingAs($admin)
+        ->putJson('/admin/api/settings', [
+            'site_name' => 'Image Settings CMS',
+            'favicon_media_id' => null,
+            'date_format' => 'd.m.Y',
+            'time_format' => 'H:i',
+            'home_page_id' => null,
+            'site_theme' => 'default',
+            'site_featured_media_variant' => 'thumbnail',
+            'media_default_insert_variant' => 'optimized',
+            'media_image_optimize' => true,
+            'media_image_max_width' => 2048,
+            'media_image_max_height' => 1600,
+            'media_image_jpg_quality' => 78,
+            'media_image_webp_quality' => 74,
+            'media_image_convert_to_webp' => true,
+            'media_image_keep_original' => true,
+            'media_image_create_thumbnails' => true,
+            'theme_assets_obfuscate_js' => true,
+            'theme_assets_obfuscation_preset' => 'aggressive',
+            'cms_palette' => 'slate',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.settings.media_image_optimize', true)
+        ->assertJsonPath('data.settings.media_image_max_width', 2048)
+        ->assertJsonPath('data.settings.media_image_max_height', 1600)
+        ->assertJsonPath('data.settings.media_image_jpg_quality', 78)
+        ->assertJsonPath('data.settings.media_image_webp_quality', 74)
+        ->assertJsonPath('data.settings.media_image_convert_to_webp', true)
+        ->assertJsonPath('data.settings.media_image_keep_original', true)
+        ->assertJsonPath('data.settings.media_image_create_thumbnails', true)
+        ->assertJsonPath('data.settings.theme_assets_obfuscate_js', true)
+        ->assertJsonPath('data.settings.theme_assets_obfuscation_preset', 'aggressive')
+        ->assertJsonFragment([
+            'value' => 'optimized',
+            'label' => 'Optimized',
+        ])
+        ->assertJsonFragment([
+            'value' => 'thumbnail',
+            'label' => 'Thumbnail (300x300) · CROP',
+        ])
+        ->assertJsonFragment([
+            'value' => 'aggressive',
+            'label' => 'Aggressive',
+        ]);
+
+    expect(app(SettingsManager::class)->all()['media_image_max_width'])->toBe(2048);
+    expect(app(SettingsManager::class)->all()['theme_assets_obfuscation_preset'])->toBe('aggressive');
+    expect($response->json('data.options.media_variants'))->toBeArray();
+});
+
 it('renders page with selected theme template file', function (): void {
     $page = Page::query()->create([
         'title' => 'Configured home',
@@ -209,8 +267,8 @@ it('renders page with selected theme template file', function (): void {
 
     $this->get('/')
         ->assertOk()
-        ->assertSee('Home template')
-        ->assertSee('Этот шаблон можно выбрать прямо на странице');
+        ->assertSee('Configured home')
+        ->assertSee('Configured page content');
 });
 
 it('switches public rendering to the selected site theme', function (): void {

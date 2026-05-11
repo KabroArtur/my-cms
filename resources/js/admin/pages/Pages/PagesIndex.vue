@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import { formatCmsDateTime, loadCmsSettings } from '../../composables/useCmsSettings'
 import PageMenuTreeItem from './components/PageMenuTreeItem.vue'
 import { deletePage, fetchPages, fetchPageTree, fetchTrashedPages, permanentlyDeletePage, restorePage, savePageTree } from '../../api/pages'
@@ -18,6 +19,7 @@ const trashedPages = ref([])
 const draggingPageId = ref(null)
 const treeDirty = ref(false)
 const menuModalOpen = ref(false)
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const statusLabels = {
     draft: 'Черновик',
@@ -227,8 +229,10 @@ async function handleTreeSave() {
         await savePageTree(flattenTree(menuTree.value))
         treeDirty.value = false
         await loadPages()
+        notifySuccess('Структура меню сохранена.')
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось сохранить структуру меню.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         savingTree.value = false
@@ -275,8 +279,10 @@ async function removePage(page) {
             ...page,
             deleted_at: new Date().toISOString(),
         })
+        notifySuccess('Страница перемещена в корзину.')
     } catch (error) {
         errorMessage.value = 'Не удалось переместить страницу в корзину.'
+        notifyError(errorMessage.value)
         console.error(error)
     }
 }
@@ -289,8 +295,10 @@ async function restoreTrashedPage(page) {
         trashedPages.value = trashedPages.value.filter((item) => item.id !== page.id)
         pages.value.unshift(payload.data)
         treePages.value.unshift(payload.data)
+        notifySuccess('Страница восстановлена.')
     } catch (error) {
         errorMessage.value = 'Не удалось восстановить страницу.'
+        notifyError(errorMessage.value)
         console.error(error)
     }
 }
@@ -307,8 +315,10 @@ async function forceRemovePage(page) {
     try {
         await permanentlyDeletePage(page.id)
         trashedPages.value = trashedPages.value.filter((item) => item.id !== page.id)
+        notifySuccess('Страница удалена навсегда.')
     } catch (error) {
         errorMessage.value = 'Не удалось удалить страницу навсегда.'
+        notifyError(errorMessage.value)
         console.error(error)
     }
 }

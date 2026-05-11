@@ -11,6 +11,7 @@ use App\Core\Support\Services\CmsCacheService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Media\StoreMediaFolderRequest;
 use App\Http\Requests\Admin\Media\ReplaceMediaFileRequest;
+use App\Http\Requests\Admin\Media\TransformMediaFileRequest;
 use App\Http\Requests\Admin\Media\UploadMediaBatchRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFileRequest;
 use App\Http\Requests\Admin\Media\UpdateMediaFolderRequest;
@@ -200,6 +201,7 @@ class MediaController extends Controller
     {
         $results = [];
         $uploadedAny = false;
+        $maxUploadKb = (int) config('settings.defaults.media_upload_max_kb', 20480);
 
         foreach (array_keys($request->input('items', [])) as $index) {
             $payload = [
@@ -214,8 +216,8 @@ class MediaController extends Controller
                 'file' => [
                     'required',
                     'file',
-                    'max:10240',
-                    'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp',
+                    'max:'.$maxUploadKb,
+                    'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,image/svg+xml',
                 ],
             ]);
 
@@ -317,6 +319,21 @@ class MediaController extends Controller
         ]);
 
         $this->cache->invalidateAll(reason: 'media-file-replaced');
+
+        return MediaFileResource::make($mediaFile->fresh()->load('folder'));
+    }
+
+    public function transformFile(TransformMediaFileRequest $request, MediaFile $mediaFile, SecurityAuditLogger $audit): MediaFileResource
+    {
+        $mediaFile = $this->uploads->transformMediaFile($mediaFile->load('folder'), $request->validated());
+
+        $audit->log('media.files.transformed', $request->user(), [
+            'file_id' => $mediaFile->id,
+            'file_path' => $mediaFile->path,
+            'format' => $mediaFile->extension,
+        ]);
+
+        $this->cache->invalidateAll(reason: 'media-file-transformed');
 
         return MediaFileResource::make($mediaFile->fresh()->load('folder'));
     }

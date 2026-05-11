@@ -20,9 +20,13 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    editable: {
+        type: Boolean,
+        default: false,
+    },
 })
 
-const emit = defineEmits(['close', 'save', 'select', 'copy-url', 'delete', 'move-file'])
+const emit = defineEmits(['close', 'save', 'select', 'copy-url', 'delete', 'move-file', 'edit'])
 
 const form = reactive({
     original_name: '',
@@ -129,9 +133,13 @@ function moveFile(event) {
                     {{ saving ? 'Сохранение...' : 'Сохранить' }}
                 </AdminButton>
 
-                <AdminButton type="button" :disabled="selecting" @click="emit('select', file)">
+                <button v-if="editable" type="button" class="button-link" @click="emit('edit', file)">
+                    Редактировать
+                </button>
+
+                <button type="button" class="button-base button-secondary" :disabled="selecting" @click="emit('select', file)">
                     Выбрать
-                </AdminButton>
+                </button>
 
                 <button type="button" class="button-link" @click="emit('copy-url', file)">
                     Скопировать URL

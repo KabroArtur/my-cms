@@ -5,6 +5,7 @@ import AdminBadge from '../../components/ui/AdminBadge.vue'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import { createRole, fetchRoles, updateRole } from '../../api/roles'
 
 const loading = ref(true)
@@ -13,6 +14,7 @@ const roles = ref([])
 const saving = ref(false)
 const validationErrors = ref({})
 const editingId = ref(null)
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const form = reactive({
     name: '',
@@ -112,9 +114,12 @@ async function submitForm() {
             if (index !== -1) {
                 roles.value[index] = payload.data
             }
+
+            notifySuccess('Роль обновлена.')
         } else {
             const payload = await createRole(form)
             roles.value.push(payload.data)
+            notifySuccess('Роль создана.')
         }
 
         resetForm()
@@ -123,6 +128,7 @@ async function submitForm() {
             validationErrors.value = error.response.data.errors ?? {}
         } else {
             errorMessage.value = 'Не удалось сохранить роль.'
+            notifyError(errorMessage.value)
         }
 
         console.error(error)

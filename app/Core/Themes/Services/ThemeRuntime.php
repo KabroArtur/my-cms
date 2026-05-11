@@ -24,6 +24,8 @@ class ThemeRuntime
 
     protected array $mediaByIdCache = [];
 
+    protected array $mediaByNameCache = [];
+
     public function __construct(
         protected PageRepository $pages,
         protected SettingsManager $settings,
@@ -527,6 +529,111 @@ class ThemeRuntime
         return $this->imageFromValue($this->setting($key), $options);
     }
 
+    public function mediaFile(string $name): ?MediaFile
+    {
+        $name = trim($name);
+
+        if ($name === '') {
+            return null;
+        }
+
+        $cacheKey = mb_strtolower($name);
+
+        if (array_key_exists($cacheKey, $this->mediaByNameCache)) {
+            return $this->mediaByNameCache[$cacheKey];
+        }
+
+        $normalizedPath = trim(str_replace('\\', '/', $name), '/');
+
+        if (str_contains($normalizedPath, '/')) {
+            $pathMatch = MediaFile::query()
+                ->whereRaw('LOWER(path) = ?', [mb_strtolower($normalizedPath)])
+                ->orWhere(function ($query) use ($normalizedPath): void {
+                    $query->whereRaw('LOWER(directory) = ?', [mb_strtolower(pathinfo($normalizedPath, PATHINFO_DIRNAME) === '.' ? '' : pathinfo($normalizedPath, PATHINFO_DIRNAME))])
+                        ->whereRaw('LOWER(filename) = ?', [mb_strtolower(pathinfo($normalizedPath, PATHINFO_BASENAME))]);
+                })
+                ->first();
+
+            if ($pathMatch instanceof MediaFile) {
+                return $this->mediaByNameCache[$cacheKey] = $pathMatch;
+            }
+        }
+
+        $exactMatch = MediaFile::query()
+            ->whereRaw('LOWER(original_name) = ?', [$cacheKey])
+            ->orWhereRaw('LOWER(filename) = ?', [$cacheKey])
+            ->orWhereRaw('LOWER(title) = ?', [$cacheKey])
+            ->first();
+
+        if ($exactMatch instanceof MediaFile) {
+            return $this->mediaByNameCache[$cacheKey] = $exactMatch;
+        }
+
+        $stem = mb_strtolower(pathinfo($name, PATHINFO_FILENAME));
+
+        if ($stem === '' || $stem === $cacheKey) {
+            return $this->mediaByNameCache[$cacheKey] = null;
+        }
+
+        return $this->mediaByNameCache[$cacheKey] = MediaFile::query()
+            ->whereRaw('LOWER(title) = ?', [$stem])
+            ->orWhereRaw('LOWER(original_name) LIKE ?', [$stem.'.%'])
+            ->orWhereRaw('LOWER(filename) LIKE ?', [$stem.'.%'])
+            ->first();
+    }
+
+    public function mediaUrl(string $name, string $size = 'original'): ?string
+    {
+        $media = $this->mediaFile($name);
+
+        if ($media === null) {
+            return null;
+        }
+
+        return $size === 'original' ? $media->url() : ($media->variantUrl($size) ?? $media->url());
+    }
+
+    public function mediaImage(string $name, array $options = []): HtmlString
+    {
+        return $this->imageFromValue($this->mediaFile($name), $options);
+    }
+
+    public function mediaMeta(string $name): ThemeDataBag
+    {
+        $media = $this->mediaFile($name);
+
+        if ($media === null) {
+            return new ThemeDataBag($this, []);
+        }
+
+        return new ThemeDataBag($this, [
+            'id' => $media->id,
+            'original_name' => $media->original_name,
+            'filename' => $media->filename,
+            'title' => $media->title,
+            'alt_text' => $media->alt_text,
+            'alt' => (string) ($media->alt_text ?: $media->title ?: $media->original_name ?: ''),
+            'caption' => $media->caption,
+            'description' => $media->description,
+            'extension' => $media->extension,
+            'mime_type' => $media->mime_type,
+            'size' => $media->size,
+            'size_human' => $this->humanReadableBytes((int) $media->size),
+            'width' => $media->width,
+            'height' => $media->height,
+            'directory' => $media->directory,
+            'path' => $media->path,
+            'url' => $media->url(),
+            'preview_url' => $media->variantUrl((string) config('media.preview_variant', 'thumb')) ?? $media->url(),
+            'variants' => is_array($media->variants) ? $media->variants : [],
+        ]);
+    }
+
+    public function mediaValue(string $name, string $key, mixed $default = null): mixed
+    {
+        return $this->mediaMeta($name)->field($key, $default);
+    }
+
     public function fileUrl(string $key, ?Page $page = null): ?string
     {
         $media = $this->media($key, $page);
@@ -675,6 +782,29 @@ class ThemeRuntime
     public function partial(string $name, array $data = []): HtmlString
     {
         return $this->component($name, $data);
+    }
+
+    public function templateContent(?string $template = null, ?Page $page = null): HtmlString
+    {
+        $page = $this->resolvePage($page);
+        $template = trim((string) ($template ?? $page?->template ?? 'default'));
+
+        if ($template === '' || $template === 'default' || $template === 'index.blade.php') {
+            return new HtmlString('');
+        }
+
+        $entryPath = $this->settings->themeViewPath();
+        $templatePath = $this->settings->themeViewPath($template);
+
+        if ($templatePath === $entryPath || ! is_file($templatePath)) {
+            return new HtmlString('');
+        }
+
+        return new HtmlString((string) view()->file($templatePath, [
+            'cms' => $this,
+            'page' => $page,
+            'settings' => $this->settings->publicPayload(),
+        ])->render());
     }
 
     public function hasComponent(string $name): bool
@@ -952,6 +1082,20 @@ class ThemeRuntime
         }
 
         return $default;
+    }
+
+    protected function humanReadableBytes(int $size): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $index = 0;
+        $value = $size;
+
+        while ($value >= 1024 && $index < count($units) - 1) {
+            $value /= 1024;
+            $index++;
+        }
+
+        return number_format($value, $index === 0 ? 0 : 1, '.', ' ').' '.$units[$index];
     }
 
     public function valueExists(mixed $value): bool

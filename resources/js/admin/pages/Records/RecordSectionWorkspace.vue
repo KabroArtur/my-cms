@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import {
     createSectionCategory,
     createSectionRecord,
@@ -29,6 +30,7 @@ const section = ref(null)
 const records = ref([])
 const categories = ref([])
 const tags = ref([])
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const sectionSlug = computed(() => String(route.params.sectionSlug || ''))
 
@@ -162,8 +164,10 @@ async function submitRecord() {
         recordForm.status = 'draft'
 
         await loadWorkspace()
+        notifySuccess('Запись создана.')
     } catch (error) {
         errorMessage.value = error?.response?.data?.message || 'Не удалось создать запись.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         saving.value = false
@@ -171,55 +175,111 @@ async function submitRecord() {
 }
 
 async function removeRecord(id) {
-    await deleteSectionRecord(sectionSlug.value, id)
-    await loadWorkspace()
+    try {
+        await deleteSectionRecord(sectionSlug.value, id)
+        await loadWorkspace()
+        notifySuccess('Запись удалена.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось удалить запись.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function duplicateRecord(id) {
-    await duplicateSectionRecord(sectionSlug.value, id)
-    await loadWorkspace()
+    try {
+        await duplicateSectionRecord(sectionSlug.value, id)
+        await loadWorkspace()
+        notifySuccess('Запись продублирована.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось продублировать запись.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function publishRecord(id) {
-    await publishSectionRecord(sectionSlug.value, id)
-    await loadWorkspace()
+    try {
+        await publishSectionRecord(sectionSlug.value, id)
+        await loadWorkspace()
+        notifySuccess('Запись опубликована.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось опубликовать запись.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function unpublishRecord(id) {
-    await unpublishSectionRecord(sectionSlug.value, id)
-    await loadWorkspace()
+    try {
+        await unpublishSectionRecord(sectionSlug.value, id)
+        await loadWorkspace()
+        notifySuccess('Публикация записи снята.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось снять запись с публикации.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function submitCategory() {
-    await createSectionCategory(sectionSlug.value, {
-        name: categoryForm.name,
-        slug: categoryForm.slug || null,
-    })
+    try {
+        await createSectionCategory(sectionSlug.value, {
+            name: categoryForm.name,
+            slug: categoryForm.slug || null,
+        })
 
-    categoryForm.name = ''
-    categoryForm.slug = ''
-    await loadWorkspace()
+        categoryForm.name = ''
+        categoryForm.slug = ''
+        await loadWorkspace()
+        notifySuccess('Категория создана.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось создать категорию.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function removeCategory(id) {
-    await deleteSectionCategory(sectionSlug.value, id)
-    await loadWorkspace()
+    try {
+        await deleteSectionCategory(sectionSlug.value, id)
+        await loadWorkspace()
+        notifySuccess('Категория удалена.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось удалить категорию.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function submitTag() {
-    await createSectionTag(sectionSlug.value, {
-        name: tagForm.name,
-        slug: tagForm.slug || null,
-    })
+    try {
+        await createSectionTag(sectionSlug.value, {
+            name: tagForm.name,
+            slug: tagForm.slug || null,
+        })
 
-    tagForm.name = ''
-    tagForm.slug = ''
-    await loadWorkspace()
+        tagForm.name = ''
+        tagForm.slug = ''
+        await loadWorkspace()
+        notifySuccess('Тег создан.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось создать тег.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function removeTag(id) {
-    await deleteSectionTag(sectionSlug.value, id)
-    await loadWorkspace()
+    try {
+        await deleteSectionTag(sectionSlug.value, id)
+        await loadWorkspace()
+        notifySuccess('Тег удален.')
+    } catch (error) {
+        errorMessage.value = error?.response?.data?.message || 'Не удалось удалить тег.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
 }
 
 async function saveSettings() {
@@ -238,8 +298,10 @@ async function saveSettings() {
         })
 
         await loadWorkspace()
+        notifySuccess('Настройки раздела сохранены.')
     } catch (error) {
         errorMessage.value = error?.response?.data?.message || 'Не удалось сохранить настройки раздела.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         saving.value = false

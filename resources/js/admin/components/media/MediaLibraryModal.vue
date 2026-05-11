@@ -1,10 +1,11 @@
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import AdminButton from '../ui/AdminButton.vue'
 import MediaFolders from './MediaFolders.vue'
 import MediaGrid from './MediaGrid.vue'
 import MediaSidebar from './MediaSidebar.vue'
 import MediaUploader from './MediaUploader.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 import {
     createMediaFolder,
     deleteMediaFile,
@@ -12,6 +13,7 @@ import {
     fetchMediaFile,
     fetchMediaLibrary,
     moveMediaFile,
+    transformMediaFile,
     updateMediaFile,
     updateMediaFolder,
     uploadMediaFile,
@@ -27,6 +29,7 @@ import {
     resolveMimeTypeByExtension,
     stripExtension,
     toNumericId,
+    withMediaCacheBust,
 } from './mediaHelpers'
 
 const props = defineProps({
@@ -83,19 +86,40 @@ const dragDepth = ref(0)
 const mainPanelRef = ref(null)
 const uploadSectionRef = ref(null)
 const recentUploadIds = ref([])
-const recentOnly = ref(false)
 const folderModalOpen = ref(false)
+const activeTab = ref('library')
+const transformTool = ref('')
+const transforming = ref(false)
+const transformStageRef = ref(null)
+const transformDragState = reactive({
+    active: false,
+    mode: '',
+    startX: 0,
+    startY: 0,
+    crop: null,
+})
+const { notify } = useAdminNotifications()
 const folderForm = reactive({
     name: '',
     slug: '',
     slugTouched: false,
 })
+const transformForm = reactive({
+    crop_enabled: true,
+    crop_x: 0.05,
+    crop_y: 0.05,
+    crop_width: 0.9,
+    crop_height: 0.9,
+    resize_width: '',
+    resize_height: '',
+    maintain_aspect_ratio: true,
+    quality: '',
+    format: 'original',
+})
 
 const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase())
 const filteredFiles = computed(() => {
-    const baseFiles = recentOnly.value && recentUploadIds.value.length > 0
-        ? files.value.filter((file) => recentUploadIds.value.includes(file.id))
-        : files.value
+    const baseFiles = files.value
 
     if (normalizedSearch.value === '') {
         return baseFiles
@@ -126,7 +150,82 @@ const uploadProgress = computed(() => {
 const hasFiles = computed(() => filteredFiles.value.length > 0)
 const dragOverlayVisible = computed(() => dragDepth.value > 0)
 const queueCount = computed(() => uploadQueue.value.length)
-const hasRecentUploads = computed(() => recentUploadIds.value.length > 0)
+const canTransformSelectedFile = computed(() => isTransformableImage(selectedFile.value))
+const transformFormatOptions = computed(() => [
+    { value: 'original', label: 'Оставить текущий формат' },
+    { value: 'jpg', label: 'JPEG' },
+    { value: 'png', label: 'PNG' },
+    { value: 'webp', label: 'WebP' },
+])
+const transformSourceDimensions = computed(() => {
+    if (!selectedFile.value?.width || !selectedFile.value?.height) {
+        return { width: null, height: null }
+    }
+
+    if (!transformForm.crop_enabled) {
+        return {
+            width: Number(selectedFile.value.width),
+            height: Number(selectedFile.value.height),
+        }
+    }
+
+    return {
+        width: Math.max(1, Math.round(Number(selectedFile.value.width) * transformForm.crop_width)),
+        height: Math.max(1, Math.round(Number(selectedFile.value.height) * transformForm.crop_height)),
+    }
+})
+const transformAspectRatio = computed(() => {
+    const width = Number(transformSourceDimensions.value.width || 0)
+    const height = Number(transformSourceDimensions.value.height || 0)
+
+    if (!width || !height) {
+        return null
+    }
+
+    return width / height
+})
+const transformOutputDimensions = computed(() => {
+    const sourceWidth = Number(transformSourceDimensions.value.width || 0)
+    const sourceHeight = Number(transformSourceDimensions.value.height || 0)
+    const resizeWidth = Number(transformForm.resize_width || 0)
+    const resizeHeight = Number(transformForm.resize_height || 0)
+
+    if (!sourceWidth || !sourceHeight) {
+        return { width: null, height: null }
+    }
+
+    if (!resizeWidth && !resizeHeight) {
+        return { width: sourceWidth, height: sourceHeight }
+    }
+
+    if (transformForm.maintain_aspect_ratio) {
+        if (resizeWidth && !resizeHeight) {
+            return { width: resizeWidth, height: Math.max(1, Math.round(resizeWidth / transformAspectRatio.value)) }
+        }
+
+        if (!resizeWidth && resizeHeight) {
+            return { width: Math.max(1, Math.round(resizeHeight * transformAspectRatio.value)), height: resizeHeight }
+        }
+
+        const ratio = Math.min(resizeWidth / sourceWidth, resizeHeight / sourceHeight)
+
+        return {
+            width: Math.max(1, Math.round(sourceWidth * ratio)),
+            height: Math.max(1, Math.round(sourceHeight * ratio)),
+        }
+    }
+
+    return {
+        width: resizeWidth || sourceWidth,
+        height: resizeHeight || sourceHeight,
+    }
+})
+const transformCropStyle = computed(() => ({
+    left: `${transformForm.crop_x * 100}%`,
+    top: `${transformForm.crop_y * 100}%`,
+    width: `${transformForm.crop_width * 100}%`,
+    height: `${transformForm.crop_height * 100}%`,
+}))
 
 watch(() => folderForm.name, (value) => {
     if (!folderModalOpen.value || folderForm.slugTouched) {
@@ -138,11 +237,27 @@ watch(() => folderForm.name, (value) => {
 
 watch(() => props.open, async (isOpen) => {
     if (!isOpen) {
+        activeTab.value = 'library'
+        transformTool.value = ''
+        stopTransformDrag()
         return
     }
 
     await initializeModal()
 })
+
+watch(selectedFile, (file) => {
+    if (file) {
+        resetTransformForm(file)
+    }
+
+    if (!file || !isTransformableImage(file)) {
+        activeTab.value = 'library'
+        transformTool.value = ''
+    }
+
+    stopTransformDrag()
+}, { immediate: true })
 
 watch(() => props.selectedIds, (value) => {
     if (!props.open) {
@@ -156,8 +271,9 @@ async function initializeModal() {
     noticeMessage.value = ''
     uploadPanelOpen.value = false
     dragDepth.value = 0
-    recentOnly.value = false
     recentUploadIds.value = []
+    activeTab.value = 'library'
+    transformTool.value = ''
     syncSelectedIds(props.selectedIds)
 
     const initialFolderId = await resolveInitialFolderId()
@@ -207,10 +323,6 @@ async function loadLibrary(folderId = null) {
         files.value = (payload.data?.files ?? []).map((file) => createMediaSelection(file))
 
         files.value.forEach(rememberFile)
-
-        if (activeFileId.value === null && files.value[0]) {
-            activeFileId.value = files.value[0].id
-        }
     } catch (error) {
         errorMessage.value = 'Не удалось загрузить медиатеку.'
         console.error(error)
@@ -228,6 +340,19 @@ function rememberFile(file) {
         ...selectedItemsById.value,
         [file.id]: createMediaSelection(file),
     }
+}
+
+function showNotice(message, tone = 'success') {
+    noticeMessage.value = message
+    notify(message, tone)
+}
+
+function replaceLoadedFile(file) {
+    if (!file?.id) {
+        return
+    }
+
+    files.value = files.value.map((entry) => entry.id === file.id ? createMediaSelection(file) : entry)
 }
 
 function openRoot() {
@@ -248,7 +373,7 @@ async function createFolder(name) {
             parent_id: currentFolderId.value,
         })
 
-        noticeMessage.value = 'Папка создана.'
+        showNotice('Папка создана.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         if (error.response?.status === 422) {
@@ -297,7 +422,7 @@ async function submitCreateFolderModal() {
         })
 
         folderModalOpen.value = false
-        noticeMessage.value = 'Папка создана.'
+        showNotice('Папка создана.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         if (error.response?.status === 422) {
@@ -322,7 +447,7 @@ async function renameFolder({ folder, name, parent_id }) {
             parent_id,
         })
 
-        noticeMessage.value = 'Папка обновлена.'
+        showNotice('Папка обновлена.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось обновить папку.'
@@ -341,7 +466,7 @@ async function removeFolder(folder) {
 
     try {
         await deleteMediaFolder(folder.id)
-        noticeMessage.value = 'Папка удалена.'
+        showNotice('Папка удалена.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось удалить папку.'
@@ -369,6 +494,36 @@ function handleFileClick(file) {
     selectedIdsState.value = Array.from(selected)
 }
 
+function openEditorTab() {
+    if (!canTransformSelectedFile.value) {
+        return
+    }
+
+    activeTab.value = 'edit'
+
+    if (!transformTool.value) {
+        transformTool.value = 'crop'
+    }
+}
+
+function setActiveTab(tab) {
+    if (tab === 'edit' && !canTransformSelectedFile.value) {
+        return
+    }
+
+    activeTab.value = tab
+
+    if (tab !== 'edit') {
+        transformTool.value = ''
+        stopTransformDrag()
+        return
+    }
+
+    if (!transformTool.value) {
+        transformTool.value = 'crop'
+    }
+}
+
 async function saveFileMeta(payload) {
     if (!selectedFile.value) {
         return
@@ -383,7 +538,7 @@ async function saveFileMeta(payload) {
             alt_text: payload.alt_text,
         })
 
-        noticeMessage.value = 'Данные изображения обновлены.'
+        showNotice('Данные изображения обновлены.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось обновить данные изображения.'
@@ -398,7 +553,7 @@ async function moveSelectedFile({ file, folder_id }) {
 
     try {
         await moveMediaFile(file.id, { folder_id })
-        noticeMessage.value = 'Файл перемещен.'
+        showNotice('Файл перемещен.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось переместить файл.'
@@ -420,7 +575,7 @@ async function deleteSelectedFile(file) {
         activeFileId.value = null
         delete selectedItemsById.value[file.id]
 
-        noticeMessage.value = 'Файл удален.'
+        showNotice('Файл удален.')
         await loadLibrary(currentFolderId.value)
     } catch (error) {
         errorMessage.value = error.response?.data?.message ?? 'Не удалось удалить файл.'
@@ -431,14 +586,220 @@ async function deleteSelectedFile(file) {
 async function copyUrl(file) {
     try {
         await navigator.clipboard.writeText(file.url)
-        noticeMessage.value = 'URL скопирован.'
+        showNotice('URL скопирован.', 'info')
     } catch (error) {
         errorMessage.value = 'Не удалось скопировать URL.'
         console.error(error)
     }
 }
 
+function resetTransformForm(file) {
+    transformForm.crop_enabled = true
+    transformForm.crop_x = 0.05
+    transformForm.crop_y = 0.05
+    transformForm.crop_width = 0.9
+    transformForm.crop_height = 0.9
+    transformForm.maintain_aspect_ratio = true
+    transformForm.quality = ''
+    transformForm.format = 'original'
+
+    if (!file?.width || !file?.height) {
+        transformForm.crop_x = 0
+        transformForm.crop_y = 0
+        transformForm.crop_width = 1
+        transformForm.crop_height = 1
+
+        transformForm.resize_width = ''
+        transformForm.resize_height = ''
+
+        return
+    }
+
+    transformForm.resize_width = Math.max(1, Math.round(Number(file.width) * transformForm.crop_width))
+    transformForm.resize_height = Math.max(1, Math.round(Number(file.height) * transformForm.crop_height))
+}
+
+function toggleTransformTool(tool) {
+    if (!canTransformSelectedFile.value) {
+        return
+    }
+
+    transformTool.value = transformTool.value === tool ? '' : tool
+}
+
+function handleResizeWidthInput() {
+    if (!transformForm.maintain_aspect_ratio || !transformAspectRatio.value) {
+        return
+    }
+
+    const width = Number(transformForm.resize_width || 0)
+
+    if (!width) {
+        transformForm.resize_height = ''
+        return
+    }
+
+    transformForm.resize_height = Math.max(1, Math.round(width / transformAspectRatio.value))
+}
+
+function handleResizeHeightInput() {
+    if (!transformForm.maintain_aspect_ratio || !transformAspectRatio.value) {
+        return
+    }
+
+    const height = Number(transformForm.resize_height || 0)
+
+    if (!height) {
+        transformForm.resize_width = ''
+        return
+    }
+
+    transformForm.resize_width = Math.max(1, Math.round(height * transformAspectRatio.value))
+}
+
+async function applyTransform() {
+    if (!selectedFile.value) {
+        return
+    }
+
+    transforming.value = true
+    errorMessage.value = ''
+
+    try {
+        const response = await transformMediaFile(selectedFile.value.id, {
+            crop_enabled: transformForm.crop_enabled,
+            crop_x: normalizeTransformFloat(transformForm.crop_x),
+            crop_y: normalizeTransformFloat(transformForm.crop_y),
+            crop_width: normalizeTransformFloat(transformForm.crop_width),
+            crop_height: normalizeTransformFloat(transformForm.crop_height),
+            resize_width: transformForm.resize_width === '' ? null : Number(transformForm.resize_width),
+            resize_height: transformForm.resize_height === '' ? null : Number(transformForm.resize_height),
+            maintain_aspect_ratio: transformForm.maintain_aspect_ratio,
+            quality: transformForm.quality === '' ? null : Number(transformForm.quality),
+            format: transformForm.format,
+        })
+
+        const transformedFile = withMediaCacheBust(response.data ?? response)
+
+        replaceLoadedFile(transformedFile)
+        rememberFile(transformedFile)
+
+        showNotice('Изображение обработано.')
+        resetTransformForm(transformedFile)
+        transformTool.value = ''
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message ?? firstTransformValidationError(error) ?? 'Не удалось обработать изображение.'
+        console.error(error)
+    } finally {
+        transforming.value = false
+        stopTransformDrag()
+    }
+}
+
+function firstTransformValidationError(error) {
+    const validation = error.response?.data?.errors ?? {}
+
+    return Object.values(validation).flat()[0] || null
+}
+
+function normalizeTransformFloat(value) {
+    return Number(Number(value).toFixed(6))
+}
+
+function isTransformableImage(file) {
+    if (!file) {
+        return false
+    }
+
+    const mimeType = String(file.mime_type || '').toLowerCase()
+
+    return mimeType.startsWith('image/') && mimeType !== 'image/svg+xml'
+}
+
+function startTransformDrag(mode, event) {
+    if (!transformForm.crop_enabled || !transformStageRef.value) {
+        return
+    }
+
+    transformDragState.active = true
+    transformDragState.mode = mode
+    transformDragState.startX = event.clientX
+    transformDragState.startY = event.clientY
+    transformDragState.crop = {
+        x: transformForm.crop_x,
+        y: transformForm.crop_y,
+        width: transformForm.crop_width,
+        height: transformForm.crop_height,
+    }
+}
+
+function handleTransformPointerMove(event) {
+    if (!transformDragState.active || !transformStageRef.value) {
+        return
+    }
+
+    const rect = transformStageRef.value.getBoundingClientRect()
+
+    if (!rect.width || !rect.height) {
+        return
+    }
+
+    const dx = (event.clientX - transformDragState.startX) / rect.width
+    const dy = (event.clientY - transformDragState.startY) / rect.height
+    const initial = transformDragState.crop
+
+    if (!initial) {
+        return
+    }
+
+    const minSize = 0.05
+
+    if (transformDragState.mode === 'move') {
+        transformForm.crop_x = clamp(initial.x + dx, 0, 1 - initial.width)
+        transformForm.crop_y = clamp(initial.y + dy, 0, 1 - initial.height)
+        return
+    }
+
+    let left = initial.x
+    let top = initial.y
+    let right = initial.x + initial.width
+    let bottom = initial.y + initial.height
+
+    if (transformDragState.mode.includes('w')) {
+        left = clamp(initial.x + dx, 0, right - minSize)
+    }
+
+    if (transformDragState.mode.includes('e')) {
+        right = clamp(initial.x + initial.width + dx, left + minSize, 1)
+    }
+
+    if (transformDragState.mode.includes('n')) {
+        top = clamp(initial.y + dy, 0, bottom - minSize)
+    }
+
+    if (transformDragState.mode.includes('s')) {
+        bottom = clamp(initial.y + initial.height + dy, top + minSize, 1)
+    }
+
+    transformForm.crop_x = left
+    transformForm.crop_y = top
+    transformForm.crop_width = right - left
+    transformForm.crop_height = bottom - top
+}
+
+function stopTransformDrag() {
+    transformDragState.active = false
+    transformDragState.mode = ''
+    transformDragState.crop = null
+}
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value))
+}
+
 function queueFiles(nextFiles) {
+    const acceptedFiles = nextFiles.filter((file) => isAcceptedUpload(file, props.accept))
+
     errorMessage.value = ''
     uploadQueue.value.push(...nextFiles.map((file) => createUploadItem(file)))
     uploadPanelOpen.value = true
@@ -446,6 +807,10 @@ function queueFiles(nextFiles) {
     nextTick(() => {
         uploadSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
+
+    if (!uploading.value && acceptedFiles.length > 0) {
+        void uploadQueuedFiles()
+    }
 }
 
 function eventHasFiles(event) {
@@ -595,22 +960,19 @@ async function uploadQueuedFiles() {
     }
 
     uploading.value = false
-    noticeMessage.value = 'Очередь обработана.'
+    showNotice('Очередь обработана.')
     await loadLibrary(currentFolderId.value)
 
     recentUploadIds.value = uploadedIds
-    recentOnly.value = uploadedIds.length > 0
 
-    if (uploadedIds[0] !== undefined) {
-        activeFileId.value = uploadedIds[0]
-
-        if (!props.multiple) {
-            selectedIdsState.value = [uploadedIds[0]]
-        }
-
+    if (uploadedIds.length > 0) {
         nextTick(() => {
             mainPanelRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
         })
+    }
+
+    if (uploadQueue.value.some((item) => item.status === 'queued')) {
+        void uploadQueuedFiles()
     }
 }
 
@@ -644,11 +1006,22 @@ function submitSelection() {
     emit('select', props.multiple ? items : items[0] ?? null)
     closeModal()
 }
+
+onMounted(() => {
+    window.addEventListener('pointermove', handleTransformPointerMove)
+    window.addEventListener('pointerup', stopTransformDrag)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('pointermove', handleTransformPointerMove)
+    window.removeEventListener('pointerup', stopTransformDrag)
+})
 </script>
 
 <template>
-    <div v-if="open" class="admin-modal" @click.self="closeModal">
-        <div class="admin-modal__dialog admin-modal__dialog--wide media-library-modal">
+    <Teleport to="body">
+        <div v-if="open" class="admin-modal" @click.self="closeModal">
+            <div class="admin-modal__dialog admin-modal__dialog--wide media-library-modal" @click.stop>
             <div class="admin-modal__header media-library-modal__header">
                 <div>
                     <p class="eyebrow">Media</p>
@@ -656,22 +1029,30 @@ function submitSelection() {
                     <p class="muted">Универсальная медиатека для выбора, загрузки и управления изображениями.</p>
                 </div>
 
-                <div class="admin-actions-row">
-                    <button type="button" class="button-link" @click="openCreateFolderModal">
-                        Создать папку
-                    </button>
-                    <AdminButton type="button" :disabled="!selectedFile && !multiple" variant="primary" @click="submitSelection">
-                        {{ multiple ? `Выбрать (${selectedIdsState.length})` : 'Выбрать' }}
-                    </AdminButton>
-                    <AdminButton type="button" @click="closeModal">
-                        Закрыть
-                    </AdminButton>
-                </div>
+                <button type="button" class="button-link" @click.stop="closeModal">
+                    Закрыть
+                </button>
             </div>
 
             <div class="admin-modal__body media-library-modal__body">
+                <div class="media-library-modal__tabs">
+                    <button type="button" class="media-library-modal__tab" :class="{ 'is-active': activeTab === 'library' }" @click="setActiveTab('library')">
+                        Все изображения
+                    </button>
+                    <button
+                        type="button"
+                        class="media-library-modal__tab"
+                        :class="{ 'is-active': activeTab === 'edit' }"
+                        :disabled="!canTransformSelectedFile"
+                        @click="setActiveTab('edit')"
+                    >
+                        Редактирование
+                    </button>
+                </div>
+
                 <div class="media-library-modal__content">
                     <div
+                        v-if="activeTab === 'library'"
                         ref="mainPanelRef"
                         class="media-library-modal__main"
                         @dragenter="handleMainDragEnter"
@@ -691,15 +1072,6 @@ function submitSelection() {
                                     <span>файлов в текущем списке</span>
                                 </div>
 
-                                <AdminButton
-                                    v-if="hasRecentUploads"
-                                    type="button"
-                                    :variant="recentOnly ? 'primary' : undefined"
-                                    @click="recentOnly = !recentOnly"
-                                >
-                                    {{ recentOnly ? 'Показать все' : 'Только недавние' }}
-                                </AdminButton>
-
                                 <AdminButton v-if="allowUpload" type="button" @click="uploadPanelOpen = !uploadPanelOpen">
                                     {{ uploadPanelOpen ? 'Скрыть очередь' : `Очередь загрузки${queueCount > 0 ? ` (${queueCount})` : ''}` }}
                                 </AdminButton>
@@ -717,6 +1089,47 @@ function submitSelection() {
                                     Создать папку
                                 </button>
                             </div>
+
+                            <div v-if="folderModalOpen" class="media-library-modal__folder-panel">
+                                <div class="media-library-modal__folder-panel-head">
+                                    <div>
+                                        <p class="eyebrow">Folder</p>
+                                        <strong>Создать папку</strong>
+                                    </div>
+
+                                    <button type="button" class="button-link" :disabled="saving" @click="closeCreateFolderModal">
+                                        Отмена
+                                    </button>
+                                </div>
+
+                                <form class="admin-form-stack" @submit.prevent="submitCreateFolderModal">
+                                    <label class="admin-form-label">
+                                        <span>Название папки</span>
+                                        <input v-model="folderForm.name" class="admin-input" type="text" placeholder="Например, Баннеры">
+                                        <small v-if="createErrors.name" class="error-text">{{ createErrors.name[0] }}</small>
+                                    </label>
+
+                                    <label class="admin-form-label">
+                                        <span>Slug</span>
+                                        <input v-model="folderForm.slug" class="admin-input" type="text" placeholder="bannery" @input="markFolderSlugTouched">
+                                        <small v-if="createErrors.slug" class="error-text">{{ createErrors.slug[0] }}</small>
+                                    </label>
+
+                                    <p class="muted media-library-modal__folder-hint">
+                                        Родительская папка: {{ currentFolder?.path || 'media' }}
+                                    </p>
+
+                                    <div class="admin-actions-row">
+                                        <AdminButton type="submit" variant="primary" :disabled="saving">
+                                            {{ saving ? 'Создание...' : 'Создать' }}
+                                        </AdminButton>
+                                        <button type="button" class="button-link" :disabled="saving" @click="closeCreateFolderModal">
+                                            Отмена
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
                             <MediaFolders
                                 :breadcrumbs="breadcrumbs"
                                 :folders="folders"
@@ -737,6 +1150,12 @@ function submitSelection() {
                         <p v-else-if="noticeMessage" class="muted">{{ noticeMessage }}</p>
 
                         <MediaGrid v-if="hasFiles" :files="filteredFiles" :selected-ids="selectedIdsState" :accent-ids="recentUploadIds" @select="handleFileClick" />
+
+                        <div v-if="hasFiles" class="media-library-modal__selection-actions">
+                            <button type="button" class="button-base button-primary" :disabled="!selectedFile && !multiple" @click="submitSelection">
+                                {{ multiple ? `Выбрать (${selectedIdsState.length})` : 'Выбрать' }}
+                            </button>
+                        </div>
 
                         <p v-else-if="!loading" class="muted">В текущей папке пока нет изображений.</p>
 
@@ -766,11 +1185,95 @@ function submitSelection() {
                         </transition>
                     </div>
 
+                    <div v-else class="media-library-modal__editor">
+                        <div class="media-library-modal__editor-stage-shell">
+                            <div ref="transformStageRef" class="media-library-modal__editor-stage">
+                                <img :src="selectedFile.url" :alt="selectedFile.alt_text || selectedFile.original_name" draggable="false">
+
+                                <div
+                                    v-if="transformTool === 'crop' && transformForm.crop_enabled && canTransformSelectedFile"
+                                    class="media-library-modal__crop-box"
+                                    :style="transformCropStyle"
+                                    @pointerdown.prevent="startTransformDrag('move', $event)"
+                                >
+                                    <button type="button" class="media-library-modal__crop-handle is-nw" @pointerdown.stop.prevent="startTransformDrag('nw', $event)"></button>
+                                    <button type="button" class="media-library-modal__crop-handle is-ne" @pointerdown.stop.prevent="startTransformDrag('ne', $event)"></button>
+                                    <button type="button" class="media-library-modal__crop-handle is-se" @pointerdown.stop.prevent="startTransformDrag('se', $event)"></button>
+                                    <button type="button" class="media-library-modal__crop-handle is-sw" @pointerdown.stop.prevent="startTransformDrag('sw', $event)"></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="media-library-modal__editor-facts">
+                            <div><span>Исходник</span><strong>{{ selectedFile.width && selectedFile.height ? `${selectedFile.width} x ${selectedFile.height}` : '—' }}</strong></div>
+                            <div><span>После кадрирования</span><strong>{{ transformSourceDimensions.width && transformSourceDimensions.height ? `${transformSourceDimensions.width} x ${transformSourceDimensions.height}` : '—' }}</strong></div>
+                            <div><span>Итог</span><strong>{{ transformOutputDimensions.width && transformOutputDimensions.height ? `${transformOutputDimensions.width} x ${transformOutputDimensions.height}` : 'Без изменения размера' }}</strong></div>
+                        </div>
+
+                        <div class="media-library-modal__tool-switcher">
+                            <button type="button" class="media-library-modal__tool-button" :class="{ 'is-active': transformTool === 'crop' }" @click="toggleTransformTool('crop')">Кадрировать</button>
+                            <button type="button" class="media-library-modal__tool-button" :class="{ 'is-active': transformTool === 'resize' }" @click="toggleTransformTool('resize')">Размер</button>
+                            <button type="button" class="media-library-modal__tool-button" :class="{ 'is-active': transformTool === 'format' }" @click="toggleTransformTool('format')">Формат</button>
+                            <button type="button" class="media-library-modal__tool-button" :class="{ 'is-active': transformTool === 'quality' }" @click="toggleTransformTool('quality')">Качество</button>
+                        </div>
+
+                        <div v-if="transformTool" class="admin-form-stack media-library-modal__tool-panel">
+                            <p v-if="transformTool === 'crop'" class="muted">Тяните рамку мышкой за область или уголки, чтобы обрезать изображение прямо в этой модалке.</p>
+
+                            <label v-if="transformTool === 'crop'" class="admin-form-label">
+                                <span><input v-model="transformForm.crop_enabled" type="checkbox"> Включить кадрирование</span>
+                            </label>
+
+                            <template v-if="transformTool === 'resize'">
+                                <label class="admin-form-label">
+                                    <span><input v-model="transformForm.maintain_aspect_ratio" type="checkbox"> Сохранять пропорции</span>
+                                </label>
+
+                                <div class="media-library-modal__editor-grid">
+                                    <label class="admin-form-label">
+                                        <span>Ширина</span>
+                                        <input v-model.number="transformForm.resize_width" class="admin-input" type="number" min="1" step="1" @input="handleResizeWidthInput">
+                                    </label>
+
+                                    <label class="admin-form-label">
+                                        <span>Высота</span>
+                                        <input v-model.number="transformForm.resize_height" class="admin-input" type="number" min="1" step="1" @input="handleResizeHeightInput">
+                                    </label>
+                                </div>
+                            </template>
+
+                            <label v-if="transformTool === 'format'" class="admin-form-label">
+                                <span>Формат</span>
+                                <select v-model="transformForm.format" class="admin-select">
+                                    <option v-for="option in transformFormatOptions" :key="option.value" :value="option.value">
+                                        {{ option.label }}
+                                    </option>
+                                </select>
+                            </label>
+
+                            <label v-if="transformTool === 'quality'" class="admin-form-label">
+                                <span>Качество</span>
+                                <input v-model.number="transformForm.quality" class="admin-input" type="number" min="30" max="100" step="1" placeholder="По умолчанию из настроек">
+                            </label>
+
+                            <div class="admin-actions-row media-library-modal__editor-actions">
+                                <AdminButton type="button" variant="primary" :disabled="transforming" @click="applyTransform">
+                                    {{ transforming ? 'Обработка...' : 'Применить изменения' }}
+                                </AdminButton>
+                                <button type="button" class="button-link" :disabled="transforming" @click="setActiveTab('library')">
+                                    К библиотеке
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <MediaSidebar
                         :file="selectedFile"
                         :move-folder-options="moveFolderOptions"
                         :saving="saving"
+                        :editable="canTransformSelectedFile"
                         @close="activeFileId = null"
+                        @edit="openEditorTab"
                         @save="saveFileMeta"
                         @select="submitSelection"
                         @copy-url="copyUrl"
@@ -779,52 +1282,9 @@ function submitSelection() {
                     />
                 </div>
             </div>
-        </div>
-
-        <div v-if="folderModalOpen" class="admin-modal media-library-modal__nested-modal" @click.self="closeCreateFolderModal">
-            <div class="admin-modal__dialog media-library-modal__folder-dialog">
-                <div class="admin-modal__header">
-                    <div>
-                        <p class="eyebrow">Folder</p>
-                        <h2>Создать папку</h2>
-                    </div>
-
-                    <button type="button" class="button-link" :disabled="saving" @click="closeCreateFolderModal">
-                        Отмена
-                    </button>
-                </div>
-
-                <div class="admin-modal__body">
-                    <form class="admin-form-stack" @submit.prevent="submitCreateFolderModal">
-                        <label class="admin-form-label">
-                            <span>Название папки</span>
-                            <input v-model="folderForm.name" class="admin-input" type="text" placeholder="Например, Баннеры">
-                            <small v-if="createErrors.name" class="error-text">{{ createErrors.name[0] }}</small>
-                        </label>
-
-                        <label class="admin-form-label">
-                            <span>Slug</span>
-                            <input v-model="folderForm.slug" class="admin-input" type="text" placeholder="bannery" @input="markFolderSlugTouched">
-                            <small v-if="createErrors.slug" class="error-text">{{ createErrors.slug[0] }}</small>
-                        </label>
-
-                        <p class="muted media-library-modal__folder-hint">
-                            Родительская папка: {{ currentFolder?.path || 'media' }}
-                        </p>
-
-                        <div class="admin-actions-row">
-                            <AdminButton type="submit" variant="primary" :disabled="saving">
-                                {{ saving ? 'Создание...' : 'Создать' }}
-                            </AdminButton>
-                            <button type="button" class="button-link" :disabled="saving" @click="closeCreateFolderModal">
-                                Отмена
-                            </button>
-                        </div>
-                    </form>
-                </div>
             </div>
         </div>
-    </div>
+    </Teleport>
 </template>
 
 <style scoped>
@@ -846,6 +1306,35 @@ function submitSelection() {
     padding: 0;
 }
 
+.media-library-modal__tabs {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1rem;
+}
+
+.media-library-modal__tab {
+    min-height: 40px;
+    padding: 0 1rem;
+    border: 1px solid rgba(59, 130, 246, 0.26);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: #1e3a5f;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.media-library-modal__tab.is-active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+}
+
+.media-library-modal__tab:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .media-library-modal__content {
     display: grid;
     grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.8fr);
@@ -859,6 +1348,161 @@ function submitSelection() {
     min-height: 0;
     padding: 1.25rem;
     overflow: auto;
+}
+
+.media-library-modal__editor {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    min-height: 0;
+    padding: 1.25rem;
+    overflow: auto;
+}
+
+.media-library-modal__editor-stage-shell {
+    display: grid;
+    place-items: center;
+    min-height: 460px;
+    padding: 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 24px;
+    background:
+        linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+        linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%, transparent 75%, rgba(148, 163, 184, 0.08) 75%);
+    background-position: 0 0, 12px 12px;
+    background-size: 24px 24px;
+}
+
+.media-library-modal__editor-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    max-width: 100%;
+    min-height: 340px;
+    max-height: 56vh;
+    border-radius: 18px;
+}
+
+.media-library-modal__editor-stage img {
+    display: block;
+    max-width: 100%;
+    max-height: 54vh;
+    border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    user-select: none;
+}
+
+.media-library-modal__crop-box {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid #3b82f6;
+    border-radius: 14px;
+    cursor: move;
+    touch-action: none;
+    box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.32);
+}
+
+.media-library-modal__crop-handle {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #3b82f6;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+}
+
+.media-library-modal__crop-handle.is-nw {
+    top: -8px;
+    left: -8px;
+    cursor: nwse-resize;
+}
+
+.media-library-modal__crop-handle.is-ne {
+    top: -8px;
+    right: -8px;
+    cursor: nesw-resize;
+}
+
+.media-library-modal__crop-handle.is-se {
+    right: -8px;
+    bottom: -8px;
+    cursor: nwse-resize;
+}
+
+.media-library-modal__crop-handle.is-sw {
+    bottom: -8px;
+    left: -8px;
+    cursor: nesw-resize;
+}
+
+.media-library-modal__tool-switcher {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.media-library-modal__tool-button {
+    min-height: 38px;
+    padding: 0 0.95rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e3a5f;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.media-library-modal__tool-button.is-active {
+    border-color: rgba(37, 99, 235, 0.45);
+    background: rgba(219, 234, 254, 0.8);
+    color: #1d4ed8;
+}
+
+.media-library-modal__editor-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    background: rgba(241, 245, 249, 0.82);
+}
+
+.media-library-modal__editor-facts div {
+    display: grid;
+    gap: 0.1rem;
+}
+
+.media-library-modal__editor-facts span {
+    color: rgba(100, 116, 139, 0.9);
+    font-size: 0.64rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.media-library-modal__editor-facts strong {
+    font-size: 0.95rem;
+    line-height: 1.1;
+}
+
+.media-library-modal__editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.media-library-modal__tool-panel {
+    padding: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.media-library-modal__editor-actions {
+    align-items: stretch;
 }
 
 .media-library-modal :deep(.media-sidebar) {
@@ -910,6 +1554,12 @@ function submitSelection() {
     font-size: 0.82rem;
 }
 
+.media-library-modal__selection-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.25rem;
+}
+
 .media-library-modal__section {
     border: 1px solid rgba(148, 163, 184, 0.18);
     border-radius: 20px;
@@ -926,6 +1576,28 @@ function submitSelection() {
 }
 
 .media-library-modal__section-head div {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.media-library-modal__folder-panel {
+    display: grid;
+    gap: 1rem;
+    margin: 1rem;
+    padding: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(239, 246, 255, 0.72), rgba(255, 255, 255, 0.92));
+}
+
+.media-library-modal__folder-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.media-library-modal__folder-panel-head div {
     display: grid;
     gap: 0.2rem;
 }
@@ -1025,6 +1697,10 @@ function submitSelection() {
         grid-template-columns: 1fr;
     }
 
+    .media-library-modal__editor-grid {
+        grid-template-columns: 1fr;
+    }
+
     .media-library-modal__toolbar {
         grid-template-columns: 1fr;
     }
@@ -1034,6 +1710,11 @@ function submitSelection() {
     }
 
     .media-library-modal__section-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .media-library-modal__folder-panel-head {
         flex-direction: column;
         align-items: stretch;
     }

@@ -63,8 +63,18 @@ class SettingsManager
             : $settings['admin_light_palette'];
         $settings['site_featured_media_variant'] = $this->resolveMediaVariant((string) ($settings['site_featured_media_variant'] ?? 'original'));
         $settings['media_default_insert_variant'] = $this->resolveMediaVariant((string) ($settings['media_default_insert_variant'] ?? 'original'));
+        $settings['media_image_optimize'] = $this->resolveBool($settings['media_image_optimize'] ?? config('settings.defaults.media_image_optimize', config('media.images.optimize', true)), config('settings.defaults.media_image_optimize', config('media.images.optimize', true)));
+        $settings['media_image_max_width'] = $this->resolveBoundedInt($settings['media_image_max_width'] ?? config('settings.defaults.media_image_max_width', config('media.images.max_width', 1920)), 320, 12000, (int) config('settings.defaults.media_image_max_width', config('media.images.max_width', 1920)));
+        $settings['media_image_max_height'] = $this->resolveBoundedInt($settings['media_image_max_height'] ?? config('settings.defaults.media_image_max_height', config('media.images.max_height', 1920)), 320, 12000, (int) config('settings.defaults.media_image_max_height', config('media.images.max_height', 1920)));
+        $settings['media_image_jpg_quality'] = $this->resolveBoundedInt($settings['media_image_jpg_quality'] ?? config('settings.defaults.media_image_jpg_quality', config('media.images.jpg_quality', 82)), 30, 100, (int) config('settings.defaults.media_image_jpg_quality', config('media.images.jpg_quality', 82)));
+        $settings['media_image_webp_quality'] = $this->resolveBoundedInt($settings['media_image_webp_quality'] ?? config('settings.defaults.media_image_webp_quality', config('media.images.webp_quality', 80)), 30, 100, (int) config('settings.defaults.media_image_webp_quality', config('media.images.webp_quality', 80)));
+        $settings['media_image_convert_to_webp'] = $this->resolveBool($settings['media_image_convert_to_webp'] ?? config('settings.defaults.media_image_convert_to_webp', config('media.images.convert_to_webp', true)), config('settings.defaults.media_image_convert_to_webp', config('media.images.convert_to_webp', true)));
+        $settings['media_image_keep_original'] = $this->resolveBool($settings['media_image_keep_original'] ?? config('settings.defaults.media_image_keep_original', config('media.images.keep_original', true)), config('settings.defaults.media_image_keep_original', config('media.images.keep_original', true)));
+        $settings['media_image_create_thumbnails'] = $this->resolveBool($settings['media_image_create_thumbnails'] ?? config('settings.defaults.media_image_create_thumbnails', config('media.images.create_thumbnails', true)), config('settings.defaults.media_image_create_thumbnails', config('media.images.create_thumbnails', true)));
         $settings['theme_assets_minify_css'] = $this->resolveBool($settings['theme_assets_minify_css'] ?? true, true);
         $settings['theme_assets_minify_js'] = $this->resolveBool($settings['theme_assets_minify_js'] ?? true, true);
+        $settings['theme_assets_obfuscate_js'] = $this->resolveBool($settings['theme_assets_obfuscate_js'] ?? false, false);
+        $settings['theme_assets_obfuscation_preset'] = $this->resolveThemeAssetObfuscationPreset((string) ($settings['theme_assets_obfuscation_preset'] ?? 'balanced'));
         $settings['theme_assets_combine_css'] = $this->resolveBool($settings['theme_assets_combine_css'] ?? true, true);
         $settings['theme_assets_combine_js'] = $this->resolveBool($settings['theme_assets_combine_js'] ?? true, true);
         $settings['theme_assets_separate_css'] = $this->resolveBool($settings['theme_assets_separate_css'] ?? false, false);
@@ -113,11 +123,21 @@ class SettingsManager
             'site_theme' => $this->resolveTheme((string) ($attributes['site_theme'] ?? 'default')),
             'site_featured_media_variant' => $this->resolveMediaVariant((string) ($attributes['site_featured_media_variant'] ?? 'original')),
             'media_default_insert_variant' => $this->resolveMediaVariant((string) ($attributes['media_default_insert_variant'] ?? 'original')),
+            'media_image_optimize' => $this->resolveBool($attributes['media_image_optimize'] ?? $current['media_image_optimize'] ?? config('settings.defaults.media_image_optimize', config('media.images.optimize', true)), config('settings.defaults.media_image_optimize', config('media.images.optimize', true))),
+            'media_image_max_width' => $this->resolveBoundedInt($attributes['media_image_max_width'] ?? $current['media_image_max_width'] ?? config('settings.defaults.media_image_max_width', config('media.images.max_width', 1920)), 320, 12000, (int) config('settings.defaults.media_image_max_width', config('media.images.max_width', 1920))),
+            'media_image_max_height' => $this->resolveBoundedInt($attributes['media_image_max_height'] ?? $current['media_image_max_height'] ?? config('settings.defaults.media_image_max_height', config('media.images.max_height', 1920)), 320, 12000, (int) config('settings.defaults.media_image_max_height', config('media.images.max_height', 1920))),
+            'media_image_jpg_quality' => $this->resolveBoundedInt($attributes['media_image_jpg_quality'] ?? $current['media_image_jpg_quality'] ?? config('settings.defaults.media_image_jpg_quality', config('media.images.jpg_quality', 82)), 30, 100, (int) config('settings.defaults.media_image_jpg_quality', config('media.images.jpg_quality', 82))),
+            'media_image_webp_quality' => $this->resolveBoundedInt($attributes['media_image_webp_quality'] ?? $current['media_image_webp_quality'] ?? config('settings.defaults.media_image_webp_quality', config('media.images.webp_quality', 80)), 30, 100, (int) config('settings.defaults.media_image_webp_quality', config('media.images.webp_quality', 80))),
+            'media_image_convert_to_webp' => $this->resolveBool($attributes['media_image_convert_to_webp'] ?? $current['media_image_convert_to_webp'] ?? config('settings.defaults.media_image_convert_to_webp', config('media.images.convert_to_webp', true)), config('settings.defaults.media_image_convert_to_webp', config('media.images.convert_to_webp', true))),
+            'media_image_keep_original' => $this->resolveBool($attributes['media_image_keep_original'] ?? $current['media_image_keep_original'] ?? config('settings.defaults.media_image_keep_original', config('media.images.keep_original', true)), config('settings.defaults.media_image_keep_original', config('media.images.keep_original', true))),
+            'media_image_create_thumbnails' => $this->resolveBool($attributes['media_image_create_thumbnails'] ?? $current['media_image_create_thumbnails'] ?? config('settings.defaults.media_image_create_thumbnails', config('media.images.create_thumbnails', true)), config('settings.defaults.media_image_create_thumbnails', config('media.images.create_thumbnails', true))),
             'admin_theme_mode' => $this->resolveThemeMode((string) ($attributes['admin_theme_mode'] ?? $current['admin_theme_mode'] ?? 'dark')),
             'admin_light_palette' => $this->resolveLightPalette((string) ($attributes['admin_light_palette'] ?? $current['admin_light_palette'] ?? 'slate')),
             'admin_dark_palette' => $this->resolveDarkPalette((string) ($attributes['admin_dark_palette'] ?? $current['admin_dark_palette'] ?? 'midnight')),
             'theme_assets_minify_css' => $this->resolveBool($attributes['theme_assets_minify_css'] ?? $current['theme_assets_minify_css'] ?? true, true),
             'theme_assets_minify_js' => $this->resolveBool($attributes['theme_assets_minify_js'] ?? $current['theme_assets_minify_js'] ?? true, true),
+            'theme_assets_obfuscate_js' => $this->resolveBool($attributes['theme_assets_obfuscate_js'] ?? $current['theme_assets_obfuscate_js'] ?? false, false),
+            'theme_assets_obfuscation_preset' => $this->resolveThemeAssetObfuscationPreset((string) ($attributes['theme_assets_obfuscation_preset'] ?? $current['theme_assets_obfuscation_preset'] ?? 'balanced')),
             'theme_assets_combine_css' => $this->resolveBool($attributes['theme_assets_combine_css'] ?? $current['theme_assets_combine_css'] ?? true, true),
             'theme_assets_combine_js' => $this->resolveBool($attributes['theme_assets_combine_js'] ?? $current['theme_assets_combine_js'] ?? true, true),
             'theme_assets_separate_css' => $this->resolveBool($attributes['theme_assets_separate_css'] ?? $current['theme_assets_separate_css'] ?? false, false),
@@ -234,7 +254,7 @@ class SettingsManager
             : null;
 
         $this->publicPayloadCache = array_merge($settings, [
-            'favicon_url' => $favicon?->variantUrl('thumb') ?? $favicon?->url(),
+            'favicon_url' => $favicon?->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $favicon?->url(),
             'admin_palette' => $this->resolveActivePalette($settings),
         ]);
 
@@ -253,7 +273,7 @@ class SettingsManager
             'current_favicon' => $currentFavicon ? [
                 'value' => $currentFavicon->id,
                 'label' => $currentFavicon->title ?: $currentFavicon->original_name,
-                'preview_url' => $currentFavicon->variantUrl('thumb') ?? $currentFavicon->url(),
+                'preview_url' => $currentFavicon->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $currentFavicon->url(),
                 'url' => $currentFavicon->url(),
             ] : null,
             'options' => [
@@ -261,12 +281,7 @@ class SettingsManager
                 'time_formats' => $this->timeFormatOptions()->values()->all(),
                 'themes' => $this->themeOptions(),
                 'page_templates' => $this->pageTemplateOptions(),
-                'media_variants' => [
-                    ['value' => 'original', 'label' => 'Оригинал'],
-                    ['value' => 'large', 'label' => 'Large'],
-                    ['value' => 'medium', 'label' => 'Medium'],
-                    ['value' => 'thumb', 'label' => 'Mini / Thumb'],
-                ],
+                'media_variants' => $this->mediaVariantOptions($settings),
                 'cms_palettes' => collect($this->paletteOptions())
                     ->map(fn (array $palette, string $key): array => [
                         'value' => $key,
@@ -292,6 +307,11 @@ class SettingsManager
                     ])
                     ->values()
                     ->all(),
+                'theme_asset_obfuscation_presets' => [
+                    ['value' => 'safe', 'label' => 'Safe'],
+                    ['value' => 'balanced', 'label' => 'Balanced'],
+                    ['value' => 'aggressive', 'label' => 'Aggressive'],
+                ],
                 'home_pages' => Page::query()
                     ->orderBy('title')
                     ->get(['id', 'title', 'slug', 'is_home'])
@@ -310,13 +330,56 @@ class SettingsManager
                     ->map(fn (MediaFile $file): array => [
                         'value' => $file->id,
                         'label' => $file->title ?: $file->original_name,
-                        'preview_url' => $file->variantUrl('thumb') ?? $file->url(),
+                        'preview_url' => $file->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $file->url(),
                         'url' => $file->url(),
                     ])
                     ->values()
                     ->all(),
             ],
         ];
+    }
+
+    protected function mediaVariantOptions(array $settings): array
+    {
+        $sizes = config('media.images.sizes', []);
+        $options = [
+            ['value' => 'original', 'label' => 'Оригинал'],
+        ];
+
+        if (($settings['media_image_optimize'] ?? true) && ($settings['media_image_keep_original'] ?? true)) {
+            $options[] = ['value' => 'optimized', 'label' => 'Optimized'];
+        }
+
+        foreach ($sizes as $name => $definition) {
+            if (! is_array($definition)) {
+                continue;
+            }
+
+            $width = Arr::get($definition, 'width');
+            $height = Arr::get($definition, 'height');
+            $mode = (string) Arr::get($definition, 'mode', 'resize');
+            $dimensionLabel = collect([$width, $height])
+                ->filter(fn (mixed $value): bool => is_numeric($value) && (int) $value > 0)
+                ->map(fn (mixed $value): string => (string) (int) $value)
+                ->implode('x');
+
+            $label = ucfirst((string) $name);
+
+            if ($dimensionLabel !== '') {
+                $label .= ' ('.$dimensionLabel.')';
+            }
+
+            if ($mode !== '') {
+                $label .= ' · '.strtoupper($mode);
+            }
+
+            $options[] = [
+                'value' => (string) $name,
+                'label' => $label,
+            ];
+        }
+
+        return $options;
     }
 
     public function dateFormatOptions(): Collection
@@ -450,10 +513,10 @@ class SettingsManager
         ]]);
 
         if (is_dir($themePath)) {
-            $candidateFiles = array_merge(
-                glob($themePath.'/*.blade.php') ?: [],
-                glob($themePath.'/templates/*.blade.php') ?: [],
-            );
+            $candidateFiles = collect(File::allFiles($themePath))
+                ->map(fn ($file): string => $file->getPathname())
+                ->filter(fn (string $filePath): bool => str_ends_with($filePath, '.blade.php'))
+                ->all();
 
             foreach (array_unique($candidateFiles) as $filePath) {
                 $relativePath = ltrim(str_replace($themePath, '', $filePath), '/');
@@ -500,6 +563,10 @@ class SettingsManager
 
         preg_match('/CMS_TEMPLATE\s*:\s*([a-z0-9._-]+)(?:\|([^\n\r]+))?/i', $snippet, $templateMatch);
         preg_match('/CMS_TEMPLATE_DESCRIPTION\s*:\s*([^\n\r]+)/i', $snippet, $descriptionMatch);
+
+        if (! isset($templateMatch[1])) {
+            return null;
+        }
 
         $relativeWithoutExtension = preg_replace('/\.blade\.php$/', '', $relativePath) ?? $relativePath;
         $fallbackValue = basename($relativeWithoutExtension);
@@ -581,6 +648,11 @@ class SettingsManager
     protected function resolveMediaVariant(string $variant): string
     {
         return in_array($variant, ['original', 'large', 'medium', 'thumb'], true) ? $variant : 'original';
+    }
+
+    protected function resolveThemeAssetObfuscationPreset(string $preset): string
+    {
+        return in_array($preset, ['safe', 'balanced', 'aggressive'], true) ? $preset : 'balanced';
     }
 
     protected function resolveBool(mixed $value, bool $default): bool

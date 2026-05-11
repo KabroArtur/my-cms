@@ -1,0 +1,111 @@
+{
+  "name": "Universal Theme",
+  "slug": "editorial",
+  "version": "1.1.0",
+  "description": "Clean and flexible website template for modern projects. Easy to customize and ready for any CMS.",
+  "entry": "index.blade.php",
+  "assets": {
+    "styles": [
+  {
+    "handle": "theme-base",
+    "src": "css/base.css",
+    "global": true,
+    "priority": 10
+  },
+  {
+    "handle": "theme-button",
+    "src": "css/button.css",
+    "global": true,
+    "priority": 20
+  },
+  {
+    "handle": "theme-section",
+    "src": "css/section.css",
+    "global": true,
+    "priority": 30
+  },
+  {
+    "handle": "theme-header",
+    "src": "css/header.css",
+    "global": true,
+    "priority": 40
+  },
+  {
+    "handle": "theme-footer",
+    "src": "css/footer.css",
+    "global": true,
+    "priority": 50
+  },
+  {
+    "handle": "theme-home",
+    "src": "css/home.css",
+    "templates": ["home"],
+    "priority": 100
+  },
+  {
+    "handle": "theme-features",
+    "src": "css/features.css",
+    "templates": ["home"],
+    "priority": 110
+  },
+  {
+    "handle": "theme-services",
+    "src": "css/services.css",
+    "templates": ["home", "services"],
+    "priority": 120
+  },
+  {
+    "handle": "theme-process",
+    "src": "css/process.css",
+    "templates": ["home"],
+    "priority": 130
+  },
+  {
+    "handle": "theme-stats",
+    "src": "css/stats.css",
+    "templates": ["home"],
+    "priority": 140
+  },
+  {
+    "handle": "theme-cta",
+    "src": "css/cta.css",
+    "global": true,
+    "priority": 150
+  },
+  {
+    "handle": "theme-about",
+    "src": "css/about.css",
+    "templates": ["about"],
+    "priority": 200
+  },
+  {
+    "handle": "theme-web",
+    "src": "css/web.css",
+    "templates": ["web"],
+    "priority": 210
+  },
+  {
+    "handle": "theme-blog",
+    "src": "css/blog.css",
+    "templates": ["blog"],
+    "priority": 220
+  },
+  {
+    "handle": "theme-contact",
+    "src": "css/contact.css",
+    "templates": ["contact"],
+    "priority": 230
+  }
+],
+    "scripts": [
+  {
+    "handle": "theme-main",
+    "src": "js/main.js",
+    "global": true,
+    "in_head": true,
+    "defer": true,
+    "priority": 10
+  }
+]
+  }
+}

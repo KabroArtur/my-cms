@@ -1,20 +1,23 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { fetchCurrentUser, logout } from '../api/auth'
+import { fetchCurrentUser, getBootstrappedSiteName, getCurrentUserSnapshot, logout } from '../api/auth'
+import AdminNotifications from '../components/ui/AdminNotifications.vue'
 import { getAdminThemeState, loadCmsSettings, toggleAdminThemeMode } from '../composables/useCmsSettings'
 import { adminBasePath, adminLoginPath, adminPath } from '../utils/adminPath'
 
 const route = useRoute()
 const router = useRouter()
-const loading = ref(true)
-const user = ref(null)
+const initialUser = getCurrentUserSnapshot()
+const loading = ref(!initialUser)
+const user = ref(initialUser)
 const errorMessage = ref('')
-const siteName = ref('My CMS')
+const siteName = ref(getBootstrappedSiteName())
 const sidebarOpen = ref(false)
 const themeMode = ref(getAdminThemeState().mode)
 const openPluginGroups = ref(new Set())
 const openPluginSubgroups = ref(new Set())
+const userMenuOpen = ref(false)
 
 const displayName = computed(() => {
     const name = String(user.value?.name ?? '').trim()
@@ -162,6 +165,15 @@ const breadcrumbs = computed(() => {
 })
 
 const themeToggleLabel = computed(() => (themeMode.value === 'dark' ? 'Светлая тема' : 'Темная тема'))
+const publicSiteUrl = computed(() => {
+    const adminBase = adminBasePath()
+
+    if (adminBase === '/admin') {
+        return '/'
+    }
+
+    return adminBase.endsWith('/admin') ? adminBase.slice(0, -'/admin'.length) || '/' : '/'
+})
 
 function isLinkActive(link) {
     const currentName = String(route.name ?? '')
@@ -242,12 +254,15 @@ function isPluginSubgroupActive(groupLabel, subgroup) {
 }
 
 async function loadCurrentUser() {
-    loading.value = true
+    if (!user.value) {
+        loading.value = true
+    }
+
     errorMessage.value = ''
 
     try {
         const [payload, settingsPayload] = await Promise.all([
-            fetchCurrentUser(),
+            fetchCurrentUser(Boolean(user.value)),
             loadCmsSettings(),
         ])
         user.value = payload.data
@@ -297,15 +312,38 @@ function toggleSidebar() {
 function handleThemeToggle() {
     const nextState = toggleAdminThemeMode()
     themeMode.value = nextState.mode
+    userMenuOpen.value = false
+}
+
+async function openUserEditor() {
+    userMenuOpen.value = false
+
+    if (route.name !== 'users') {
+        await router.push({ name: 'users' })
+    }
+}
+
+function toggleUserMenu() {
+    userMenuOpen.value = !userMenuOpen.value
+}
+
+function handleDocumentClick() {
+    userMenuOpen.value = false
 }
 
 watch(() => route.fullPath, () => {
     sidebarOpen.value = false
+    userMenuOpen.value = false
 })
 
 onMounted(async () => {
     themeMode.value = getAdminThemeState().mode
-    await loadCurrentUser()
+    document.addEventListener('click', handleDocumentClick)
+    loadCurrentUser()
+})
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', handleDocumentClick)
 })
 </script>
 
@@ -315,6 +353,9 @@ onMounted(async () => {
             <div class="admin-sidebar__brand">
                 <p class="eyebrow">CMS</p>
                 <h1 class="admin-title">{{ siteName }}</h1>
+                <a :href="publicSiteUrl" class="admin-sidebar__site-link" target="_blank" rel="noopener noreferrer">
+                    Посмотреть сайт
+                </a>
             </div>
 
             <div class="admin-sidebar__meta">
@@ -435,15 +476,26 @@ onMounted(async () => {
                 <p v-if="errorMessage" class="error-text"><strong>{{ errorMessage }}</strong></p>
                 <div v-if="loading" class="muted">Загрузка сессии...</div>
 
-                <div v-else-if="user" class="admin-sidebar__session">
-                    <div class="admin-user-badge">
-                        <strong>{{ displayName }}</strong>
-                        <span class="muted">Доступ: {{ userAccessLabel }}</span>
-                    </div>
-
-                    <button type="button" class="button-link" @click="handleLogout">
-                        Выход
+                <div v-else-if="user" class="admin-sidebar__session" @click.stop>
+                    <button type="button" class="admin-user-badge admin-user-badge--button" @click.stop="toggleUserMenu">
+                        <span class="admin-user-badge__copy">
+                            <strong>{{ displayName }}</strong>
+                            <span class="muted">Доступ: {{ userAccessLabel }}</span>
+                        </span>
+                        <span class="admin-user-badge__arrow" :class="{ 'is-open': userMenuOpen }">▾</span>
                     </button>
+
+                    <div v-if="userMenuOpen" class="admin-user-menu">
+                        <button type="button" class="admin-user-menu__item" @click="handleThemeToggle">
+                            {{ themeToggleLabel }}
+                        </button>
+                        <button type="button" class="admin-user-menu__item" @click="openUserEditor">
+                            Редактировать пользователя
+                        </button>
+                        <button type="button" class="admin-user-menu__item is-danger" @click="handleLogout">
+                            Выход
+                        </button>
+                    </div>
                 </div>
 
                 <button v-else type="button" class="button-link" @click="handleLogout">
@@ -455,14 +507,13 @@ onMounted(async () => {
         <div v-if="sidebarOpen" class="admin-sidebar-backdrop" @click="sidebarOpen = false" />
 
         <section class="admin-main">
+            <AdminNotifications />
+
             <header class="admin-topbar">
                 <button type="button" class="admin-menu-button" @click="toggleSidebar">
                     Меню
                 </button>
                 <div class="admin-topbar__meta">
-                    <p class="eyebrow">Панель управления</p>
-                    <p class="muted">{{ loading ? 'Обновляем данные пользователя...' : 'Рабочая область CMS' }}</p>
-
                     <nav class="admin-breadcrumbs" aria-label="Хлебные крошки">
                         <template v-for="(item, index) in breadcrumbs" :key="`${item.name}-${index}`">
                             <RouterLink
@@ -476,12 +527,6 @@ onMounted(async () => {
                             <span v-if="index < breadcrumbs.length - 1" class="admin-breadcrumbs__sep">/</span>
                         </template>
                     </nav>
-                </div>
-
-                <div class="admin-topbar__actions">
-                    <button type="button" class="button-link" @click="handleThemeToggle">
-                        {{ themeToggleLabel }}
-                    </button>
                 </div>
             </header>
 

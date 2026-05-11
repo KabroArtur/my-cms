@@ -9,6 +9,7 @@ import {
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -16,6 +17,7 @@ const deletingId = ref(null)
 const errorMessage = ref('')
 const tags = ref([])
 const permissions = ref(new Set())
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const form = reactive({
     name: '',
@@ -61,8 +63,10 @@ async function submitTag() {
         form.name = ''
         form.slug = ''
         await loadAll()
+        notifySuccess('Тег создан.')
     } catch (error) {
         errorMessage.value = error?.response?.data?.message || 'Не удалось создать тег.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         saving.value = false
@@ -80,8 +84,10 @@ async function removeTag(id) {
     try {
         await deleteBlogTag(id)
         await loadAll()
+        notifySuccess('Тег удален.')
     } catch (error) {
         errorMessage.value = error?.response?.data?.message || 'Не удалось удалить тег.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         deletingId.value = null

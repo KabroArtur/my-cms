@@ -9,12 +9,14 @@ import {
 import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
+import { useAdminNotifications } from '../../composables/useAdminNotifications'
 
 const loading = ref(false)
 const saving = ref(false)
 const deletingSlug = ref('')
 const errorMessage = ref('')
 const sections = ref([])
+const { notifyError, notifySuccess } = useAdminNotifications()
 
 const form = reactive({
     title: '',
@@ -65,8 +67,10 @@ async function submitSection() {
         form.status = 'active'
 
         await loadSections()
+        notifySuccess('Раздел создан.')
     } catch (error) {
         errorMessage.value = error?.response?.data?.message || 'Не удалось создать раздел.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         saving.value = false
@@ -80,8 +84,10 @@ async function removeSection(slug) {
     try {
         await deleteRecordSection(slug)
         await loadSections()
+        notifySuccess('Раздел удален.')
     } catch (error) {
         errorMessage.value = error?.response?.data?.message || 'Не удалось удалить раздел.'
+        notifyError(errorMessage.value)
         console.error(error)
     } finally {
         deletingSlug.value = ''
