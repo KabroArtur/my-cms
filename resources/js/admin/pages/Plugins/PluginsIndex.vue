@@ -1,144 +1,155 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { fetchCurrentUser } from '../../api/auth'
-import AdminButton from '../../components/ui/AdminButton.vue'
-import AdminCard from '../../components/ui/AdminCard.vue'
-import AdminPage from '../../components/ui/AdminPage.vue'
-import { deletePlugin, disablePlugin, enablePlugin, fetchPlugins, installPlugin } from '../../api/plugins'
+import { computed, onMounted, ref } from "vue";
+import { fetchCurrentUser } from "../../api/auth";
+import AdminButton from "../../components/ui/AdminButton.vue";
+import AdminCard from "../../components/ui/AdminCard.vue";
+import AdminPage from "../../components/ui/AdminPage.vue";
+import {
+    deletePlugin,
+    disablePlugin,
+    enablePlugin,
+    fetchPlugins,
+    installPlugin,
+} from "../../api/plugins";
 
-const loading = ref(false)
-const workingSlug = ref('')
-const errorMessage = ref('')
-const plugins = ref([])
-const deleteDialogOpen = ref(false)
-const deleteSlug = ref('')
-const dropData = ref(false)
-const removeFiles = ref(false)
-const permissionSet = ref(new Set())
+const loading = ref(false);
+const workingSlug = ref("");
+const errorMessage = ref("");
+const plugins = ref([]);
+const deleteDialogOpen = ref(false);
+const deleteSlug = ref("");
+const dropData = ref(false);
+const removeFiles = ref(false);
+const permissionSet = ref(new Set());
 
-const canInstall = computed(() => permissionSet.value.has('plugins.install'))
-const canEnable = computed(() => permissionSet.value.has('plugins.enable'))
-const canDelete = computed(() => permissionSet.value.has('plugins.delete'))
+const canInstall = computed(() => permissionSet.value.has("plugins.install"));
+const canEnable = computed(() => permissionSet.value.has("plugins.enable"));
+const canDelete = computed(() => permissionSet.value.has("plugins.delete"));
 
 async function loadPlugins() {
-    loading.value = true
-    errorMessage.value = ''
+    loading.value = true;
+    errorMessage.value = "";
 
     try {
         const [pluginsPayload, mePayload] = await Promise.all([
             fetchPlugins(),
             fetchCurrentUser(),
-        ])
+        ]);
 
-        permissionSet.value = new Set(mePayload.data?.permissions ?? [])
-        plugins.value = Array.isArray(pluginsPayload.items) ? pluginsPayload.items : []
+        permissionSet.value = new Set(mePayload.data?.permissions ?? []);
+        plugins.value = Array.isArray(pluginsPayload.items)
+            ? pluginsPayload.items
+            : [];
     } catch (error) {
-        errorMessage.value = 'Не удалось загрузить список плагинов.'
-        console.error(error)
+        errorMessage.value = "Не удалось загрузить список плагинов.";
+        console.error(error);
     } finally {
-        loading.value = false
+        loading.value = false;
     }
 }
 
 async function runAction(slug, action) {
-    workingSlug.value = slug
-    errorMessage.value = ''
+    workingSlug.value = slug;
+    errorMessage.value = "";
 
     try {
-        await action()
-        await loadPlugins()
+        await action();
+        await loadPlugins();
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Операция не выполнена.'
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Операция не выполнена.";
+        console.error(error);
     } finally {
-        workingSlug.value = ''
+        workingSlug.value = "";
     }
 }
 
 const deletePluginLabel = () => {
-    const plugin = plugins.value.find((item) => item.slug === deleteSlug.value)
+    const plugin = plugins.value.find((item) => item.slug === deleteSlug.value);
 
-    return plugin?.name || deleteSlug.value
-}
+    return plugin?.name || deleteSlug.value;
+};
 
 async function handleInstall(slug) {
     if (!canInstall.value) {
-        return
+        return;
     }
 
-    await runAction(slug, () => installPlugin(slug))
+    await runAction(slug, () => installPlugin(slug));
 }
 
 async function handleEnable(slug) {
     if (!canEnable.value) {
-        return
+        return;
     }
 
-    await runAction(slug, () => enablePlugin(slug))
+    await runAction(slug, () => enablePlugin(slug));
 }
 
 async function handleDisable(slug) {
     if (!canEnable.value) {
-        return
+        return;
     }
 
-    await runAction(slug, () => disablePlugin(slug))
+    await runAction(slug, () => disablePlugin(slug));
 }
 
 async function handleDelete(slug) {
     if (!canDelete.value) {
-        return
+        return;
     }
 
-    deleteSlug.value = slug
-    dropData.value = false
-    removeFiles.value = false
-    deleteDialogOpen.value = true
+    deleteSlug.value = slug;
+    dropData.value = false;
+    removeFiles.value = false;
+    deleteDialogOpen.value = true;
 }
 
 function closeDeleteDialog() {
-    deleteDialogOpen.value = false
-    deleteSlug.value = ''
-    dropData.value = false
-    removeFiles.value = false
+    deleteDialogOpen.value = false;
+    deleteSlug.value = "";
+    dropData.value = false;
+    removeFiles.value = false;
 }
 
 async function confirmDelete() {
     if (!canDelete.value) {
-        return
+        return;
     }
 
-    const slug = deleteSlug.value
+    const slug = deleteSlug.value;
 
     if (!slug) {
-        return
+        return;
     }
 
-    await runAction(slug, () => deletePlugin(slug, {
-        drop_data: dropData.value,
-        remove_files: removeFiles.value,
-    }))
+    await runAction(slug, () =>
+        deletePlugin(slug, {
+            drop_data: dropData.value,
+            remove_files: removeFiles.value,
+        }),
+    );
 
-    closeDeleteDialog()
+    closeDeleteDialog();
 }
 
 function statusLabel(status) {
-    if (status === 'enabled') {
-        return 'Включен'
+    if (status === "enabled") {
+        return "Включен";
     }
 
-    if (status === 'installed') {
-        return 'Установлен'
+    if (status === "installed") {
+        return "Установлен";
     }
 
-    if (status === 'disabled') {
-        return 'Выключен'
+    if (status === "disabled") {
+        return "Выключен";
     }
 
-    return 'Не установлен'
+    return "Не установлен";
 }
 
-onMounted(loadPlugins)
+onMounted(loadPlugins);
 </script>
 
 <template>
@@ -148,7 +159,9 @@ onMounted(loadPlugins)
         description="Установка, включение, выключение и удаление модулей CMS."
     >
         <AdminCard>
-            <p v-if="errorMessage" class="error-text"><strong>{{ errorMessage }}</strong></p>
+            <p v-if="errorMessage" class="error-text">
+                <strong>{{ errorMessage }}</strong>
+            </p>
             <p v-if="loading" class="muted">Загрузка...</p>
 
             <table v-else class="table">
@@ -164,18 +177,25 @@ onMounted(loadPlugins)
                     <tr v-for="plugin in plugins" :key="plugin.slug">
                         <td>
                             <strong>{{ plugin.name }}</strong>
-                            <p class="muted">{{ plugin.description || plugin.slug }}</p>
+                            <p class="muted">
+                                {{ plugin.description || plugin.slug }}
+                            </p>
                         </td>
                         <td>{{ plugin.version }}</td>
                         <td>
-                            <span class="plugin-status-badge" :class="`is-${plugin.status}`">
+                            <span
+                                class="plugin-status-badge"
+                                :class="`is-${plugin.status}`"
+                            >
                                 {{ statusLabel(plugin.status) }}
                             </span>
                         </td>
                         <td class="table-actions">
                             <AdminButton
                                 v-if="!plugin.installed"
-                                :disabled="workingSlug === plugin.slug || !canInstall"
+                                :disabled="
+                                    workingSlug === plugin.slug || !canInstall
+                                "
                                 @click="handleInstall(plugin.slug)"
                             >
                                 Установить
@@ -183,7 +203,9 @@ onMounted(loadPlugins)
 
                             <AdminButton
                                 v-if="plugin.installed && !plugin.enabled"
-                                :disabled="workingSlug === plugin.slug || !canEnable"
+                                :disabled="
+                                    workingSlug === plugin.slug || !canEnable
+                                "
                                 variant="primary"
                                 @click="handleEnable(plugin.slug)"
                             >
@@ -192,7 +214,9 @@ onMounted(loadPlugins)
 
                             <AdminButton
                                 v-if="plugin.enabled"
-                                :disabled="workingSlug === plugin.slug || !canEnable"
+                                :disabled="
+                                    workingSlug === plugin.slug || !canEnable
+                                "
                                 @click="handleDisable(plugin.slug)"
                             >
                                 Выключить
@@ -200,7 +224,9 @@ onMounted(loadPlugins)
 
                             <AdminButton
                                 v-if="plugin.installed"
-                                :disabled="workingSlug === plugin.slug || !canDelete"
+                                :disabled="
+                                    workingSlug === plugin.slug || !canDelete
+                                "
                                 variant="danger"
                                 @click="handleDelete(plugin.slug)"
                             >
@@ -212,7 +238,11 @@ onMounted(loadPlugins)
             </table>
         </AdminCard>
 
-        <div v-if="deleteDialogOpen" class="admin-modal" @click.self="closeDeleteDialog">
+        <div
+            v-if="deleteDialogOpen"
+            class="admin-modal"
+            @click.self="closeDeleteDialog"
+        >
             <div class="admin-modal__dialog">
                 <div class="admin-modal__header">
                     <div>
@@ -224,59 +254,42 @@ onMounted(loadPlugins)
                 <div class="admin-modal__body admin-stack">
                     <label class="admin-form-label">
                         <span>
-                            <input v-model="dropData" type="checkbox">
+                            <input v-model="dropData" type="checkbox" />
                             Удалить данные плагина (таблицы и права)
                         </span>
                     </label>
 
                     <label class="admin-form-label">
                         <span>
-                            <input v-model="removeFiles" type="checkbox">
+                            <input v-model="removeFiles" type="checkbox" />
                             Удалить файлы плагина с диска
                         </span>
                     </label>
 
-                    <p class="muted">Если оба флага выключены, удалится только запись об установке, а данные и файлы останутся.</p>
+                    <p class="muted">
+                        Если оба флага выключены, удалится только запись об
+                        установке, а данные и файлы останутся.
+                    </p>
                 </div>
 
                 <div class="admin-actions-row">
-                    <AdminButton type="button" @click="closeDeleteDialog">Отмена</AdminButton>
-                    <AdminButton type="button" variant="danger" :disabled="workingSlug === deleteSlug || !canDelete" @click="confirmDelete">
-                        {{ workingSlug === deleteSlug ? 'Удаляем...' : 'Удалить плагин' }}
+                    <AdminButton type="button" @click="closeDeleteDialog"
+                        >Отмена</AdminButton
+                    >
+                    <AdminButton
+                        type="button"
+                        variant="danger"
+                        :disabled="workingSlug === deleteSlug || !canDelete"
+                        @click="confirmDelete"
+                    >
+                        {{
+                            workingSlug === deleteSlug
+                                ? "Удаляем..."
+                                : "Удалить плагин"
+                        }}
                     </AdminButton>
                 </div>
             </div>
         </div>
     </AdminPage>
 </template>
-
-<style scoped>
-.plugin-status-badge {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 1px solid transparent;
-}
-
-.plugin-status-badge.is-enabled {
-    color: #14532d;
-    background: #dcfce7;
-    border-color: #86efac;
-}
-
-.plugin-status-badge.is-installed,
-.plugin-status-badge.is-disabled {
-    color: #7c2d12;
-    background: #ffedd5;
-    border-color: #fdba74;
-}
-
-.plugin-status-badge.is-not_installed {
-    color: #334155;
-    background: #e2e8f0;
-    border-color: #94a3b8;
-}
-</style>

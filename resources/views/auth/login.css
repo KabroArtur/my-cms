@@ -1,0 +1,184 @@
+:root {
+    color-scheme: light;
+    --login-bg: #f2f4f8;
+    --login-surface: #ffffff;
+    --login-border: #d6dce8;
+    --login-text: #162033;
+    --login-muted: #5e6b83;
+    --login-accent: #1949d7;
+    --login-danger: #b3261e;
+    --login-shadow: 0 0 10px 4px rgba(22, 32, 51, 0.12);
+    --login-radius-sm: 8px;
+    --login-radius-md: 12px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
+    color: var(--login-text);
+    background:
+        radial-gradient(
+            circle at 15% 10%,
+            rgba(36, 72, 184, 0.12),
+            transparent 32%
+        ),
+        radial-gradient(
+            circle at 85% 90%,
+            rgba(36, 72, 184, 0.08),
+            transparent 28%
+        ),
+        var(--login-bg);
+    display: grid;
+    place-items: center;
+    padding: 24px 12px;
+}
+
+input,
+textarea {
+    outline: none;
+    border: none;
+    background-color: transparent;
+}
+
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px var(--login-surface) inset !important;
+    -webkit-text-fill-color: var(--login-text) !important;
+    caret-color: var(--login-text);
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+input:-moz-autofill,
+textarea:-moz-autofill,
+select:-moz-autofill {
+    caret-color: var(--login-bg);
+    background-color: var(--login-surface) !important;
+    color: var(--login-text) !important;
+}
+
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill:focus {
+    caret-color: var(--login-text);
+    -webkit-box-shadow: 0 0 0px 1000px var(--login-surface) inset !important;
+    -webkit-text-fill-color: var(--login-text) !important;
+}
+
+.login-card {
+    width: min(380px, 100%);
+    border-radius: var(--login-radius-md);
+    background: var(--login-surface);
+    box-shadow: var(--login-shadow);
+    overflow: hidden;
+}
+
+.login-card__head {
+    padding-top: 24px;
+    background: linear-gradient(
+        180deg,
+        rgba(36, 72, 184, 0.08),
+        rgba(36, 72, 184, 0)
+    );
+    margin-bottom: 16px;
+}
+
+.login-card__head h1 {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    font-size: 32px;
+    font-weight: 550;
+    color: var(--login-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin: 0 0 8px;
+}
+
+.login-card__head h1 span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 550;
+    text-transform: lowercase;
+    color: var(--login-surface);
+    text-shadow: 0.5px 0.5px 0.5px var(--login-text);
+    line-height: 1;
+    padding: 8px 8px 10px 8px;
+    border-radius: var(--login-radius-sm);
+    background-color: var(--login-accent);
+}
+
+.login-form {
+    display: grid;
+    gap: 16px;
+    padding: 0 24px 24px;
+}
+
+.login-field {
+    display: grid;
+    gap: 8px;
+}
+
+.login-field label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.login-field input[type="text"],
+.login-field input[type="password"] {
+    width: 100%;
+    border: 1.2px solid var(--login-border);
+    border-radius: var(--login-radius-sm);
+    padding: 12px 14px;
+    font-size: 15px;
+    color: var(--login-text);
+    outline: none;
+    background: var(--login-surface);
+    transition: border-color 0.3s ease;
+}
+
+.login-field input[type="text"]:focus-within,
+.login-field input[type="text"]:hover,
+.login-field input[type="password"]:focus-within,
+.login-field input[type="password"]:hover {
+    border-color: var(--login-accent);
+}
+
+.login-remember {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--login-muted);
+}
+
+.login-error {
+    margin: 0;
+    color: var(--login-danger);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.login-submit {
+    border: 1px solid var(--login-accent);
+    border-radius: var(--login-radius-sm);
+    background: var(--login-accent);
+    padding: 11px 14px;
+    font-size: 15px;
+    font-weight: 550;
+    color: var(--login-surface);
+    text-shadow: 0.5px 0.5px 0.5px var(--login-text);
+    cursor: pointer;
+    transition: filter 0.3s ease;
+}
+
+.login-submit:hover {
+    filter: brightness(1.1) saturate(1.3);
+}
