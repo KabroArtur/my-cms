@@ -1,0 +1,26 @@
+{
+  "name": "Book Theme",
+  "slug": "book",
+  "version": "1.0.0",
+  "description": "Минимальная тема для страницы книги с отдельным шаблоном book.",
+  "entry": "index.blade.php",
+  "assets": {
+    "styles": [
+      {
+        "handle": "book-main",
+        "src": "css/main.css",
+        "global": true,
+        "priority": 100
+      }
+    ],
+    "scripts": [
+      {
+        "handle": "book-index",
+        "src": "js/script.js",
+        "global": true,
+        "defer": true,
+        "priority": 100
+      }
+    ]
+  }
+}

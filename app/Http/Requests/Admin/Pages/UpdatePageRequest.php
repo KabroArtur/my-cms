@@ -36,7 +36,6 @@ class UpdatePageRequest extends FormRequest
      */
     public function rules(): array
     {
-        $pageId = $this->route('page');
         $templateValues = collect(app(SettingsManager::class)->pageTemplateOptions())
             ->pluck('value')
             ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
@@ -45,7 +44,9 @@ class UpdatePageRequest extends FormRequest
 
         return [
             'title' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', Rule::unique('pages', 'slug')->ignore($pageId)],
+            'language_id' => ['nullable', 'integer', 'exists:languages,id'],
+            'translation_group_id' => ['nullable', 'uuid'],
+            'slug' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::enum(PageStatus::class)],
             'visibility' => ['nullable', Rule::enum(PageVisibility::class)],
             'excerpt' => ['nullable', 'string'],
@@ -53,6 +54,8 @@ class UpdatePageRequest extends FormRequest
             'template' => ['nullable', 'string', 'max:255', Rule::in($templateValues)],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string'],
+            'seo_noindex' => ['nullable', 'boolean'],
+            'seo_nofollow' => ['nullable', 'boolean'],
             'featured_media_id' => ['nullable', 'integer', 'exists:'.(new MediaFile())->getTable().',id'],
             'published_at' => ['nullable', 'date', 'required_if:status,scheduled'],
             'parent_id' => ['nullable', 'integer', 'exists:pages,id'],

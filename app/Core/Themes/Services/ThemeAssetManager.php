@@ -348,17 +348,22 @@ class ThemeAssetManager
         $compiled = implode("\n", $content);
         $compiled = $this->compileAssetContent($compiled, $type, $minify, $obfuscate, $obfuscationPreset);
 
-        $directory = $this->compiledAssetDirectory($theme, $type);
-        File::ensureDirectoryExists($directory);
+        $directories = $this->compiledAssetDirectories($theme, $type);
+
+        foreach ($directories as $directory) {
+            File::ensureDirectoryExists($directory);
+        }
 
         $baseName = $this->readableBundleName($assets);
         $fileName = $withHash
             ? 'bundle-'.$hash.'.'.$extension
             : $baseName.($minify ? '.min' : '').'.'.$extension;
-        $absoluteTarget = $directory.'/'.$fileName;
+        foreach ($directories as $directory) {
+            $absoluteTarget = $directory.'/'.$fileName;
 
-        if (! is_file($absoluteTarget) || (string) File::get($absoluteTarget) !== $compiled) {
-            File::put($absoluteTarget, $compiled);
+            if (! is_file($absoluteTarget) || (string) File::get($absoluteTarget) !== $compiled) {
+                File::put($absoluteTarget, $compiled);
+            }
         }
 
         return [
@@ -372,19 +377,24 @@ class ThemeAssetManager
         $extension = $type === 'css' ? 'css' : 'js';
         $sourceHash = $this->sourceHash($asset['source_absolute']);
         $hash = sha1($type.'|'.$asset['handle'].'|'.$sourceHash.'|'.($minify ? '1' : '0').'|'.($obfuscate ? '1' : '0').'|'.$obfuscationPreset);
-        $directory = $this->compiledAssetDirectory($theme, $type);
+        $directories = $this->compiledAssetDirectories($theme, $type);
 
-        File::ensureDirectoryExists($directory);
+        foreach ($directories as $directory) {
+            File::ensureDirectoryExists($directory);
+        }
 
         $baseName = $this->readableAssetName((string) ($asset['handle'] ?? 'asset'));
         $fileName = $withHash
             ? $asset['handle'].'-'.$hash.'.'.$extension
             : $baseName.($minify ? '.min' : '').'.'.$extension;
-        $absoluteTarget = $directory.'/'.$fileName;
         $compiled = $this->compileAssetContent((string) File::get($asset['source_absolute']), $type, $minify, $obfuscate, $obfuscationPreset);
 
-        if (! is_file($absoluteTarget) || (string) File::get($absoluteTarget) !== $compiled) {
-            File::put($absoluteTarget, $compiled);
+        foreach ($directories as $directory) {
+            $absoluteTarget = $directory.'/'.$fileName;
+
+            if (! is_file($absoluteTarget) || (string) File::get($absoluteTarget) !== $compiled) {
+                File::put($absoluteTarget, $compiled);
+            }
         }
 
         return [
@@ -393,20 +403,24 @@ class ThemeAssetManager
         ];
     }
 
-    protected function compiledAssetDirectory(string $theme, string $type): string
+    protected function compiledAssetDirectories(string $theme, string $type): array
     {
         $relativePath = 'build/theme-assets/'.$theme.'/'.$type;
 
+        $directories = [];
+
         if ($this->sharedHostingFlatPublicDisk()) {
-            return base_path($relativePath);
+            $directories[] = base_path($relativePath);
         }
 
-        return public_path($relativePath);
+        $directories[] = public_path($relativePath);
+
+        return array_values(array_unique($directories));
     }
 
     protected function sharedHostingFlatPublicDisk(): bool
     {
-        return filter_var(env('SHARED_HOSTING_FLAT_PUBLIC_DISK', false), FILTER_VALIDATE_BOOL);
+        return (bool) config('cms.shared_hosting_flat_public_disk', false);
     }
 
     protected function shouldCombineAssets(string $type): bool

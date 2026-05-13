@@ -1,5 +1,6 @@
 body {
-    font-family: 'IBM Plex Sans', 'Instrument Sans', 'Segoe UI', Tahoma, sans-serif;
+    font-family:
+        "IBM Plex Sans", "Instrument Sans", "Segoe UI", Tahoma, sans-serif;
     background: var(--admin-color-bg);
     color: var(--admin-color-text);
 }
@@ -12,6 +13,10 @@ h5,
 h6,
 p {
     margin-top: 0;
+}
+
+button {
+    cursor: pointer;
 }
 
 .eyebrow {

@@ -2,6 +2,7 @@
 
 namespace App\Core\Pages\Data;
 
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use Carbon\Carbon;
@@ -14,6 +15,8 @@ use Illuminate\Support\Str;
 readonly class PageData
 {
     public function __construct(
+        public ?int $languageId,
+        public ?string $translationGroupId,
         public string $title,
         public string $slug,
         public PageStatus $status,
@@ -23,6 +26,8 @@ readonly class PageData
         public ?string $template = null,
         public ?string $metaTitle = null,
         public ?string $metaDescription = null,
+        public bool $seoNoindex = false,
+        public bool $seoNofollow = false,
         public ?int $featuredMediaId = null,
         public ?int $parentId = null,
         public int $sortOrder = 0,
@@ -40,6 +45,10 @@ readonly class PageData
         $slug = trim((string) ($attributes['slug'] ?? ''));
 
         return new self(
+            languageId: isset($attributes['language_id']) && $attributes['language_id'] !== ''
+                ? (int) $attributes['language_id']
+                : app(LanguageManager::class)->defaultId(),
+            translationGroupId: self::nullableString($attributes['translation_group_id'] ?? null),
             title: $title,
             slug: $slug !== '' ? $slug : Str::slug($title),
             status: isset($attributes['status'])
@@ -53,6 +62,8 @@ readonly class PageData
             template: self::nullableString($attributes['template'] ?? null),
             metaTitle: self::nullableString($attributes['meta_title'] ?? null),
             metaDescription: self::nullableString($attributes['meta_description'] ?? null),
+            seoNoindex: (bool) ($attributes['seo_noindex'] ?? false),
+            seoNofollow: (bool) ($attributes['seo_nofollow'] ?? false),
             featuredMediaId: isset($attributes['featured_media_id']) && $attributes['featured_media_id'] !== ''
                 ? (int) $attributes['featured_media_id']
                 : null,
@@ -78,6 +89,8 @@ readonly class PageData
         };
 
         return [
+            'language_id' => $this->languageId,
+            'translation_group_id' => $this->translationGroupId,
             'title' => $this->title,
             'slug' => $this->slug,
             'status' => $this->status->value,
@@ -87,6 +100,8 @@ readonly class PageData
             'template' => $this->template,
             'meta_title' => $this->metaTitle,
             'meta_description' => $this->metaDescription,
+            'seo_noindex' => $this->seoNoindex,
+            'seo_nofollow' => $this->seoNofollow,
             'featured_media_id' => $this->featuredMediaId,
             'parent_id' => $this->parentId,
             'sort_order' => $this->sortOrder,
@@ -101,6 +116,8 @@ readonly class PageData
     public function withContent(?string $content): self
     {
         return new self(
+            languageId: $this->languageId,
+            translationGroupId: $this->translationGroupId,
             title: $this->title,
             slug: $this->slug,
             status: $this->status,
@@ -110,6 +127,8 @@ readonly class PageData
             template: $this->template,
             metaTitle: $this->metaTitle,
             metaDescription: $this->metaDescription,
+            seoNoindex: $this->seoNoindex,
+            seoNofollow: $this->seoNofollow,
             featuredMediaId: $this->featuredMediaId,
             parentId: $this->parentId,
             sortOrder: $this->sortOrder,

@@ -2,6 +2,7 @@
 
 namespace App\Core\Pages\Repositories;
 
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Pages\Data\PageData;
 use App\Core\Pages\Enums\PageStatus;
@@ -25,39 +26,44 @@ class EloquentPageRepository implements PageRepository
     protected bool $scheduledPublicationsRefreshed = false;
 
     public function __construct(
+        protected LanguageManager $languages,
         protected SettingsManager $settings,
         protected CmsCacheService $cache,
     )
     {
     }
 
-    public function all(): Collection
+    public function all(array $filters = []): Collection
     {
         $this->refreshScheduledPublications();
 
-        return Page::query()
-            ->with(['parent', 'featuredMedia', 'creator'])
+        return $this->applyAdminFilters(
+            Page::query()->with(['parent', 'featuredMedia', 'creator', 'language']),
+            $filters,
+        )
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get();
     }
 
-    public function paginate(int $perPage = 15): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
         $this->refreshScheduledPublications();
 
-        return Page::query()
-            ->with(['parent', 'featuredMedia', 'creator'])
+        return $this->applyAdminFilters(
+            Page::query()->with(['parent', 'featuredMedia', 'creator', 'language']),
+            $filters,
+        )
             ->orderBy('sort_order')
             ->orderByDesc('updated_at')
             ->paginate($perPage);
     }
 
-    public function paginateTrashed(int $perPage = 15): LengthAwarePaginator
+    public function paginateTrashed(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        return Page::query()
+        return $this->applyAdminFilters(Page::query(), $filters)
             ->onlyTrashed()
-            ->with(['parent', 'featuredMedia', 'creator'])
+            ->with(['parent', 'featuredMedia', 'creator', 'language'])
             ->orderByDesc('deleted_at')
             ->paginate($perPage);
     }
@@ -67,7 +73,7 @@ class EloquentPageRepository implements PageRepository
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with(['parent', 'featuredMedia', 'creator'])
+            ->with(['parent', 'featuredMedia', 'creator', 'language'])
             ->find($id);
     }
 
@@ -75,27 +81,28 @@ class EloquentPageRepository implements PageRepository
     {
         return Page::query()
             ->onlyTrashed()
-            ->with(['parent', 'featuredMedia', 'creator'])
+            ->with(['parent', 'featuredMedia', 'creator', 'language'])
             ->find($id);
     }
 
-    public function findBySlug(string $slug): ?Page
+    public function findBySlug(string $slug, ?int $languageId = null): ?Page
     {
         $this->refreshScheduledPublications();
 
         return Page::query()
-            ->with(['parent', 'featuredMedia', 'creator'])
+            ->with(['parent', 'featuredMedia', 'creator', 'language'])
+            ->when($languageId !== null, fn (Builder $query) => $query->where('language_id', $languageId))
             ->where('slug', $slug)
             ->first();
     }
 
     protected static bool $homePageAutoSynced = false;
 
-    public function findHomePage(): ?Page
+    public function findHomePage(?int $languageId = null): ?Page
     {
         $this->refreshScheduledPublications();
 
-        $query = $this->publicQuery();
+        $query = $this->publicQuery($languageId);
 
         $homePage = (clone $query)
             ->where('is_home', true)
@@ -114,20 +121,23 @@ class EloquentPageRepository implements PageRepository
         if ($fallback !== null && ! static::$homePageAutoSynced) {
             static::$homePageAutoSynced = true;
             $fallback->forceFill(['is_home' => true])->saveQuietly();
-            $this->settings->rememberHomePage($fallback->id);
+
+            if ($this->isDefaultLanguagePage($fallback)) {
+                $this->settings->rememberHomePage($fallback->id);
+            }
         }
 
         return $fallback;
     }
 
-    public function findPublicBySlug(string $slug): ?Page
+    public function findPublicBySlug(string $slug, ?int $languageId = null): ?Page
     {
         $this->refreshScheduledPublications();
 
         $path = trim($slug, '/');
         $lastSegment = Str::of($path)->afterLast('/')->value();
 
-        $legacyPage = $this->publicQuery()
+        $legacyPage = $this->publicQuery($languageId)
             ->where('slug', $path)
             ->whereNull('parent_id')
             ->first();
@@ -136,17 +146,17 @@ class EloquentPageRepository implements PageRepository
             return $legacyPage;
         }
 
-        return $this->publicQuery()
+        return $this->publicQuery($languageId)
             ->where('slug', $lastSegment)
             ->get()
             ->first(fn (Page $page): bool => $page->path === $path);
     }
 
-    public function publicNavigation(): Collection
+    public function publicNavigation(?int $languageId = null): Collection
     {
         $this->refreshScheduledPublications();
 
-        return $this->publicQuery()->get();
+        return $this->publicQuery($languageId)->get();
     }
 
     /**
@@ -185,25 +195,31 @@ class EloquentPageRepository implements PageRepository
 
     public function create(PageData $data): Page
     {
-        $parent = $this->resolveParentPage(parentId: $data->parentId);
+        $languageId = $data->languageId ?? $this->languages->defaultId();
+        $parent = $this->resolveParentPage(parentId: $data->parentId, expectedLanguageId: $languageId);
         $attributes = $data->toArray();
+        $attributes['language_id'] = $languageId;
+        $attributes['translation_group_id'] = $this->languages->translationGroupId($data->translationGroupId);
         $attributes['parent_id'] = $parent?->id;
-        $attributes['slug'] = $this->resolveUniqueSlug($data->slug);
+        $attributes['slug'] = $this->resolveUniqueSlug($data->slug, languageId: $languageId);
 
         $page = Page::query()->create($attributes);
 
         $this->syncHomePage($page, (bool) $attributes['is_home']);
         $this->cache->invalidateAll(reason: 'page-created');
 
-        return $page->fresh(['parent', 'featuredMedia', 'creator']);
+        return $page->fresh(['parent', 'featuredMedia', 'creator', 'language']);
     }
 
     public function update(Page $page, PageData $data): Page
     {
-        $parent = $this->resolveParentPage(page: $page, parentId: $data->parentId);
+        $languageId = $data->languageId ?? $page->language_id ?? $this->languages->defaultId();
+        $parent = $this->resolveParentPage(page: $page, parentId: $data->parentId, expectedLanguageId: $languageId);
         $attributes = $data->toArray();
+        $attributes['language_id'] = $languageId;
+        $attributes['translation_group_id'] = $this->languages->translationGroupId($data->translationGroupId ?? $page->translation_group_id);
         $attributes['parent_id'] = $parent?->id;
-        $attributes['slug'] = $this->resolveUniqueSlug($data->slug, $page->id);
+        $attributes['slug'] = $this->resolveUniqueSlug($data->slug, $page->id, $languageId);
 
         $page->fill($attributes);
         $page->save();
@@ -211,17 +227,18 @@ class EloquentPageRepository implements PageRepository
         $this->syncHomePage($page, (bool) $attributes['is_home']);
         $this->cache->invalidateAll(reason: 'page-updated');
 
-        return $page->fresh(['parent', 'featuredMedia', 'creator']);
+        return $page->fresh(['parent', 'featuredMedia', 'creator', 'language']);
     }
 
     public function delete(Page $page): void
     {
         $wasHomePage = (bool) $page->is_home;
+        $languageId = $page->language_id === null ? null : (int) $page->language_id;
 
         $page->delete();
 
         if ($wasHomePage) {
-            $this->assignFallbackHomePage();
+            $this->assignFallbackHomePageForLanguage($languageId);
         }
 
         $this->cache->invalidateAll(reason: 'page-deleted');
@@ -231,21 +248,22 @@ class EloquentPageRepository implements PageRepository
     {
         $page->restore();
 
-        $restoredPage = $page->fresh(['parent', 'featuredMedia', 'creator']);
+        $restoredPage = $page->fresh(['parent', 'featuredMedia', 'creator', 'language']);
         $this->syncHomePage($restoredPage, (bool) $restoredPage->is_home);
         $this->cache->invalidateAll(reason: 'page-restored');
 
-        return $restoredPage->fresh(['parent', 'featuredMedia', 'creator']);
+        return $restoredPage->fresh(['parent', 'featuredMedia', 'creator', 'language']);
     }
 
     public function forceDelete(Page $page): void
     {
         $wasHomePage = (bool) $page->is_home;
+        $languageId = $page->language_id === null ? null : (int) $page->language_id;
 
         $page->forceDelete();
 
         if ($wasHomePage) {
-            $this->assignFallbackHomePage();
+            $this->assignFallbackHomePageForLanguage($languageId);
         }
 
         $this->cache->invalidateAll(reason: 'page-force-deleted');
@@ -323,7 +341,7 @@ class EloquentPageRepository implements PageRepository
     /**
      * Репозиторий строит уникальный slug для новой или существующей страницы.
      */
-    protected function resolveUniqueSlug(string $value, ?int $ignoreId = null): string
+    protected function resolveUniqueSlug(string $value, ?int $ignoreId = null, ?int $languageId = null): string
     {
         $baseSlug = Str::slug($value);
 
@@ -334,7 +352,7 @@ class EloquentPageRepository implements PageRepository
         $slug = $baseSlug;
         $suffix = 2;
 
-        while ($this->slugExists($slug, $ignoreId)) {
+        while ($this->slugExists($slug, $ignoreId, $languageId)) {
             $slug = $this->appendSlugSuffix($baseSlug, $suffix);
             $suffix++;
         }
@@ -345,7 +363,7 @@ class EloquentPageRepository implements PageRepository
     /**
      * Репозиторий проверяет валидность родителя и защищает от циклов.
      */
-    protected function resolveParentPage(?Page $page = null, ?int $parentId = null): ?Page
+    protected function resolveParentPage(?Page $page = null, ?int $parentId = null, ?int $expectedLanguageId = null): ?Page
     {
         if ($parentId === null) {
             return null;
@@ -366,6 +384,14 @@ class EloquentPageRepository implements PageRepository
         if ($page !== null && $this->isDescendant($parent, $page)) {
             throw ValidationException::withMessages([
                 'parent_id' => 'Нельзя вложить страницу в ее собственную дочернюю ветку.',
+            ]);
+        }
+
+        $expectedLanguageId ??= $page?->language_id;
+
+        if ($expectedLanguageId !== null && (int) $parent->language_id !== (int) $expectedLanguageId) {
+            throw ValidationException::withMessages([
+                'parent_id' => __('languages.messages.parent_language_mismatch'),
             ]);
         }
 
@@ -441,11 +467,15 @@ class EloquentPageRepository implements PageRepository
     /**
      * Репозиторий проверяет, занят ли slug другой записью.
      */
-    protected function slugExists(string $slug, ?int $ignoreId = null): bool
+    protected function slugExists(string $slug, ?int $ignoreId = null, ?int $languageId = null): bool
     {
         $query = Page::query()
             ->withTrashed()
             ->where('slug', $slug);
+
+        if ($languageId !== null) {
+            $query->where('language_id', $languageId);
+        }
 
         if ($ignoreId !== null) {
             $query->whereKeyNot($ignoreId);
@@ -457,10 +487,12 @@ class EloquentPageRepository implements PageRepository
     /**
      * Репозиторий строит публичный запрос для сайта.
      */
-    protected function publicQuery(): Builder
+    protected function publicQuery(?int $languageId = null): Builder
     {
+        $languageId ??= $this->languages->defaultId();
+
         return Page::query()
-            ->with('featuredMedia')
+            ->with(['featuredMedia', 'language'])
             ->whereIn('status', [
                 PageStatus::Published->value,
                 PageStatus::Scheduled->value,
@@ -468,6 +500,7 @@ class EloquentPageRepository implements PageRepository
             ->where('visibility', PageVisibility::Public->value)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
+            ->where('language_id', $languageId)
             ->orderBy('sort_order')
             ->orderBy('title');
     }
@@ -481,13 +514,14 @@ class EloquentPageRepository implements PageRepository
             Page::query()
                 ->whereKeyNot($page->id)
                 ->where('is_home', true)
+                ->where('language_id', $page->language_id)
                 ->update(['is_home' => false]);
 
             if (! $page->is_home) {
                 $page->forceFill(['is_home' => true])->saveQuietly();
             }
 
-            $this->settings->rememberHomePage($page->id);
+            $this->settings->rememberHomePage($page->id, (int) $page->language_id);
 
             return;
         }
@@ -495,6 +529,7 @@ class EloquentPageRepository implements PageRepository
         $anotherHomeExists = Page::query()
             ->whereKeyNot($page->id)
             ->where('is_home', true)
+            ->where('language_id', $page->language_id)
             ->exists();
 
         if ($anotherHomeExists) {
@@ -502,7 +537,7 @@ class EloquentPageRepository implements PageRepository
         }
 
         $page->forceFill(['is_home' => true])->saveQuietly();
-        $this->settings->rememberHomePage($page->id);
+        $this->settings->rememberHomePage($page->id, (int) $page->language_id);
     }
 
     /**
@@ -510,19 +545,48 @@ class EloquentPageRepository implements PageRepository
      */
     protected function assignFallbackHomePage(): void
     {
+        $this->assignFallbackHomePageForLanguage($this->languages->defaultId());
+    }
+
+    protected function assignFallbackHomePageForLanguage(?int $languageId): void
+    {
+        if ($languageId === null) {
+            return;
+        }
+
         $fallbackPage = Page::query()
+            ->where('language_id', $languageId)
             ->orderBy('sort_order')
             ->orderBy('title')
             ->first();
 
         if ($fallbackPage === null) {
-            $this->settings->rememberHomePage(null);
+            $this->settings->rememberHomePage(null, $languageId);
 
             return;
         }
 
-        Page::query()->where('is_home', true)->update(['is_home' => false]);
+        Page::query()
+            ->where('is_home', true)
+            ->where('language_id', $fallbackPage->language_id)
+            ->update(['is_home' => false]);
         $fallbackPage->forceFill(['is_home' => true])->saveQuietly();
-        $this->settings->rememberHomePage($fallbackPage->id);
+        $this->settings->rememberHomePage($fallbackPage->id, (int) $fallbackPage->language_id);
+    }
+
+    protected function applyAdminFilters(Builder $query, array $filters): Builder
+    {
+        $languageId = $filters['language_id'] ?? null;
+
+        if ($languageId !== null && $languageId !== '' && $languageId !== 'all') {
+            $query->where('language_id', (int) $languageId);
+        }
+
+        return $query;
+    }
+
+    protected function isDefaultLanguagePage(Page $page): bool
+    {
+        return (int) $page->language_id === (int) $this->languages->defaultId();
     }
 }

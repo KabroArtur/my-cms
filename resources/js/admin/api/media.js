@@ -1,6 +1,15 @@
 import axios from 'axios'
 import { adminApiPath } from '../utils/adminPath'
 
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest'
+axios.defaults.headers.common['Accept'] = 'application/json'
+
+if (csrfToken) {
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken
+}
+
 export async function fetchMediaLibrary(folderId = null, options = {}) {
     const response = await axios.get(adminApiPath('media'), {
         params: {
@@ -51,9 +60,6 @@ export async function uploadMediaFile({ folderId, file }) {
     formData.append('file', file)
 
     const response = await axios.post(adminApiPath('media/files'), formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-        },
         onUploadProgress,
     })
 
@@ -77,11 +83,7 @@ export async function replaceMediaFile(id, { file }) {
 
     formData.append('file', file)
 
-    const response = await axios.post(adminApiPath(`media/files/${id}/replace`), formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-        },
-    })
+    const response = await axios.post(adminApiPath(`media/files/${id}/replace`), formData)
 
     return response.data
 }

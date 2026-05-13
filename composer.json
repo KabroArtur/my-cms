@@ -12,7 +12,7 @@
         "php": "^8.3",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
-        "symfony/html-sanitizer": "^8.0"
+        "symfony/html-sanitizer": "^7.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -79,6 +79,9 @@
     },
     "config": {
         "optimize-autoloader": true,
+        "platform": {
+            "php": "8.3.31"
+        },
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {

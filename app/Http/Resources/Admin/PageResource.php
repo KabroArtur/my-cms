@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Admin;
 
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Pages\Models\Page;
 use App\Core\Pages\Services\AdditionalFieldsService;
 use Illuminate\Http\Request;
@@ -24,6 +25,19 @@ class PageResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'language_id' => $this->language_id,
+            'translation_group_id' => $this->translation_group_id,
+            'language' => $this->language === null
+                ? null
+                : [
+                    'id' => $this->language->id,
+                    'code' => $this->language->code,
+                    'locale' => $this->language->locale,
+                    'name' => $this->language->name,
+                    'native_name' => $this->language->native_name,
+                    'direction' => $this->language->direction,
+                    'is_default' => (bool) $this->language->is_default,
+                ],
             'created_by' => $this->created_by,
             'creator' => $this->creator === null
                 ? null
@@ -35,7 +49,7 @@ class PageResource extends JsonResource
             'title' => $this->title,
             'slug' => $this->slug,
             'path' => $this->path,
-            'public_url' => $this->is_home ? '/' : '/'.$this->path,
+            'public_url' => app(LanguageManager::class)->pageRelativeUrl($this->resource),
             'status' => $this->status?->value ?? $this->status,
             'visibility' => $this->visibility?->value ?? $this->visibility,
             'excerpt' => $this->excerpt,
@@ -43,6 +57,8 @@ class PageResource extends JsonResource
             'template' => $this->template,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
+            'seo_noindex' => (bool) $this->seo_noindex,
+            'seo_nofollow' => (bool) $this->seo_nofollow,
             'featured_media_id' => $this->featured_media_id,
             'featured_media' => $this->featuredMedia ? MediaFileResource::make($this->featuredMedia) : null,
             'parent_id' => $this->parent_id,
@@ -65,6 +81,13 @@ class PageResource extends JsonResource
                             $additionalFields->resolveApplicableGroupsForPage($this->resource)->load('fields'),
                         )->resolve(),
                         'values' => $additionalFields->combinedValuesForPage($this->resource),
+                        'translations' => self::collection(
+                            Page::query()
+                                ->with('language')
+                                ->where('translation_group_id', $this->translation_group_id)
+                                ->whereKeyNot($this->id)
+                                ->get()
+                        )->resolve(),
                     ],
                 ];
             }),

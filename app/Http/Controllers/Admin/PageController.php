@@ -33,7 +33,9 @@ class PageController extends Controller
     {
         Gate::authorize('viewAny', Page::class);
 
-        return PageResource::collection($pages->paginate());
+        return PageResource::collection($pages->paginate(filters: [
+            'language_id' => request()->query('language_id'),
+        ]));
     }
 
     /**
@@ -43,7 +45,9 @@ class PageController extends Controller
     {
         Gate::authorize('viewAny', Page::class);
 
-        return PageResource::collection($pages->paginateTrashed());
+        return PageResource::collection($pages->paginateTrashed(filters: [
+            'language_id' => request()->query('language_id'),
+        ]));
     }
 
     /**
@@ -53,7 +57,9 @@ class PageController extends Controller
     {
         Gate::authorize('viewAny', Page::class);
 
-        return PageResource::collection($pages->all());
+        return PageResource::collection($pages->all([
+            'language_id' => request()->query('language_id'),
+        ]));
     }
 
     /**

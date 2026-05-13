@@ -10,6 +10,7 @@ class UpdateSiteSettingsRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $favicon = $this->input('favicon_media_id');
+        $siteDefaultFeaturedMedia = $this->input('site_default_featured_media_id');
         $cacheTtl = $this->input('cache_response_ttl');
         $legacyCacheEnabled = $this->input('cache_enabled');
         $adminEntryPath = $this->input('admin_entry_path');
@@ -17,6 +18,10 @@ class UpdateSiteSettingsRequest extends FormRequest
 
         if ($favicon === null || $favicon === '' || $favicon === 'null' || ! is_numeric($favicon)) {
             $merge['favicon_media_id'] = null;
+        }
+
+        if ($siteDefaultFeaturedMedia === null || $siteDefaultFeaturedMedia === '' || $siteDefaultFeaturedMedia === 'null' || ! is_numeric($siteDefaultFeaturedMedia)) {
+            $merge['site_default_featured_media_id'] = null;
         }
 
         if ($cacheTtl === null || $cacheTtl === '' || ! is_numeric($cacheTtl)) {
@@ -33,6 +38,18 @@ class UpdateSiteSettingsRequest extends FormRequest
 
         if (! $this->has('cache_response_enabled') && $legacyCacheEnabled !== null) {
             $merge['cache_response_enabled'] = $legacyCacheEnabled;
+        }
+
+        if (is_array($this->input('home_page_ids'))) {
+            $merge['home_page_ids'] = collect($this->input('home_page_ids'))
+                ->map(function (mixed $pageId): ?int {
+                    if ($pageId === null || $pageId === '' || $pageId === 'null') {
+                        return null;
+                    }
+
+                    return is_numeric($pageId) ? (int) $pageId : null;
+                })
+                ->all();
         }
 
         if ($merge !== []) {
@@ -53,7 +70,10 @@ class UpdateSiteSettingsRequest extends FormRequest
             'date_format' => ['required', 'string', 'max:30'],
             'time_format' => ['required', 'string', 'max:30'],
             'home_page_id' => ['nullable', 'integer', 'exists:pages,id'],
+            'home_page_ids' => ['nullable', 'array'],
+            'home_page_ids.*' => ['nullable', 'integer', 'exists:pages,id'],
             'site_theme' => ['required', 'string', 'max:120'],
+            'site_default_featured_media_id' => ['nullable', 'integer', 'exists:media_files,id'],
             'site_featured_media_variant' => ['required', 'string', 'max:20'],
             'media_default_insert_variant' => ['required', 'string', 'max:20'],
             'media_image_optimize' => ['nullable', 'boolean'],
@@ -82,6 +102,20 @@ class UpdateSiteSettingsRequest extends FormRequest
             'cache_data_enabled' => ['nullable', 'boolean'],
             'cache_response_enabled' => ['nullable', 'boolean'],
             'cache_response_ttl' => ['nullable', 'integer', 'min:0', 'max:86400'],
+            'seo_allow_indexing' => ['nullable', 'boolean'],
+            'seo_allow_following' => ['nullable', 'boolean'],
+            'seo_sitemap_enabled' => ['nullable', 'boolean'],
+            'seo_sitemap_change_frequency' => ['nullable', 'string', Rule::in(['hourly', 'daily', 'weekly', 'monthly', 'yearly'])],
+            'seo_canonical_scheme' => ['nullable', 'string', Rule::in(['https', 'http'])],
+            'seo_canonical_www_mode' => ['nullable', 'string', Rule::in(['preserve', 'with_www', 'without_www'])],
+            'seo_trailing_slash' => ['nullable', 'boolean'],
+            'seo_open_graph_enabled' => ['nullable', 'boolean'],
+            'seo_social_networks' => ['nullable', 'array'],
+            'seo_social_networks.*' => ['string', Rule::in(['facebook', 'x', 'linkedin', 'telegram', 'whatsapp'])],
+            'seo_hreflang_enabled' => ['nullable', 'boolean'],
+            'seo_favicon_enabled' => ['nullable', 'boolean'],
+            'seo_sitemap_excluded_paths' => ['nullable', 'string', 'max:4000'],
+            'seo_robots_custom_rules' => ['nullable', 'string', 'max:4000'],
             'security_rate_limit_enabled' => ['nullable', 'boolean'],
             'security_rate_limit_per_minute' => ['nullable', 'integer', 'min:30', 'max:2000'],
             'security_rate_limit_burst_per_10s' => ['nullable', 'integer', 'min:10', 'max:1000'],

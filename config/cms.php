@@ -2,6 +2,7 @@
 
 use App\Core\Auth\AuthModule;
 use App\Core\Backup\BackupModule;
+use App\Core\Languages\LanguagesModule;
 use App\Core\Media\MediaModule;
 use App\Core\Modules\ModulesModule;
 use App\Core\Pages\PagesModule;
@@ -28,6 +29,7 @@ return [
         UsersModule::class,
         RolesModule::class,
         SecurityModule::class,
+        LanguagesModule::class,
         PagesModule::class,
         MediaModule::class,
         ThemesModule::class,
@@ -51,6 +53,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bootstrap Languages
+    |--------------------------------------------------------------------------
+    |
+    | Эти коды используются до того, как таблица languages станет доступной.
+    | Это нужно для ранней регистрации локализованных маршрутов в тестах и
+    | при первом bootstrap без прогретой базы.
+    |
+    */
+
+    'languages' => [
+        'bootstrap' => [
+            ['code' => 'uk', 'is_default' => true],
+            ['code' => 'en', 'is_default' => false],
+            ['code' => 'ru', 'is_default' => false],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Public Response Cache TTL
     |--------------------------------------------------------------------------
     |
@@ -60,6 +81,19 @@ return [
     */
 
     'response_cache_ttl' => (int) env('CMS_RESPONSE_CACHE_TTL', 0),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Shared Hosting Flat Public Disk
+    |--------------------------------------------------------------------------
+    |
+    | В fallback-режиме shared hosting публичные theme assets и media
+    | генерируются в корень проекта, а не в стандартный public disk.
+    | Значение выносится в config, чтобы корректно работать с config cache.
+    |
+    */
+
+    'shared_hosting_flat_public_disk' => (bool) env('SHARED_HOSTING_FLAT_PUBLIC_DISK', false),
 
     /*
     |--------------------------------------------------------------------------

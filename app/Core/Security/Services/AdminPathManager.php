@@ -16,6 +16,8 @@ class AdminPathManager
 
     protected ?bool $hasSettingsTable = null;
 
+    protected ?bool $hasCacheTable = null;
+
     protected ?string $resolvedCurrentPath = null;
 
     public function currentPath(): string
@@ -146,7 +148,7 @@ class AdminPathManager
         $graceSeconds = max(0, (int) config('cms.admin_path_grace_seconds', 300));
 
         if ($graceSeconds > 0) {
-            Cache::put(self::LEGACY_CACHE_KEY, [
+            $this->safeCachePut(self::LEGACY_CACHE_KEY, [
                 'path' => $currentPath,
                 'expires_at' => now()->addSeconds($graceSeconds)->timestamp,
             ], now()->addSeconds($graceSeconds));
@@ -165,7 +167,7 @@ class AdminPathManager
 
     public function legacyPath(): ?string
     {
-        $entry = Cache::get(self::LEGACY_CACHE_KEY);
+        $entry = $this->safeCacheGet(self::LEGACY_CACHE_KEY);
 
         if (! is_array($entry)) {
             return null;
@@ -175,7 +177,7 @@ class AdminPathManager
         $expiresAt = (int) ($entry['expires_at'] ?? 0);
 
         if ($legacy === '' || $expiresAt <= now()->timestamp) {
-            Cache::forget(self::LEGACY_CACHE_KEY);
+            $this->safeCacheForget(self::LEGACY_CACHE_KEY);
 
             return null;
         }
@@ -220,5 +222,72 @@ class AdminPathManager
         $this->hasSettingsTable = Schema::hasTable('settings');
 
         return $this->hasSettingsTable;
+    }
+
+    protected function cacheTableExists(): bool
+    {
+        if ($this->hasCacheTable !== null) {
+            return $this->hasCacheTable;
+        }
+
+        $this->hasCacheTable = Schema::hasTable(config('cache.stores.database.table', 'cache'));
+
+        return $this->hasCacheTable;
+    }
+
+    protected function safeCacheGet(string $key): mixed
+    {
+        if (! $this->cacheIsReady()) {
+            return null;
+        }
+
+        try {
+            return Cache::get($key);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    protected function safeCachePut(string $key, mixed $value, mixed $ttl = null): void
+    {
+        if (! $this->cacheIsReady()) {
+            return;
+        }
+
+        try {
+            Cache::put($key, $value, $ttl);
+        } catch (\Throwable) {
+        }
+    }
+
+    protected function safeCacheForget(string $key): void
+    {
+        if (! $this->cacheIsReady()) {
+            return;
+        }
+
+        try {
+            Cache::forget($key);
+        } catch (\Throwable) {
+        }
+    }
+
+    protected function cacheIsReady(): bool
+    {
+        $defaultStore = (string) config('cache.default', 'file');
+
+        if ($defaultStore === 'database') {
+            return $this->cacheTableExists();
+        }
+
+        if ($defaultStore === 'failover') {
+            $stores = (array) config('cache.stores.failover.stores', []);
+
+            if ($stores !== [] && $stores[0] === 'database' && ! $this->cacheTableExists()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

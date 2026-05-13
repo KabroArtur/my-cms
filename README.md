@@ -137,6 +137,8 @@ https://my-cms.test/admin/pages
 - логин: `admin`
 - пароль: `admin`
 
+Если нужен другой стартовый пароль, задайте `ADMIN_INITIAL_PASSWORD` в `.env` до первого `php artisan db:seed`.
+
 ## Как запускать проект дальше
 
 ### Backend

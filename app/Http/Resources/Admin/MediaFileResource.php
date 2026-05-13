@@ -29,7 +29,9 @@ class MediaFileResource extends JsonResource
             'directory' => $this->directory,
             'path' => $this->path,
             'url' => $this->url(),
-            'preview_url' => $this->variantUrl((string) config('media.preview_variant', 'thumb')) ?? $this->url(),
+            'preview_url' => $this->variantUrl((string) config('media.preview_variant', 'thumbnail'))
+                ?? $this->variantUrl('thumb')
+                ?? $this->url(),
             'variants' => $this->variantPayload(),
             'created_at' => $this->created_at?->toISOString(),
         ];

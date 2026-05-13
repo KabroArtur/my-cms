@@ -19,7 +19,19 @@ const trashedPages = ref([])
 const draggingPageId = ref(null)
 const treeDirty = ref(false)
 const menuModalOpen = ref(false)
+const languageFilter = ref('all')
+const languageOptions = ref([])
 const { notifyError, notifySuccess } = useAdminNotifications()
+
+function pageQueryParams() {
+    return languageFilter.value === 'all'
+        ? {}
+        : { language_id: languageFilter.value }
+}
+
+function handleLanguageFilterChange() {
+    loadPages()
+}
 
 const statusLabels = {
     draft: 'Черновик',
@@ -245,9 +257,9 @@ async function loadPages() {
 
     try {
         const [payload, treePayload, trashedPayload] = await Promise.all([
-            fetchPages(),
-            fetchPageTree(),
-            fetchTrashedPages(),
+            fetchPages(pageQueryParams()),
+            fetchPageTree(pageQueryParams()),
+            fetchTrashedPages(pageQueryParams()),
         ])
 
         pages.value = payload.data ?? []
@@ -324,7 +336,8 @@ async function forceRemovePage(page) {
 }
 
 onMounted(async () => {
-    await loadCmsSettings()
+    const settingsPayload = await loadCmsSettings()
+    languageOptions.value = settingsPayload.options?.languages ?? []
     await loadPages()
 })
 </script>
@@ -349,6 +362,16 @@ onMounted(async () => {
 
         <div class="admin-page-grid">
             <AdminCard>
+                <label class="admin-form-label">
+                    <span>Язык</span>
+                    <select v-model="languageFilter" class="admin-select" @change="handleLanguageFilterChange">
+                        <option value="all">Все языки</option>
+                        <option v-for="language in languageOptions" :key="language.value" :value="String(language.value)">
+                            {{ language.label }}
+                        </option>
+                    </select>
+                </label>
+
                 <div class="admin-tabs" role="tablist" aria-label="Фильтр страниц">
                     <button type="button" class="admin-tab" :class="{ 'is-active': activeTab === 'all' }" @click="activeTab = 'all'">
                         Все
@@ -380,6 +403,9 @@ onMounted(async () => {
 
                             <div class="page-record-card__badges">
                                 <span v-if="page.is_home" class="page-badge page-badge--home" title="Главная страница сайта">Главная</span>
+                                <span v-if="page.language?.native_name" class="page-badge page-badge--visibility">
+                                    {{ page.language.native_name }}
+                                </span>
                                 <span :class="['page-badge', `page-badge--${page.status}`]">
                                     {{ resolveStatusLabel(page.status) }}
                                 </span>
@@ -392,6 +418,7 @@ onMounted(async () => {
                         <div class="page-record-card__meta">
                             <p><strong>URL:</strong> {{ resolvePublicUrl(page) }}</p>
                             <p><strong>Slug:</strong> {{ page.slug }}</p>
+                            <p><strong>Язык:</strong> {{ page.language?.native_name || '—' }}</p>
                             <p><strong>Создал:</strong> {{ resolveCreatorLabel(page) }}</p>
                             <p><strong>Дата:</strong> {{ formatDateTime(page.published_at) }}</p>
                             <p><strong>Шаблон:</strong> {{ page.template || 'default' }}</p>

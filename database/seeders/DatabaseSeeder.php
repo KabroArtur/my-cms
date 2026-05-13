@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Core\Languages\Models\Language;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Models\Page;
@@ -31,18 +32,24 @@ class DatabaseSeeder extends Seeder
         $adminUser->email = $adminUser->email ?: 'admin@example.com';
 
         if (! $adminUser->exists) {
-            $adminUser->password = env('ADMIN_INITIAL_PASSWORD', Str::password(24));
+            $adminUser->password = env('ADMIN_INITIAL_PASSWORD', 'admin');
             $adminUser->two_factor_channel = 'email';
             $adminUser->two_factor_enabled_at = now();
         }
 
         $adminUser->save();
 
+        $this->call(LanguageSeeder::class);
+
         $this->call(AccessSeeder::class);
 
+        $defaultLanguageId = Language::query()->where('is_default', true)->value('id');
+
         Page::query()->firstOrCreate(
-            ['slug' => 'home'],
+            ['slug' => 'home', 'language_id' => $defaultLanguageId],
             [
+                'language_id' => $defaultLanguageId,
+                'translation_group_id' => (string) Str::uuid(),
                 'title' => 'Главная',
                 'status' => PageStatus::Published->value,
                 'visibility' => PageVisibility::Public->value,
@@ -60,6 +67,7 @@ class DatabaseSeeder extends Seeder
         Page::query()
             ->where('slug', '!=', 'home')
             ->where('is_home', true)
+            ->where('language_id', $defaultLanguageId)
             ->update(['is_home' => false]);
 
         $this->seedThemePostsDemo();

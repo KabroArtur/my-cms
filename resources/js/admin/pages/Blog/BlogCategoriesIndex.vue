@@ -1,130 +1,167 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { fetchCurrentUser } from '../../api/auth'
+import { computed, onMounted, reactive, ref } from "vue";
+import { fetchCurrentUser } from "../../api/auth";
 import {
     createBlogCategory,
     deleteBlogCategory,
     fetchBlogCategories,
-} from '../../api/blog'
-import AdminButton from '../../components/ui/AdminButton.vue'
-import AdminCard from '../../components/ui/AdminCard.vue'
-import AdminPage from '../../components/ui/AdminPage.vue'
-import { useAdminNotifications } from '../../composables/useAdminNotifications'
+} from "../../api/blog";
+import AdminButton from "../../components/ui/AdminButton.vue";
+import AdminCard from "../../components/ui/AdminCard.vue";
+import AdminPage from "../../components/ui/AdminPage.vue";
+import { useAdminNotifications } from "../../composables/useAdminNotifications";
 
-const loading = ref(false)
-const saving = ref(false)
-const deletingId = ref(null)
-const errorMessage = ref('')
-const categories = ref([])
-const permissions = ref(new Set())
-const { notifyError, notifySuccess } = useAdminNotifications()
+const loading = ref(false);
+const saving = ref(false);
+const deletingId = ref(null);
+const errorMessage = ref("");
+const categories = ref([]);
+const permissions = ref(new Set());
+const { notifyError, notifySuccess } = useAdminNotifications();
 
 const form = reactive({
-    name: '',
-    slug: '',
-    description: '',
-})
+    name: "",
+    slug: "",
+    description: "",
+});
 
-const canManage = computed(() => permissions.value.has('blog.categories.manage'))
-const canAccess = computed(() => permissions.value.has('blog.access'))
+const canManage = computed(() =>
+    permissions.value.has("blog.categories.manage"),
+);
+const canAccess = computed(() => permissions.value.has("blog.access"));
 
 async function loadAll() {
-    loading.value = true
-    errorMessage.value = ''
+    loading.value = true;
+    errorMessage.value = "";
 
     try {
         const [mePayload, categoriesPayload] = await Promise.all([
             fetchCurrentUser(),
             fetchBlogCategories(),
-        ])
+        ]);
 
-        permissions.value = new Set(mePayload.data?.permissions ?? [])
-        categories.value = Array.isArray(categoriesPayload.items) ? categoriesPayload.items : []
+        permissions.value = new Set(mePayload.data?.permissions ?? []);
+        categories.value = Array.isArray(categoriesPayload.items)
+            ? categoriesPayload.items
+            : [];
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Не удалось загрузить категории.'
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Не удалось загрузить категории.";
+        console.error(error);
     } finally {
-        loading.value = false
+        loading.value = false;
     }
 }
 
 async function submitCategory() {
     if (!canManage.value) {
-        return
+        return;
     }
 
-    saving.value = true
-    errorMessage.value = ''
+    saving.value = true;
+    errorMessage.value = "";
 
     try {
         await createBlogCategory({
             name: form.name,
             slug: form.slug || null,
             description: form.description || null,
-        })
-        form.name = ''
-        form.slug = ''
-        form.description = ''
-        await loadAll()
-        notifySuccess('Категория создана.')
+        });
+        form.name = "";
+        form.slug = "";
+        form.description = "";
+        await loadAll();
+        notifySuccess("Категория создана.");
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Не удалось создать категорию.'
-        notifyError(errorMessage.value)
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Не удалось создать категорию.";
+        notifyError(errorMessage.value);
+        console.error(error);
     } finally {
-        saving.value = false
+        saving.value = false;
     }
 }
 
 async function removeCategory(id) {
     if (!canManage.value) {
-        return
+        return;
     }
 
-    deletingId.value = id
-    errorMessage.value = ''
+    deletingId.value = id;
+    errorMessage.value = "";
 
     try {
-        await deleteBlogCategory(id)
-        await loadAll()
-        notifySuccess('Категория удалена.')
+        await deleteBlogCategory(id);
+        await loadAll();
+        notifySuccess("Категория удалена.");
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Не удалось удалить категорию.'
-        notifyError(errorMessage.value)
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Не удалось удалить категорию.";
+        notifyError(errorMessage.value);
+        console.error(error);
     } finally {
-        deletingId.value = null
+        deletingId.value = null;
     }
 }
 
-onMounted(loadAll)
+onMounted(loadAll);
 </script>
 
 <template>
-    <AdminPage eyebrow="Blog" title="Категории" description="Категории для постов блога.">
+    <AdminPage
+        eyebrow="Blog"
+        title="Категории"
+        description="Категории для постов блога."
+    >
         <AdminCard>
-            <p v-if="errorMessage" class="error-text"><strong>{{ errorMessage }}</strong></p>
+            <p v-if="errorMessage" class="error-text">
+                <strong>{{ errorMessage }}</strong>
+            </p>
             <p v-if="loading" class="muted">Загрузка...</p>
-            <p v-else-if="!canAccess" class="error-text">Нет доступа к разделу Blog.</p>
+            <p v-else-if="!canAccess" class="error-text">
+                Нет доступа к разделу Blog.
+            </p>
 
-            <form v-else class="admin-form-stack" @submit.prevent="submitCategory">
+            <form
+                v-else
+                class="admin-form-stack"
+                @submit.prevent="submitCategory"
+            >
                 <label class="admin-form-label">
                     <span>Название</span>
-                    <input v-model="form.name" class="admin-input" type="text" required>
+                    <input
+                        v-model="form.name"
+                        class="admin-input"
+                        type="text"
+                        required
+                    />
                 </label>
 
                 <label class="admin-form-label">
                     <span>Slug</span>
-                    <input v-model="form.slug" class="admin-input" type="text" placeholder="auto from name">
+                    <input
+                        v-model="form.slug"
+                        class="admin-input"
+                        type="text"
+                        placeholder="auto from name"
+                    />
                 </label>
 
                 <label class="admin-form-label">
                     <span>Описание</span>
-                    <textarea v-model="form.description" class="admin-textarea" rows="3"></textarea>
+                    <textarea
+                        v-model="form.description"
+                        class="admin-textarea"
+                        rows="3"
+                    ></textarea>
                 </label>
 
-                <AdminButton type="submit" variant="primary" :disabled="saving || !canManage">
-                    {{ saving ? 'Сохраняем...' : 'Создать категорию' }}
+                <AdminButton
+                    type="submit"
+                    variant="primary"
+                    :disabled="saving || !canManage"
+                >
+                    {{ saving ? "Сохраняем..." : "Создать категорию" }}
                 </AdminButton>
             </form>
         </AdminCard>
@@ -148,10 +185,16 @@ onMounted(loadAll)
                             <AdminButton
                                 type="button"
                                 variant="danger"
-                                :disabled="deletingId === category.id || !canManage"
+                                :disabled="
+                                    deletingId === category.id || !canManage
+                                "
                                 @click="removeCategory(category.id)"
                             >
-                                {{ deletingId === category.id ? 'Удаляем...' : 'Удалить' }}
+                                {{
+                                    deletingId === category.id
+                                        ? "Удаляем..."
+                                        : "Удалить"
+                                }}
                             </AdminButton>
                         </td>
                     </tr>

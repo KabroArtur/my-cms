@@ -1,9 +1,11 @@
 <?php
 
 use App\Core\Security\Services\AdminPathManager;
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Modules\Services\PluginManager;
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\AdditionalFieldGroupController;
 use App\Http\Controllers\Admin\PluginController;
 use App\Http\Controllers\Admin\RoleController;
@@ -13,10 +15,12 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Site\PageViewController;
+use App\Http\Controllers\Site\SeoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 $adminPathManager = app(AdminPathManager::class);
+$languageManager = app(LanguageManager::class);
 $adminPath = $adminPathManager->currentPath();
 $legacyAdminPath = $adminPathManager->legacyPath();
 
@@ -83,6 +87,10 @@ Route::middleware(['auth', 'admin.access', 'two_factor', 'throttle:admin-api'])-
     Route::get('/settings', [SettingsController::class, 'show']);
     Route::put('/settings', [SettingsController::class, 'update']);
     Route::post('/settings/cache/clear', [SettingsController::class, 'clearCache']);
+    Route::get('/languages', [LanguageController::class, 'index']);
+    Route::post('/languages', [LanguageController::class, 'store']);
+    Route::put('/languages/{language}', [LanguageController::class, 'update']);
+    Route::delete('/languages/{language}', [LanguageController::class, 'destroy']);
     Route::get('/pages', [PageController::class, 'index']);
     Route::get('/pages-tree', [PageController::class, 'tree']);
     Route::get('/pages-trash', [PageController::class, 'trash']);
@@ -115,7 +123,20 @@ Route::middleware(['auth', 'admin.access', 'two_factor'])->get('/'.$adminPath.'/
     return view('admin');
 })->where('any', '.*');
 
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('site.robots');
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('site.sitemap');
+Route::get('/sitemaps/pages-{pageNumber}.xml', [SeoController::class, 'sitemapPage'])
+    ->whereNumber('pageNumber')
+    ->name('site.sitemap.page');
+
 Route::get('/', [PageViewController::class, 'home'])->name('site.home');
+Route::get('/{languageCode}', [PageViewController::class, 'localizedHome'])
+    ->where('languageCode', $languageManager->routePattern(excludeDefault: true))
+    ->name('site.home.localized');
+Route::get('/{languageCode}/{slugPath}', [PageViewController::class, 'localizedShow'])
+    ->where('languageCode', $languageManager->routePattern(excludeDefault: true))
+    ->where('slugPath', '.*')
+    ->name('site.page.localized');
 
 foreach ($pluginManager->enabledRouteFiles('web') as $routeFile) {
     require $routeFile;

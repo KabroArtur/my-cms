@@ -47,12 +47,14 @@ class SetSecurityHeaders
     protected function buildContentSecurityPolicy(string $cspNonce): string
     {
         $viteOrigin = $this->viteDevServerOrigin();
+        $googleFontsStyleOrigin = 'https://fonts.googleapis.com';
+        $googleFontsAssetOrigin = 'https://fonts.gstatic.com';
 
         $imgSources = ["'self'", 'data:', 'blob:'];
-        $fontSources = ["'self'", 'data:'];
+        $fontSources = ["'self'", 'data:', $googleFontsAssetOrigin];
         $mediaSources = ["'self'", 'data:', 'blob:'];
         $scriptSources = ["'self'", 'blob:', sprintf("'nonce-%s'", $cspNonce)];
-        $styleSources = ["'self'", "'unsafe-inline'"];
+        $styleSources = ["'self'", "'unsafe-inline'", $googleFontsStyleOrigin];
         $connectSources = ["'self'"];
 
         if ($viteOrigin !== null) {

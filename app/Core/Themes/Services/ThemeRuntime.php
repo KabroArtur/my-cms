@@ -2,6 +2,8 @@
 
 namespace App\Core\Themes\Services;
 
+use App\Core\Languages\Models\Language;
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageVisibility;
 use App\Core\Pages\Contracts\PageRepository;
@@ -31,6 +33,7 @@ class ThemeRuntime
         protected SettingsManager $settings,
         protected ThemeAssetManager $assets,
         protected AdditionalFieldsService $additionalFields,
+        protected LanguageManager $languages,
     ) {
     }
 
@@ -142,21 +145,25 @@ class ThemeRuntime
     public function url(Page|array|string|null $target = null): string
     {
         if (is_string($target)) {
-            return url(ltrim($target, '/'));
+            return $this->settings->canonicalUrl(ltrim($target, '/'));
         }
 
         if ($target instanceof Page || is_array($target)) {
-            return url($this->pageUrl($target));
+            $page = $target instanceof Page ? $target : null;
+
+            return $this->settings->canonicalUrl($this->pageUrl($target), null, (bool) ($page?->is_home ?? false));
         }
 
         $page = $this->resolvePage();
 
-        return $page ? url($this->pageUrl($page)) : url('/');
+        return $page
+            ? $this->settings->canonicalUrl($this->pageUrl($page), null, (bool) $page->is_home)
+            : $this->settings->canonicalUrl('/');
     }
 
     public function homeUrl(): string
     {
-        return url('/');
+        return $this->settings->canonicalUrl('/');
     }
 
     public function metaTitle(?Page $page = null): string
@@ -178,9 +185,21 @@ class ThemeRuntime
         return $this->url($page);
     }
 
-    public function robots(): string
+    public function robots(?Page $page = null): string
     {
-        return 'index,follow';
+        $page = $this->resolvePage($page);
+        $indexing = (bool) $this->setting('seo_allow_indexing', true);
+        $following = (bool) $this->setting('seo_allow_following', true);
+
+        if ($page?->seo_noindex) {
+            $indexing = false;
+        }
+
+        if ($page?->seo_nofollow) {
+            $following = false;
+        }
+
+        return sprintf('%s,%s', $indexing ? 'index' : 'noindex', $following ? 'follow' : 'nofollow');
     }
 
     public function head(?Page $page = null): HtmlString
@@ -193,10 +212,24 @@ class ThemeRuntime
         }
 
         $parts[] = '<link rel="canonical" href="'.e($this->canonicalUrl($page)).'">';
-        $parts[] = '<meta name="robots" content="'.e($this->robots()).'">';
+        $parts[] = '<meta name="robots" content="'.e($this->robots($page)).'">';
 
-        if ($this->hasSetting('favicon_url')) {
-            $parts[] = '<link rel="icon" href="'.e((string) $this->setting('favicon_url')).'">';
+        $socialTags = $this->socialMetaTags($page)->toHtml();
+
+        if ($socialTags !== '') {
+            $parts[] = $socialTags;
+        }
+
+        $hreflang = $this->hreflangTags($page)->toHtml();
+
+        if ($hreflang !== '') {
+            $parts[] = $hreflang;
+        }
+
+        $faviconTags = $this->faviconTags()->toHtml();
+
+        if ($faviconTags !== '') {
+            $parts[] = $faviconTags;
         }
 
         $styles = $this->assets->renderStyles($this->resolvePage($page));
@@ -212,6 +245,108 @@ class ThemeRuntime
 
 
         return new HtmlString(implode("\n", $parts));
+    }
+
+    public function socialMetaTags(?Page $page = null): HtmlString
+    {
+        if (! (bool) $this->setting('seo_open_graph_enabled', true)) {
+            return new HtmlString('');
+        }
+
+        $networks = $this->socialNetworks();
+
+        if ($networks === []) {
+            return new HtmlString('');
+        }
+
+        $page = $this->resolvePage($page);
+        $title = $this->metaTitle($page);
+        $description = $this->metaDescription($page);
+        $url = $this->canonicalUrl($page);
+        $image = $this->socialImage($page);
+        $tags = [
+            '<meta property="og:title" content="'.e($title).'">',
+            '<meta property="og:type" content="'.e($page?->is_home ? 'website' : 'article').'">',
+            '<meta property="og:url" content="'.e($url).'">',
+            '<meta property="og:site_name" content="'.e($this->siteName()).'">',
+            '<meta property="og:locale" content="'.e(str_replace('-', '_', $this->currentLanguageLocale())).'">',
+        ];
+
+        if ($description !== '') {
+            $tags[] = '<meta property="og:description" content="'.e($description).'">';
+        }
+
+        if ($image !== null) {
+            $tags[] = '<meta property="og:image" content="'.e($image->url()).'">';
+
+            if ($image->width) {
+                $tags[] = '<meta property="og:image:width" content="'.e((string) $image->width).'">';
+            }
+
+            if ($image->height) {
+                $tags[] = '<meta property="og:image:height" content="'.e((string) $image->height).'">';
+            }
+
+            $alt = $this->imageAltFromValue($image);
+
+            if ($alt !== '') {
+                $tags[] = '<meta property="og:image:alt" content="'.e($alt).'">';
+            }
+        }
+
+        if (in_array('x', $networks, true)) {
+            $tags[] = '<meta name="twitter:card" content="'.e($image !== null ? 'summary_large_image' : 'summary').'">';
+            $tags[] = '<meta name="twitter:title" content="'.e($title).'">';
+
+            if ($description !== '') {
+                $tags[] = '<meta name="twitter:description" content="'.e($description).'">';
+            }
+
+            if ($image !== null) {
+                $tags[] = '<meta name="twitter:image" content="'.e($image->url()).'">';
+            }
+        }
+
+        return new HtmlString(implode("\n", $tags));
+    }
+
+    public function faviconTags(): HtmlString
+    {
+        if (! (bool) $this->setting('seo_favicon_enabled', true)) {
+            return new HtmlString('');
+        }
+
+        $links = $this->setting('favicon_links', []);
+
+        if (! is_array($links) || $links === []) {
+            $faviconUrl = (string) $this->setting('favicon_url', '');
+
+            return $faviconUrl !== ''
+                ? new HtmlString('<link rel="icon" href="'.e($faviconUrl).'">')
+                : new HtmlString('');
+        }
+
+        $tags = collect($links)
+            ->filter(fn (mixed $link): bool => is_array($link) && ! empty($link['href']))
+            ->map(function (array $link): string {
+                $attributes = [
+                    'rel' => (string) ($link['rel'] ?? 'icon'),
+                    'href' => (string) $link['href'],
+                ];
+
+                if (! empty($link['sizes'])) {
+                    $attributes['sizes'] = (string) $link['sizes'];
+                }
+
+                if (! empty($link['type'])) {
+                    $attributes['type'] = (string) $link['type'];
+                }
+
+                return '<link '.$this->formatAttributes($attributes).'>';
+            })
+            ->implode("\n");
+
+        return new HtmlString($tags);
     }
 
     public function field(string $key, mixed $default = null, ?Page $page = null): mixed
@@ -431,7 +566,7 @@ class ThemeRuntime
             return $this->menuTreeCache[$cacheKey];
         }
 
-        $pages = $this->pages->publicNavigation();
+        $pages = $this->pages->publicNavigation($currentPage?->language_id);
         $nodes = [];
 
         foreach ($pages as $page) {
@@ -484,10 +619,16 @@ class ThemeRuntime
     public function pageUrl(Page|array $page): string
     {
         if (is_array($page)) {
+            $resolvedPage = isset($page['id']) ? $this->resolvePageById((int) $page['id']) : null;
+
+            if ($resolvedPage !== null) {
+                return app(\App\Core\Languages\Services\LanguageManager::class)->pageRelativeUrl($resolvedPage);
+            }
+
             return ($page['is_home'] ?? false) ? '/' : '/'.ltrim((string) ($page['path'] ?? ''), '/');
         }
 
-        return $page->is_home ? '/' : '/'.$page->path;
+        return app(\App\Core\Languages\Services\LanguageManager::class)->pageRelativeUrl($page);
     }
 
     public function hasImage(string $key = 'featured_image', ?Page $page = null): bool
@@ -624,7 +765,9 @@ class ThemeRuntime
             'directory' => $media->directory,
             'path' => $media->path,
             'url' => $media->url(),
-            'preview_url' => $media->variantUrl((string) config('media.preview_variant', 'thumb')) ?? $media->url(),
+            'preview_url' => $media->variantUrl((string) config('media.preview_variant', 'thumbnail'))
+                ?? $media->variantUrl('thumb')
+                ?? $media->url(),
             'variants' => is_array($media->variants) ? $media->variants : [],
         ]);
     }
@@ -736,16 +879,135 @@ class ThemeRuntime
 
     public function lang(): string
     {
-        return app()->getLocale();
+        return $this->currentLanguageCode();
     }
 
     public function languages(): array
     {
-        return [[
-            'code' => app()->getLocale(),
-            'url' => url()->current(),
-            'active' => true,
-        ]];
+        return $this->languageLinks();
+    }
+
+    public function currentLanguage(): ?Language
+    {
+        return $this->languages->resolveForPage($this->resolvePage());
+    }
+
+    public function currentLanguageCode(): string
+    {
+        return (string) ($this->currentLanguage()?->code ?? app()->getLocale());
+    }
+
+    public function currentLanguageLocale(): string
+    {
+        $language = $this->currentLanguage();
+
+        return (string) ($language?->locale ?? str_replace('-', '_', app()->getLocale()));
+    }
+
+    public function defaultLanguage(): ?Language
+    {
+        return $this->languages->default();
+    }
+
+    public function activeLanguages(): array
+    {
+        return $this->languages->active()->all();
+    }
+
+    public function languagesCount(): int
+    {
+        return $this->languages->active()->count();
+    }
+
+    public function languageLinks(?Page $page = null): array
+    {
+        $activeLanguages = Language::query()->active()->ordered()->get();
+
+        $page = $this->resolvePage($page);
+
+        if ($page === null) {
+            return $this->homeLanguageLinks($activeLanguages);
+        }
+
+        if ((bool) $page->is_home) {
+            return $this->homeLanguageLinks($activeLanguages);
+        }
+
+        $translations = Page::query()
+            ->with('language')
+            ->where('translation_group_id', $page->translation_group_id)
+            ->whereIn('language_id', $activeLanguages->pluck('id')->all())
+            ->get();
+
+        return $translations
+            ->filter(fn (Page $translation): bool => $translation->language !== null)
+            ->map(function (Page $translation): array {
+                $language = $translation->language;
+
+                return [
+                    'id' => $language->id,
+                    'code' => $language->code,
+                    'locale' => $language->locale,
+                    'name' => $language->name,
+                    'native_name' => $language->native_name,
+                    'url' => $this->settings->canonicalUrl($this->languages->pageRelativeUrl($translation, $language), null, (bool) $translation->is_home),
+                    'active' => $this->currentLanguage()?->id === $language->id,
+                    'page_id' => $translation->id,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function homeLanguageLinks(iterable $activeLanguages): array
+    {
+        return collect($activeLanguages)
+            ->map(function (Language $language): ?array {
+                $homePage = $this->pages->findHomePage($language->id);
+
+                if ($homePage === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $language->id,
+                    'code' => $language->code,
+                    'locale' => $language->locale,
+                    'name' => $language->name,
+                    'native_name' => $language->native_name,
+                    'url' => $this->settings->canonicalUrl($this->languages->pageRelativeUrl($homePage, $language), null, true),
+                    'active' => $this->currentLanguage()?->id === $language->id,
+                    'page_id' => $homePage->id,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function hreflangTags(?Page $page = null): HtmlString
+    {
+        if (! (bool) $this->setting('seo_hreflang_enabled', true) || Language::query()->active()->count() < 2) {
+            return new HtmlString('');
+        }
+
+        $page = $this->resolvePage($page);
+        $links = $this->languageLinks($page);
+
+        if ($links === []) {
+            return new HtmlString('');
+        }
+
+        $tags = collect($links)
+            ->map(fn (array $link): string => '<link rel="alternate" hreflang="'.e((string) $link['code']).'" href="'.e((string) $link['url']).'" />')
+            ->values();
+
+        return new HtmlString($tags->implode("\n"));
+    }
+
+    public function htmlLang(): string
+    {
+        return $this->languages->htmlLang($this->currentLanguage());
     }
 
     public function translate(string $key, mixed $default = null, array $replace = []): string
@@ -981,7 +1243,7 @@ class ThemeRuntime
         $page = $this->resolvePage($page);
 
         if ($page !== null && in_array($key, ['featured_image', 'featured_media', 'featured_media_id'], true)) {
-            return $page->featuredMedia;
+            return $page->featuredMedia ?? $this->mediaFromValue($this->setting('site_default_featured_media_id'));
         }
 
         if (str_starts_with($key, 'setting:')) {
@@ -989,6 +1251,18 @@ class ThemeRuntime
         }
 
         return $this->mediaFromValue($this->resolveFieldValue($key, $page));
+    }
+
+    protected function socialNetworks(): array
+    {
+        $value = $this->setting('seo_social_networks', []);
+
+        return is_array($value) ? array_values($value) : [];
+    }
+
+    protected function socialImage(?Page $page = null): ?MediaFile
+    {
+        return $this->media('featured_image', $page);
     }
 
     public function mediaFromValue(mixed $value): ?MediaFile
