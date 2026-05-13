@@ -10,8 +10,8 @@ if (csrfToken) {
     axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken
 }
 
-export async function fetchPages() {
-    const response = await axios.get(adminApiPath('pages'))
+export async function fetchPages(params = {}) {
+    const response = await axios.get(adminApiPath('pages'), { params })
 
     return response.data
 }
@@ -22,14 +22,14 @@ export async function fetchPage(id) {
     return response.data
 }
 
-export async function fetchPageTree() {
-    const response = await axios.get(adminApiPath('pages-tree'))
+export async function fetchPageTree(params = {}) {
+    const response = await axios.get(adminApiPath('pages-tree'), { params })
 
     return response.data
 }
 
-export async function fetchTrashedPages() {
-    const response = await axios.get(adminApiPath('pages-trash'))
+export async function fetchTrashedPages(params = {}) {
+    const response = await axios.get(adminApiPath('pages-trash'), { params })
 
     return response.data
 }

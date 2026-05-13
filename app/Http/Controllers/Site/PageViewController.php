@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Site;
 
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Pages\Contracts\PageRepository;
 use App\Core\Settings\Services\SettingsManager;
 use App\Core\Support\Services\CmsCacheService;
@@ -17,6 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class PageViewController extends Controller
 {
     public function __construct(
+        protected LanguageManager $languages,
         protected SettingsManager $settings,
         protected ThemeRuntime $cms,
         protected CmsCacheService $cache,
@@ -28,8 +30,10 @@ class PageViewController extends Controller
      */
     public function home(PageRepository $pages): Response
     {
+        $language = $this->languages->setCurrent($this->languages->default());
+
         if (! $this->shouldUseResponseCache()) {
-            $page = $pages->findHomePage();
+            $page = $pages->findHomePage($language?->id);
 
             if ($page === null) {
                 throw new NotFoundHttpException('Домашняя страница не найдена.');
@@ -39,9 +43,44 @@ class PageViewController extends Controller
         }
 
         $html = $this->cache->rememberSite(
-            key: 'public-response:home:'.app()->getLocale().':'.$this->settings->activeTheme(),
-            resolver: function () use ($pages): string {
-                $page = $pages->findHomePage();
+            key: 'public-response:home:'.($language?->code ?? app()->getLocale()).':'.$this->settings->activeTheme(),
+            resolver: function () use ($pages, $language): string {
+                $page = $pages->findHomePage($language?->id);
+
+                if ($page === null) {
+                    throw new NotFoundHttpException('Домашняя страница не найдена.');
+                }
+
+                return $this->renderThemeHtml($page);
+            },
+            ttlSeconds: $this->responseCacheTtl(),
+        );
+
+        return response($html);
+    }
+
+    public function localizedHome(string $languageCode, PageRepository $pages): Response
+    {
+        $language = $this->languages->setCurrent($this->languages->findByCode($languageCode, activeOnly: true));
+
+        if ($language === null) {
+            throw new NotFoundHttpException('Язык не найден.');
+        }
+
+        if (! $this->shouldUseResponseCache()) {
+            $page = $pages->findHomePage($language->id);
+
+            if ($page === null) {
+                throw new NotFoundHttpException('Домашняя страница не найдена.');
+            }
+
+            return response($this->renderThemeHtml($page));
+        }
+
+        $html = $this->cache->rememberSite(
+            key: 'public-response:home:'.$language->code.':'.$this->settings->activeTheme(),
+            resolver: function () use ($pages, $language): string {
+                $page = $pages->findHomePage($language->id);
 
                 if ($page === null) {
                     throw new NotFoundHttpException('Домашняя страница не найдена.');
@@ -61,9 +100,10 @@ class PageViewController extends Controller
     public function show(string $slugPath, PageRepository $pages): Response
     {
         $slugPath = trim($slugPath, '/');
+        $language = $this->languages->setCurrent($this->languages->default());
 
         if (! $this->shouldUseResponseCache()) {
-            $page = $pages->findPublicBySlug($slugPath);
+            $page = $pages->findPublicBySlug($slugPath, $language?->id);
 
             if ($page === null) {
                 throw new NotFoundHttpException('Страница не найдена.');
@@ -73,9 +113,45 @@ class PageViewController extends Controller
         }
 
         $html = $this->cache->rememberSite(
-            key: 'public-response:slug:'.($slugPath !== '' ? $slugPath : '/').':'.app()->getLocale().':'.$this->settings->activeTheme(),
-            resolver: function () use ($pages, $slugPath): string {
-                $page = $pages->findPublicBySlug($slugPath);
+            key: 'public-response:slug:'.($slugPath !== '' ? $slugPath : '/').':'.($language?->code ?? app()->getLocale()).':'.$this->settings->activeTheme(),
+            resolver: function () use ($pages, $slugPath, $language): string {
+                $page = $pages->findPublicBySlug($slugPath, $language?->id);
+
+                if ($page === null) {
+                    throw new NotFoundHttpException('Страница не найдена.');
+                }
+
+                return $this->renderThemeHtml($page);
+            },
+            ttlSeconds: $this->responseCacheTtl(),
+        );
+
+        return response($html);
+    }
+
+    public function localizedShow(string $languageCode, string $slugPath, PageRepository $pages): Response
+    {
+        $slugPath = trim($slugPath, '/');
+        $language = $this->languages->setCurrent($this->languages->findByCode($languageCode, activeOnly: true));
+
+        if ($language === null) {
+            throw new NotFoundHttpException('Язык не найден.');
+        }
+
+        if (! $this->shouldUseResponseCache()) {
+            $page = $pages->findPublicBySlug($slugPath, $language->id);
+
+            if ($page === null) {
+                throw new NotFoundHttpException('Страница не найдена.');
+            }
+
+            return response($this->renderThemeHtml($page));
+        }
+
+        $html = $this->cache->rememberSite(
+            key: 'public-response:slug:'.($slugPath !== '' ? $slugPath : '/').':'.$language->code.':'.$this->settings->activeTheme(),
+            resolver: function () use ($pages, $slugPath, $language): string {
+                $page = $pages->findPublicBySlug($slugPath, $language->id);
 
                 if ($page === null) {
                     throw new NotFoundHttpException('Страница не найдена.');

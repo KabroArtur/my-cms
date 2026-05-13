@@ -70,10 +70,14 @@ const templateOptions = ref([
         description: "Основной шаблон темы",
     },
 ]);
+const languageOptions = ref([]);
+const trailingSlashEnabled = ref(false);
 const headingLevels = [1, 2, 3, 4, 5, 6];
 const { notifyError, notifySuccess } = useAdminNotifications();
 
 const form = reactive({
+    language_id: "",
+    translation_group_id: "",
     title: "",
     slug: "",
     parent_id: "",
@@ -85,6 +89,8 @@ const form = reactive({
     template: "default",
     meta_title: "",
     meta_description: "",
+    seo_noindex: false,
+    seo_nofollow: false,
     featured_media_id: "",
     content: "",
 });
@@ -137,8 +143,19 @@ const pageId = computed(() => route.params.id);
 const pageTitle = computed(() =>
     isCreateMode.value ? "Новая страница" : `Страница #${pageId.value}`,
 );
+const selectedLanguage = computed(
+    () =>
+        languageOptions.value.find(
+            (language) => String(language.value) === String(form.language_id),
+        ) ?? null,
+);
 const availableParents = computed(() =>
-    allPages.value.filter((page) => String(page.id) !== String(pageId.value)),
+    allPages.value.filter(
+        (page) =>
+            String(page.id) !== String(pageId.value) &&
+            (form.language_id === "" ||
+                String(page.language_id) === String(form.language_id)),
+    ),
 );
 const resolvedParent = computed(
     () =>
@@ -147,11 +164,16 @@ const resolvedParent = computed(
         ) ?? null,
 );
 const publicUrl = computed(() => {
-    if (form.is_home) {
-        return "/";
+    const segments = [];
+    const usesPrefix = selectedLanguage.value && !selectedLanguage.value.is_default;
+
+    if (usesPrefix) {
+        segments.push(selectedLanguage.value.code);
     }
 
-    const segments = [];
+    if (form.is_home) {
+        return segments.length > 0 ? `/${segments.join("/")}` : "/";
+    }
 
     if (resolvedParent.value?.path) {
         segments.push(resolvedParent.value.path);
@@ -161,7 +183,13 @@ const publicUrl = computed(() => {
         segments.push(form.slug);
     }
 
-    return segments.length > 0 ? `/${segments.join("/")}` : "—";
+    if (segments.length === 0) {
+        return "—";
+    }
+
+    const path = `/${segments.join("/")}`;
+
+    return trailingSlashEnabled.value ? `${path.replace(/\/+$/, "")}/` : path;
 });
 const canOpenPublicPage = computed(
     () => form.is_home || form.slug.trim() !== "",
@@ -296,6 +324,11 @@ function handleSlugInput() {
 }
 
 function fillForm(page) {
+    form.language_id =
+        page.language_id ??
+        languageOptions.value.find((language) => language.is_default)?.value ??
+        "";
+    form.translation_group_id = page.translation_group_id ?? "";
     form.title = page.title ?? "";
     form.slug = page.slug ?? "";
     form.parent_id = page.parent_id ?? "";
@@ -307,6 +340,8 @@ function fillForm(page) {
     form.template = page.template || "default";
     form.meta_title = page.meta_title ?? "";
     form.meta_description = page.meta_description ?? "";
+    form.seo_noindex = page.seo_noindex ?? false;
+    form.seo_nofollow = page.seo_nofollow ?? false;
     form.featured_media_id = page.featured_media_id ?? "";
     form.content = page.content ?? "";
     creatorLabel.value =
@@ -411,17 +446,26 @@ async function loadEditorSettings() {
         const settingsPayload = await loadCmsSettings();
         templateOptions.value =
             settingsPayload.options?.page_templates ?? templateOptions.value;
+        languageOptions.value = settingsPayload.options?.languages ?? [];
+        trailingSlashEnabled.value =
+            settingsPayload.settings?.seo_trailing_slash === true;
+
+        if (isCreateMode.value && !form.language_id) {
+            form.language_id =
+                languageOptions.value.find((language) => language.is_default)
+                    ?.value ?? "";
+        }
     } catch (error) {
         console.error(error);
     }
 }
 
-function setFeaturedMedia(file) {
-    form.featured_media_id = file.id;
-}
-
 function resetForm() {
     fillForm({});
+    form.language_id =
+        languageOptions.value.find((language) => language.is_default)?.value ??
+        "";
+    form.translation_group_id = "";
     form.status = "draft";
     form.visibility = "public";
     form.is_home = false;
@@ -534,6 +578,18 @@ watch(
     },
 );
 
+watch(
+    () => form.language_id,
+    () => {
+        if (
+            resolvedParent.value &&
+            String(resolvedParent.value.language_id) !== String(form.language_id)
+        ) {
+            form.parent_id = "";
+        }
+    },
+);
+
 onBeforeUnmount(() => {
     contentEditor.value?.destroy();
 });
@@ -563,144 +619,138 @@ onBeforeUnmount(() => {
             </div>
         </template>
 
-        <div class="page-editor-grid">
-            <AdminCard>
-                <p v-if="loading" class="muted">Загрузка страницы...</p>
+        <p v-if="loading" class="muted">Загрузка страницы...</p>
 
-                <form
-                    v-else
-                    class="admin-form-stack"
-                    @submit.prevent="submitForm"
-                >
-                    <label class="admin-form-label">
-                        <span>Заголовок</span>
-                        <input
-                            v-model="form.title"
-                            class="admin-input"
-                            type="text"
-                            placeholder="Например, О компании"
-                            @input="syncSlugFromTitle"
-                        />
-                        <small
-                            v-if="validationErrors.title"
-                            class="error-text"
-                            >{{ validationErrors.title[0] }}</small
-                        >
-                    </label>
+        <form v-else class="page-editor-layout" @submit.prevent="submitForm">
+            <div class="page-editor-layout__main">
+                <AdminCard>
+                    <section class="page-editor-section">
+                        <div class="page-editor-section__header">
+                            <div>
+                                <h2>Основное</h2>
+                                <p class="muted">
+                                    Название, адрес страницы и краткое описание для
+                                    списков и предпросмотра.
+                                </p>
+                            </div>
+                        </div>
 
-                    <label class="admin-form-label">
-                        <span>Slug</span>
-                        <input
-                            v-model="form.slug"
-                            class="admin-input"
-                            type="text"
-                            placeholder="review"
-                            @input="handleSlugInput"
-                        />
-                        <small
-                            v-if="validationErrors.slug"
-                            class="error-text"
-                            >{{ validationErrors.slug[0] }}</small
-                        >
-                        <small class="muted"
-                            >Slug хранится как отдельный сегмент URL. Полный
-                            путь строится из родительской страницы.</small
-                        >
-                    </label>
-
-                    <label class="admin-form-label">
-                        <span>Описание</span>
-                        <textarea
-                            v-model="form.excerpt"
-                            class="admin-textarea"
-                            rows="4"
-                            placeholder="Краткое описание страницы"
-                        ></textarea>
-                        <small
-                            v-if="validationErrors.excerpt"
-                            class="error-text"
-                            >{{ validationErrors.excerpt[0] }}</small
-                        >
-                    </label>
-
-                    <div class="page-meta-grid">
-                        <label class="admin-form-label">
-                            <span>Родительская страница</span>
-                            <select
-                                v-model="form.parent_id"
-                                class="admin-select"
-                            >
-                                <option value="">Без родителя</option>
-                                <option
-                                    v-for="page in availableParents"
-                                    :key="page.id"
-                                    :value="page.id"
+                        <div class="page-identity-grid">
+                            <label class="admin-form-label">
+                                <span>Язык</span>
+                                <select v-model="form.language_id" class="admin-select">
+                                    <option
+                                        v-for="language in languageOptions"
+                                        :key="language.value"
+                                        :value="language.value"
+                                    >
+                                        {{ language.label }} ({{ language.code }})
+                                    </option>
+                                </select>
+                                <small
+                                    v-if="validationErrors.language_id"
+                                    class="error-text"
                                 >
-                                    {{ page.title }} ({{
-                                        page.is_home
-                                            ? "/"
-                                            : `/${page.path || page.slug}`
-                                    }})
-                                </option>
-                            </select>
+                                    {{ validationErrors.language_id[0] }}
+                                </small>
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span>Название страницы</span>
+                                <input
+                                    v-model="form.title"
+                                    class="admin-input"
+                                    type="text"
+                                    placeholder="Например, О компании"
+                                    @input="syncSlugFromTitle"
+                                />
+                                <small v-if="validationErrors.title" class="error-text">
+                                    {{ validationErrors.title[0] }}
+                                </small>
+                            </label>
+
+                            <label class="admin-form-label">
+                                <span>URL</span>
+                                <input
+                                    v-model="form.slug"
+                                    class="admin-input"
+                                    type="text"
+                                    placeholder="o-kompanii"
+                                    @input="handleSlugInput"
+                                />
+                                <small v-if="validationErrors.slug" class="error-text">
+                                    {{ validationErrors.slug[0] }}
+                                </small>
+                                <small class="muted">Полный адрес: {{ publicUrl }}</small>
+                            </label>
+                        </div>
+
+                        <label class="admin-form-label">
+                            <span>Группа переводов</span>
+                            <input
+                                v-model="form.translation_group_id"
+                                class="admin-input"
+                                type="text"
+                                placeholder="UUID группы переводов"
+                            />
                             <small
-                                v-if="validationErrors.parent_id"
+                                v-if="validationErrors.translation_group_id"
                                 class="error-text"
-                                >{{ validationErrors.parent_id[0] }}</small
                             >
+                                {{ validationErrors.translation_group_id[0] }}
+                            </small>
                         </label>
-                    </div>
 
-                    <label class="admin-form-label">
-                        <span>Meta title</span>
-                        <input
-                            v-model="form.meta_title"
-                            class="admin-input"
-                            type="text"
-                            placeholder="SEO заголовок страницы"
-                        />
-                    </label>
+                        <label class="admin-form-label">
+                            <span>Описание</span>
+                            <textarea
+                                v-model="form.excerpt"
+                                class="admin-textarea"
+                                rows="4"
+                                placeholder="Краткое описание страницы"
+                            ></textarea>
+                            <small v-if="validationErrors.excerpt" class="error-text">
+                                {{ validationErrors.excerpt[0] }}
+                            </small>
+                        </label>
+                    </section>
+                </AdminCard>
 
-                    <label class="admin-form-label">
-                        <span>Meta description</span>
-                        <textarea
-                            v-model="form.meta_description"
-                            class="admin-textarea"
-                            rows="3"
-                            placeholder="SEO описание страницы"
-                        ></textarea>
-                    </label>
+                <AdminCard>
+                    <section class="page-editor-section">
+                        <div class="page-editor-section__header">
+                            <div>
+                                <h2>Контент</h2>
+                                <p class="muted">
+                                    Основное содержимое страницы. Панель инструментов
+                                    остаётся рядом с редактором.
+                                </p>
+                            </div>
+                        </div>
 
-                    <div class="page-featured-media">
-                        <span>Обложка страницы</span>
-                        <MediaPickerField
-                            v-model="form.featured_media_id"
-                            title="Выбрать обложку страницы"
-                            return-type="id"
-                            :allow-upload="true"
-                        />
-                    </div>
+                        <label class="admin-form-label">
+                            <span>Содержимое страницы</span>
+                            <PageContentToolbar
+                                :editor="contentEditor"
+                                :heading-levels="headingLevels"
+                            />
+                            <EditorContent
+                                :editor="contentEditor"
+                                class="admin-editor tiptap-editor"
+                            />
+                        </label>
+                    </section>
+                </AdminCard>
 
-                    <label class="admin-form-label">
-                        <span>Контент</span>
-                        <PageContentToolbar
-                            :editor="contentEditor"
-                            :heading-levels="headingLevels"
-                        />
-                        <EditorContent
-                            :editor="contentEditor"
-                            class="admin-editor tiptap-editor"
-                        />
-                    </label>
-
-                    <section class="additional-fields-block">
+                <AdminCard>
+                    <section class="page-editor-section additional-fields-block">
                         <div class="additional-fields-block__header">
                             <div>
                                 <h2>Дополнительные поля</h2>
                                 <p class="muted">
-                                    Локальные хаотичные поля лучше не
-                                    использовать. Для массового сценария
-                                    создавайте наборы в структуре контента.
+                                    Поля текущего шаблона и структуры контента.
+                                    Сгруппированы отдельно от основного текста, чтобы не
+                                    мешать редактированию.
                                 </p>
                             </div>
 
@@ -713,10 +763,7 @@ onBeforeUnmount(() => {
                             </RouterLink>
                         </div>
 
-                        <p
-                            v-if="additionalFieldGroups.length === 0"
-                            class="muted"
-                        >
+                        <p v-if="additionalFieldGroups.length === 0" class="muted">
                             Для текущего шаблона нет подключенных наборов полей.
                         </p>
 
@@ -733,26 +780,22 @@ onBeforeUnmount(() => {
                                         {{ group.description }}
                                     </p>
                                 </div>
-                                <small class="muted"
-                                    >{{
+                                <small class="muted">
+                                    {{
                                         Array.isArray(group.fields)
                                             ? group.fields.length
                                             : 0
                                     }}
-                                    полей</small
-                                >
+                                    полей
+                                </small>
                             </summary>
 
-                            <div
-                                class="admin-stack additional-fields-group__body"
-                            >
+                            <div class="admin-stack additional-fields-group__body">
                                 <CustomFieldRenderer
                                     v-for="field in group.fields"
                                     :key="field.key"
                                     :field="field"
-                                    :model-value="
-                                        additionalFieldValues[field.key]
-                                    "
+                                    :model-value="additionalFieldValues[field.key]"
                                     :errors="validationErrors"
                                     :path="`additional_fields.${field.key}`"
                                     @update:model-value="
@@ -766,77 +809,77 @@ onBeforeUnmount(() => {
                             </div>
                         </details>
                     </section>
+                </AdminCard>
 
-                    <p v-if="errorMessage" class="error-text">
-                        {{ errorMessage }}
-                    </p>
-                    <p
-                        v-if="!isCreateMode && !canUpdatePage"
-                        class="error-text"
-                    >
-                        Только автор страницы или администратор может ее
-                        изменять.
+                <div class="page-editor-footer">
+                    <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+                    <p v-if="!isCreateMode && !canUpdatePage" class="error-text">
+                        Только автор страницы или администратор может ее изменять.
                     </p>
 
                     <div class="admin-actions-row">
                         <AdminButton
                             type="submit"
                             variant="primary"
-                            :disabled="
-                                saving || (!isCreateMode && !canUpdatePage)
-                            "
+                            :disabled="saving || (!isCreateMode && !canUpdatePage)"
                         >
-                            {{
-                                saving ? "Сохранение..." : "Сохранить страницу"
-                            }}
+                            {{ saving ? "Сохранение..." : "Сохранить страницу" }}
                         </AdminButton>
 
                         <RouterLink :to="{ name: 'pages' }" class="button-link">
                             Закрыть
                         </RouterLink>
                     </div>
-                </form>
-            </AdminCard>
+                </div>
+            </div>
 
-            <AdminCard>
-                <div class="admin-stack">
-                    <div class="page-preview-box page-editor-aside-box">
-                        <p class="eyebrow">Публикация</p>
-                        <p class="page-preview-box__value">{{ publicUrl }}</p>
-                        <p class="muted">Создал: {{ creatorLabel }}</p>
+            <div class="page-editor-layout__aside">
+                <AdminCard>
+                    <section class="page-editor-section page-editor-aside-section">
+                        <div class="page-editor-section__header">
+                            <div>
+                                <h2>Публикация</h2>
+                                <p class="muted">
+                                    Статус, видимость, дата и место страницы в
+                                    структуре.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="page-preview-box page-editor-aside-box">
+                            <p class="eyebrow">Страница</p>
+                            <p class="page-preview-box__value">
+                                {{ form.title || "Без названия" }}
+                            </p>
+                            <p class="muted">Создал: {{ creatorLabel }}</p>
+                        </div>
 
                         <label class="admin-form-label">
                             <span>Статус публикации</span>
                             <select v-model="form.status" class="admin-select">
                                 <option value="draft">Черновик</option>
-                                <option value="pending_review">
-                                    На проверке
-                                </option>
+                                <option value="pending_review">На проверке</option>
                                 <option value="scheduled">Запланирована</option>
                                 <option value="published">Опубликована</option>
                                 <option value="archived">Архив</option>
                             </select>
-                            <small
-                                v-if="validationErrors.status"
-                                class="error-text"
-                                >{{ validationErrors.status[0] }}</small
-                            >
+                            <small v-if="validationErrors.status" class="error-text">
+                                {{ validationErrors.status[0] }}
+                            </small>
                         </label>
 
                         <label class="admin-form-label">
                             <span>Видимость</span>
-                            <select
-                                v-model="form.visibility"
-                                class="admin-select"
-                            >
+                            <select v-model="form.visibility" class="admin-select">
                                 <option value="public">Публичная</option>
                                 <option value="private">Скрытая</option>
                             </select>
                             <small
                                 v-if="validationErrors.visibility"
                                 class="error-text"
-                                >{{ validationErrors.visibility[0] }}</small
                             >
+                                {{ validationErrors.visibility[0] }}
+                            </small>
                         </label>
 
                         <label class="admin-form-label">
@@ -849,16 +892,35 @@ onBeforeUnmount(() => {
                             <small
                                 v-if="validationErrors.published_at"
                                 class="error-text"
-                                >{{ validationErrors.published_at[0] }}</small
                             >
+                                {{ validationErrors.published_at[0] }}
+                            </small>
+                        </label>
+
+                        <label class="admin-form-label">
+                            <span>Родительская страница</span>
+                            <select v-model="form.parent_id" class="admin-select">
+                                <option value="">Без родителя</option>
+                                <option
+                                    v-for="page in availableParents"
+                                    :key="page.id"
+                                    :value="page.id"
+                                >
+                                    {{ page.title }}
+                                    ({{ page.is_home ? "/" : `/${page.path || page.slug}` }})
+                                </option>
+                            </select>
+                            <small
+                                v-if="validationErrors.parent_id"
+                                class="error-text"
+                            >
+                                {{ validationErrors.parent_id[0] }}
+                            </small>
                         </label>
 
                         <label class="admin-form-label">
                             <span>Шаблон</span>
-                            <select
-                                v-model="form.template"
-                                class="admin-select"
-                            >
+                            <select v-model="form.template" class="admin-select">
                                 <option
                                     v-for="option in templateOptions"
                                     :key="option.value"
@@ -867,15 +929,210 @@ onBeforeUnmount(() => {
                                     {{ option.label }}
                                 </option>
                             </select>
-                            <small
-                                v-if="validationErrors.template"
-                                class="error-text"
-                                >{{ validationErrors.template[0] }}</small
-                            >
+                            <small v-if="validationErrors.template" class="error-text">
+                                {{ validationErrors.template[0] }}
+                            </small>
                         </label>
-                    </div>
-                </div>
-            </AdminCard>
-        </div>
+                    </section>
+                </AdminCard>
+
+                <AdminCard>
+                    <section class="page-editor-section page-editor-aside-section">
+                        <div class="page-editor-section__header">
+                            <div>
+                                <h2>SEO и обложка</h2>
+                                <p class="muted">
+                                    Поисковый сниппет и визуальная обложка собраны в
+                                    одном боковом блоке.
+                                </p>
+                            </div>
+                        </div>
+
+                        <label class="admin-form-label">
+                            <span>SEO заголовок</span>
+                            <input
+                                v-model="form.meta_title"
+                                class="admin-input"
+                                type="text"
+                                placeholder="SEO заголовок страницы"
+                            />
+                        </label>
+
+                        <label class="admin-form-label">
+                            <span>SEO описание</span>
+                            <textarea
+                                v-model="form.meta_description"
+                                class="admin-textarea"
+                                rows="4"
+                                placeholder="SEO описание страницы"
+                            ></textarea>
+                        </label>
+
+                        <label class="admin-form-label page-editor-checkbox-label">
+                            <span class="page-editor-checkbox-text">
+                                <input v-model="form.seo_noindex" type="checkbox" />
+                                Не индексировать страницу
+                            </span>
+                            <small class="muted">
+                                Страница получит meta robots noindex и автоматически
+                                выпадет из sitemap.
+                            </small>
+                        </label>
+
+                        <label class="admin-form-label page-editor-checkbox-label">
+                            <span class="page-editor-checkbox-text">
+                                <input v-model="form.seo_nofollow" type="checkbox" />
+                                Не передавать follow по ссылкам страницы
+                            </span>
+                            <small class="muted">
+                                Переопределяет только follow-часть robots для текущей
+                                страницы.
+                            </small>
+                        </label>
+
+                        <div class="page-featured-media">
+                            <span>Обложка страницы</span>
+                            <MediaPickerField
+                                v-model="form.featured_media_id"
+                                title="Выбрать обложку страницы"
+                                return-type="id"
+                                :allow-upload="true"
+                            />
+                        </div>
+                    </section>
+                </AdminCard>
+            </div>
+        </form>
     </AdminPage>
 </template>
+
+<style scoped>
+.page-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.9fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.page-editor-layout__main,
+.page-editor-layout__aside {
+    display: grid;
+    gap: 1rem;
+}
+
+.page-editor-section {
+    display: grid;
+    gap: 1rem;
+}
+
+.page-editor-section__header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.page-editor-section__header h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.page-editor-section__header p {
+    margin: 0.25rem 0 0;
+}
+
+.page-identity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.page-editor-aside-section {
+    display: grid;
+    gap: 1rem;
+}
+
+.page-editor-footer {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.page-featured-media {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.page-featured-media > span {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.page-preview-box__value {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.page-editor-checkbox-label {
+    gap: 0.45rem;
+}
+
+.page-editor-checkbox-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 600;
+}
+
+.additional-fields-group {
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 20px;
+    background: rgba(248, 250, 252, 0.9);
+}
+
+.additional-fields-group + .additional-fields-group {
+    margin-top: 0.9rem;
+}
+
+.additional-fields-group__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.additional-fields-group__summary::-webkit-details-marker {
+    display: none;
+}
+
+.additional-fields-group__body {
+    padding: 0 1.1rem 1.1rem;
+}
+
+@media (max-width: 1080px) {
+    .page-editor-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .page-identity-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .page-identity-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .page-editor-section__header {
+        flex-direction: column;
+    }
+}
+</style>

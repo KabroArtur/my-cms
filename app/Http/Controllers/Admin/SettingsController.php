@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Security\Services\AdminPathManager;
 use App\Core\Security\Services\SecurityRuntimeSettings;
 use App\Core\Settings\Services\SettingsManager;
@@ -21,7 +22,22 @@ class SettingsController extends Controller
         'date_format',
         'time_format',
         'home_page_id',
+        'home_page_ids',
         'site_theme',
+        'site_default_featured_media_id',
+        'seo_allow_indexing',
+        'seo_allow_following',
+        'seo_sitemap_enabled',
+        'seo_sitemap_change_frequency',
+        'seo_canonical_scheme',
+        'seo_canonical_www_mode',
+        'seo_trailing_slash',
+        'seo_open_graph_enabled',
+        'seo_social_networks',
+        'seo_hreflang_enabled',
+        'seo_favicon_enabled',
+        'seo_sitemap_excluded_paths',
+        'seo_robots_custom_rules',
     ];
 
     protected const APPEARANCE_SETTING_KEYS = [
@@ -72,6 +88,7 @@ class SettingsController extends Controller
     ];
 
     public function __construct(
+        protected LanguageManager $languages,
         protected SettingsManager $settings,
         protected CmsCacheService $cache,
         protected AdminPathManager $adminPath,
@@ -126,6 +143,7 @@ class SettingsController extends Controller
         return response()->json([
             'data' => array_merge($payload, [
                 'cache' => $this->cache->stats(),
+                'languages' => \App\Http\Resources\Admin\LanguageResource::collection($this->languages->all())->resolve(),
                 'admin_path' => $adminPathPayload,
                 'permissions' => [
                     'settings.general.manage' => $canManageGeneral,
@@ -225,6 +243,7 @@ class SettingsController extends Controller
         return response()->json([
             'data' => array_merge($payload, [
                 'cache' => $this->cache->stats(),
+                'languages' => \App\Http\Resources\Admin\LanguageResource::collection($this->languages->all())->resolve(),
                 'admin_path' => $adminPathPayload,
                 'permissions' => [
                     'settings.general.manage' => $canManageGeneral,

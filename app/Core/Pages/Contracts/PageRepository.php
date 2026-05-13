@@ -16,19 +16,19 @@ interface PageRepository
     /**
      * Репозиторий возвращает список страниц для административного интерфейса.
      */
-    public function paginate(int $perPage = 15): LengthAwarePaginator;
+    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator;
 
     /**
      * Репозиторий возвращает корзину страниц для административного интерфейса.
      */
-    public function paginateTrashed(int $perPage = 15): LengthAwarePaginator;
+    public function paginateTrashed(int $perPage = 15, array $filters = []): LengthAwarePaginator;
 
     /**
      * Репозиторий возвращает все страницы для построения дерева.
      *
      * @return Collection<int, Page>
      */
-    public function all(): Collection;
+    public function all(array $filters = []): Collection;
 
     /**
      * Репозиторий ищет страницу по идентификатору.
@@ -43,24 +43,24 @@ interface PageRepository
     /**
      * Репозиторий ищет страницу по slug.
      */
-    public function findBySlug(string $slug): ?Page;
+    public function findBySlug(string $slug, ?int $languageId = null): ?Page;
 
     /**
      * Репозиторий ищет домашнюю страницу публичного сайта.
      */
-    public function findHomePage(): ?Page;
+    public function findHomePage(?int $languageId = null): ?Page;
 
     /**
      * Репозиторий ищет публичную опубликованную страницу по slug.
      */
-    public function findPublicBySlug(string $slug): ?Page;
+    public function findPublicBySlug(string $slug, ?int $languageId = null): ?Page;
 
     /**
      * Репозиторий возвращает публичные страницы для навигации и тем сайта.
      *
      * @return Collection<int, Page>
      */
-    public function publicNavigation(): Collection;
+    public function publicNavigation(?int $languageId = null): Collection;
 
     /**
      * Репозиторий создает новую страницу.

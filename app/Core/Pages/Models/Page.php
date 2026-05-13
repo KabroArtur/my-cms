@@ -2,6 +2,8 @@
 
 namespace App\Core\Pages\Models;
 
+use App\Core\Languages\Services\LanguageManager;
+use App\Core\Languages\Models\Language;
 use App\Core\Media\Models\MediaFile;
 use App\Core\Pages\Enums\PageStatus;
 use App\Core\Pages\Enums\PageVisibility;
@@ -19,6 +21,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 #[Fillable([
     'created_by',
+    'language_id',
+    'translation_group_id',
     'title',
     'slug',
     'status',
@@ -28,6 +32,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'template',
     'meta_title',
     'meta_description',
+    'seo_noindex',
+    'seo_nofollow',
     'featured_media_id',
     'parent_id',
     'sort_order',
@@ -37,6 +43,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Page extends Model
 {
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $page): void {
+            $languages = app(LanguageManager::class);
+
+            if ($page->language_id === null) {
+                $page->language_id = $languages->defaultId();
+            }
+
+            if ($page->translation_group_id === null || trim((string) $page->translation_group_id) === '') {
+                $page->translation_group_id = $languages->translationGroupId();
+            }
+        });
+    }
 
     /**
      * Аксессор собирает полный публичный путь страницы из цепочки родителей.
@@ -72,6 +93,8 @@ class Page extends Model
             'status' => PageStatus::class,
             'visibility' => PageVisibility::class,
             'is_home' => 'boolean',
+            'seo_noindex' => 'boolean',
+            'seo_nofollow' => 'boolean',
             'published_at' => 'datetime',
         ];
     }
@@ -84,6 +107,11 @@ class Page extends Model
         return $this->belongsTo(self::class, 'parent_id');
     }
 
+    public function language(): BelongsTo
+    {
+        return $this->belongsTo(Language::class, 'language_id');
+    }
+
     /**
      * Страница может содержать дочерние страницы.
      */
@@ -92,6 +120,12 @@ class Page extends Model
         return $this->hasMany(self::class, 'parent_id')
             ->orderBy('sort_order')
             ->orderBy('title');
+    }
+
+    public function translations(): HasMany
+    {
+        return $this->hasMany(self::class, 'translation_group_id', 'translation_group_id')
+            ->whereKeyNot($this->id);
     }
 
     /**

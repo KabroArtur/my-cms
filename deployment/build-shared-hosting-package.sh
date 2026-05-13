@@ -151,6 +151,10 @@ If Node.js or javascript-obfuscator is unavailable on the server, the CMS falls 
 MD
 }
 
+write_installer_copy() {
+    cp "$ROOT_DIR/deployment/install.php" "$BUILD_DIR/install.php"
+}
+
 require_file "$ROOT_DIR/vendor/autoload.php"
 require_file "$ROOT_DIR/public/build/manifest.json"
 require_file "$ROOT_DIR/public/.htaccess"
@@ -185,6 +189,7 @@ reset_runtime_dirs
 write_root_index
 write_env_template
 write_deploy_note
+write_installer_copy
 
 (
     cd "$PACKAGE_DIR"
@@ -193,3 +198,4 @@ write_deploy_note
 
 echo "Package directory: $PACKAGE_DIR"
 echo "Archive: $ZIP_PATH"
+echo "Installer: $BUILD_DIR/install.php"

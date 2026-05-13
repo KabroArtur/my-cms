@@ -6,7 +6,7 @@ $publicDiskRoot = $sharedHostingFlatPublicDisk
     ? base_path('storage')
     : storage_path('app/public');
 
-$publicDiskUrl = rtrim(env('APP_URL', 'http://localhost'), '/').'/storage';
+$publicDiskUrl = env('FILESYSTEM_PUBLIC_URL', '/storage');
 
 return [
 

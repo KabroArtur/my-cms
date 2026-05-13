@@ -80,6 +80,54 @@ class MediaVariantManager
         return $this->processMediaFile($mediaFile, $purgeExisting)['variants'];
     }
 
+    public function ensureNamedVariants(MediaFile $mediaFile, array $definitions, bool $overwriteExisting = false): array
+    {
+        $variants = is_array($mediaFile->variants) ? $mediaFile->variants : [];
+
+        if ($definitions === [] || ! Storage::disk($mediaFile->disk)->exists($mediaFile->path)) {
+            return $variants;
+        }
+
+        $sourcePath = Storage::disk($mediaFile->disk)->path($mediaFile->path);
+        $metadata = $this->inspectSource(
+            sourcePath: $sourcePath,
+            providedMime: $mediaFile->mime_type,
+            filename: $mediaFile->filename,
+            providedSize: $mediaFile->size,
+        );
+
+        foreach ($definitions as $name => $definition) {
+            $currentPath = Arr::get($variants, $name.'.path');
+
+            if (! $overwriteExisting && is_string($currentPath) && $currentPath !== '' && Storage::disk($mediaFile->disk)->exists($currentPath)) {
+                continue;
+            }
+
+            try {
+                $variant = $this->generateProcessedAsset(
+                    sourcePath: $sourcePath,
+                    disk: $mediaFile->disk,
+                    directory: $mediaFile->directory,
+                    filename: $mediaFile->filename,
+                    variantName: (string) $name,
+                    metadata: $metadata,
+                    width: is_numeric(Arr::get($definition, 'width')) ? (int) Arr::get($definition, 'width') : null,
+                    height: is_numeric(Arr::get($definition, 'height')) ? (int) Arr::get($definition, 'height') : null,
+                    mode: (string) Arr::get($definition, 'mode', 'crop'),
+                    format: $this->normalizeOutputFormat((string) Arr::get($definition, 'format', 'png')),
+                );
+
+                if ($variant !== null) {
+                    $variants[(string) $name] = $variant;
+                }
+            } catch (RuntimeException) {
+                continue;
+            }
+        }
+
+        return $variants;
+    }
+
     public function processMediaFile(MediaFile $mediaFile, bool $purgeExisting = true): array
     {
         if ($purgeExisting) {

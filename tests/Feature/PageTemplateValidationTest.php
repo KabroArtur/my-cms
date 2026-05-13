@@ -63,7 +63,11 @@ it('accepts discovered template on page update', function (): void {
             'status' => 'published',
             'visibility' => 'public',
             'template' => 'home',
+            'seo_noindex' => true,
+            'seo_nofollow' => true,
         ])
         ->assertOk()
-        ->assertJsonPath('data.template', 'home');
+        ->assertJsonPath('data.template', 'home')
+        ->assertJsonPath('data.seo_noindex', true)
+        ->assertJsonPath('data.seo_nofollow', true);
 });

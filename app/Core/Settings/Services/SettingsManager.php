@@ -2,7 +2,9 @@
 
 namespace App\Core\Settings\Services;
 
+use App\Core\Languages\Services\LanguageManager;
 use App\Core\Media\Models\MediaFile;
+use App\Core\Media\Services\MediaVariantManager;
 use App\Core\Pages\Models\Page;
 use App\Core\Settings\Models\Setting;
 use App\Core\Support\Services\CmsCacheService;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\File;
 class SettingsManager
 {
     public function __construct(
+        protected LanguageManager $languages,
+        protected MediaVariantManager $mediaVariants,
         protected CmsCacheService $cache,
     ) {
     }
@@ -86,6 +90,19 @@ class SettingsManager
         $settings['cache_response_enabled'] = $this->resolveBool($settings['cache_response_enabled'] ?? $legacyCacheEnabled, $legacyCacheEnabled);
         $settings['cache_enabled'] = $settings['cache_data_enabled'] && $settings['cache_response_enabled'];
         $settings['cache_response_ttl'] = $this->resolveCacheTtl($settings['cache_response_ttl'] ?? 0);
+        $settings['seo_allow_indexing'] = $this->resolveBool($settings['seo_allow_indexing'] ?? true, true);
+        $settings['seo_allow_following'] = $this->resolveBool($settings['seo_allow_following'] ?? true, true);
+        $settings['seo_sitemap_enabled'] = $this->resolveBool($settings['seo_sitemap_enabled'] ?? true, true);
+        $settings['seo_sitemap_change_frequency'] = $this->resolveSeoChangeFrequency((string) ($settings['seo_sitemap_change_frequency'] ?? 'weekly'));
+        $settings['seo_canonical_scheme'] = $this->resolveSeoCanonicalScheme((string) ($settings['seo_canonical_scheme'] ?? 'https'));
+        $settings['seo_canonical_www_mode'] = $this->resolveSeoCanonicalWwwMode((string) ($settings['seo_canonical_www_mode'] ?? 'preserve'));
+        $settings['seo_trailing_slash'] = $this->resolveBool($settings['seo_trailing_slash'] ?? false, false);
+        $settings['seo_open_graph_enabled'] = $this->resolveBool($settings['seo_open_graph_enabled'] ?? true, true);
+        $settings['seo_social_networks'] = $this->normalizeSocialNetworks($settings['seo_social_networks'] ?? config('settings.defaults.seo_social_networks', []));
+        $settings['seo_hreflang_enabled'] = $this->resolveBool($settings['seo_hreflang_enabled'] ?? true, true);
+        $settings['seo_favicon_enabled'] = $this->resolveBool($settings['seo_favicon_enabled'] ?? true, true);
+        $settings['seo_sitemap_excluded_paths'] = $this->nullableString($settings['seo_sitemap_excluded_paths'] ?? null) ?? '';
+        $settings['seo_robots_custom_rules'] = $this->nullableString($settings['seo_robots_custom_rules'] ?? null) ?? '';
         $settings['security_rate_limit_enabled'] = $this->resolveBool($settings['security_rate_limit_enabled'] ?? true, true);
         $settings['security_rate_limit_per_minute'] = $this->resolveBoundedInt($settings['security_rate_limit_per_minute'] ?? 180, 30, 2000, 180);
         $settings['security_rate_limit_burst_per_10s'] = $this->resolveBoundedInt($settings['security_rate_limit_burst_per_10s'] ?? 45, 10, 1000, 45);
@@ -98,9 +115,18 @@ class SettingsManager
 
         $homePageId = Arr::get($settings, 'home_page_id');
         $settings['home_page_id'] = is_numeric($homePageId) ? (int) $homePageId : null;
+        $settings['home_page_ids'] = $this->normalizeHomePageIds($settings['home_page_ids'] ?? []);
+
+        $defaultLanguageId = $this->languages->defaultId();
+
+        if ($defaultLanguageId !== null) {
+            $settings['home_page_ids'][(string) $defaultLanguageId] = $settings['home_page_id'];
+        }
 
         $faviconId = Arr::get($settings, 'favicon_media_id');
         $settings['favicon_media_id'] = is_numeric($faviconId) ? (int) $faviconId : null;
+        $siteDefaultFeaturedMediaId = Arr::get($settings, 'site_default_featured_media_id');
+        $settings['site_default_featured_media_id'] = is_numeric($siteDefaultFeaturedMediaId) ? (int) $siteDefaultFeaturedMediaId : null;
 
         $this->allCache = $settings;
 
@@ -117,9 +143,11 @@ class SettingsManager
         $settings = array_merge($current, [
             'site_name' => $this->nullableString($attributes['site_name'] ?? null) ?? (string) config('settings.defaults.site_name', 'My CMS'),
             'favicon_media_id' => $this->nullableInt($attributes['favicon_media_id'] ?? null),
+            'site_default_featured_media_id' => $this->nullableInt($attributes['site_default_featured_media_id'] ?? null),
             'date_format' => $this->resolveDateFormat((string) ($attributes['date_format'] ?? config('settings.defaults.date_format', 'd.m.Y'))),
             'time_format' => $this->resolveTimeFormat((string) ($attributes['time_format'] ?? config('settings.defaults.time_format', 'H:i'))),
             'home_page_id' => $this->nullableInt($attributes['home_page_id'] ?? null),
+            'home_page_ids' => $this->normalizeHomePageIds($attributes['home_page_ids'] ?? $current['home_page_ids'] ?? []),
             'site_theme' => $this->resolveTheme((string) ($attributes['site_theme'] ?? 'default')),
             'site_featured_media_variant' => $this->resolveMediaVariant((string) ($attributes['site_featured_media_variant'] ?? 'original')),
             'media_default_insert_variant' => $this->resolveMediaVariant((string) ($attributes['media_default_insert_variant'] ?? 'original')),
@@ -147,6 +175,19 @@ class SettingsManager
             'cache_data_enabled' => $this->resolveBool($attributes['cache_data_enabled'] ?? $legacyCacheEnabled ?? $current['cache_data_enabled'] ?? $current['cache_enabled'] ?? true, true),
             'cache_response_enabled' => $this->resolveBool($attributes['cache_response_enabled'] ?? $legacyCacheEnabled ?? $current['cache_response_enabled'] ?? $current['cache_enabled'] ?? true, true),
             'cache_response_ttl' => $this->resolveCacheTtl($attributes['cache_response_ttl'] ?? $current['cache_response_ttl'] ?? 0),
+            'seo_allow_indexing' => $this->resolveBool($attributes['seo_allow_indexing'] ?? $current['seo_allow_indexing'] ?? true, true),
+            'seo_allow_following' => $this->resolveBool($attributes['seo_allow_following'] ?? $current['seo_allow_following'] ?? true, true),
+            'seo_sitemap_enabled' => $this->resolveBool($attributes['seo_sitemap_enabled'] ?? $current['seo_sitemap_enabled'] ?? true, true),
+            'seo_sitemap_change_frequency' => $this->resolveSeoChangeFrequency((string) ($attributes['seo_sitemap_change_frequency'] ?? $current['seo_sitemap_change_frequency'] ?? 'weekly')),
+            'seo_canonical_scheme' => $this->resolveSeoCanonicalScheme((string) ($attributes['seo_canonical_scheme'] ?? $current['seo_canonical_scheme'] ?? 'https')),
+            'seo_canonical_www_mode' => $this->resolveSeoCanonicalWwwMode((string) ($attributes['seo_canonical_www_mode'] ?? $current['seo_canonical_www_mode'] ?? 'preserve')),
+            'seo_trailing_slash' => $this->resolveBool($attributes['seo_trailing_slash'] ?? $current['seo_trailing_slash'] ?? false, false),
+            'seo_open_graph_enabled' => $this->resolveBool($attributes['seo_open_graph_enabled'] ?? $current['seo_open_graph_enabled'] ?? true, true),
+            'seo_social_networks' => $this->normalizeSocialNetworks($attributes['seo_social_networks'] ?? $current['seo_social_networks'] ?? config('settings.defaults.seo_social_networks', [])),
+            'seo_hreflang_enabled' => $this->resolveBool($attributes['seo_hreflang_enabled'] ?? $current['seo_hreflang_enabled'] ?? true, true),
+            'seo_favicon_enabled' => $this->resolveBool($attributes['seo_favicon_enabled'] ?? $current['seo_favicon_enabled'] ?? true, true),
+            'seo_sitemap_excluded_paths' => $this->nullableString($attributes['seo_sitemap_excluded_paths'] ?? null) ?? ($current['seo_sitemap_excluded_paths'] ?? ''),
+            'seo_robots_custom_rules' => $this->nullableString($attributes['seo_robots_custom_rules'] ?? null) ?? ($current['seo_robots_custom_rules'] ?? ''),
             'security_rate_limit_enabled' => $this->resolveBool($attributes['security_rate_limit_enabled'] ?? $current['security_rate_limit_enabled'] ?? true, true),
             'security_rate_limit_per_minute' => $this->resolveBoundedInt($attributes['security_rate_limit_per_minute'] ?? $current['security_rate_limit_per_minute'] ?? 180, 30, 2000, 180),
             'security_rate_limit_burst_per_10s' => $this->resolveBoundedInt($attributes['security_rate_limit_burst_per_10s'] ?? $current['security_rate_limit_burst_per_10s'] ?? 45, 10, 1000, 45),
@@ -180,11 +221,18 @@ class SettingsManager
 
         $settings['cache_enabled'] = $settings['cache_data_enabled'] && $settings['cache_response_enabled'];
 
+        $defaultLanguageId = $this->languages->defaultId();
+
+        if ($defaultLanguageId !== null) {
+            $settings['home_page_ids'][(string) $defaultLanguageId] = $settings['home_page_id'];
+        }
+
         foreach ($settings as $key => $value) {
             $this->storeValue($key, $value);
         }
 
-        $this->syncHomePage($settings['home_page_id']);
+        $this->syncFaviconAssets($settings['favicon_media_id']);
+        $this->syncHomePages($settings['home_page_ids']);
 
         $this->flushRuntimeCache();
         $this->cache->invalidateAll(reason: 'settings-updated');
@@ -192,21 +240,63 @@ class SettingsManager
         return $this->all();
     }
 
-    public function syncHomePage(?int $pageId): void
+    public function syncHomePages(array $pageIdsByLanguage): void
     {
-        Page::query()->where('is_home', true)->update(['is_home' => false]);
+        $normalized = $this->normalizeHomePageIds($pageIdsByLanguage);
 
-        if ($pageId !== null) {
-            Page::query()->whereKey($pageId)->update(['is_home' => true]);
+        foreach ($normalized as $languageId => $pageId) {
+            Page::query()
+                ->where('is_home', true)
+                ->where('language_id', (int) $languageId)
+                ->update(['is_home' => false]);
+
+            if ($pageId !== null) {
+                Page::query()
+                    ->whereKey($pageId)
+                    ->where('language_id', (int) $languageId)
+                    ->update(['is_home' => true]);
+            }
         }
 
-        $this->storeValue('home_page_id', $pageId);
+        $defaultLanguageId = $this->languages->defaultId();
+        $this->storeValue('home_page_ids', $normalized);
+        $this->storeValue('home_page_id', $defaultLanguageId !== null ? ($normalized[(string) $defaultLanguageId] ?? null) : null);
         $this->flushRuntimeCache();
     }
 
-    public function rememberHomePage(?int $pageId): void
+    public function syncHomePage(?int $pageId): void
     {
-        $this->storeValue('home_page_id', $pageId);
+        $defaultLanguageId = $this->languages->defaultId();
+
+        if ($defaultLanguageId === null) {
+            $this->storeValue('home_page_id', $pageId);
+            $this->flushRuntimeCache();
+
+            return;
+        }
+
+        $homePageIds = $this->all()['home_page_ids'] ?? [];
+        $homePageIds[(string) $defaultLanguageId] = $pageId;
+
+        $this->syncHomePages($homePageIds);
+    }
+
+    public function rememberHomePage(?int $pageId, ?int $languageId = null): void
+    {
+        $homePageIds = $this->all()['home_page_ids'] ?? [];
+        $targetLanguageId = $languageId ?? $this->languages->defaultId();
+
+        if ($targetLanguageId !== null) {
+            $homePageIds[(string) $targetLanguageId] = $pageId;
+            $this->storeValue('home_page_ids', $this->normalizeHomePageIds($homePageIds));
+
+            if ((int) $targetLanguageId === (int) $this->languages->defaultId()) {
+                $this->storeValue('home_page_id', $pageId);
+            }
+        } else {
+            $this->storeValue('home_page_id', $pageId);
+        }
+
         $this->flushRuntimeCache();
     }
 
@@ -252,13 +342,77 @@ class SettingsManager
         $favicon = $settings['favicon_media_id'] !== null
             ? MediaFile::query()->find($settings['favicon_media_id'])
             : null;
+        $siteDefaultFeaturedMedia = $settings['site_default_featured_media_id'] !== null
+            ? MediaFile::query()->find($settings['site_default_featured_media_id'])
+            : null;
 
         $this->publicPayloadCache = array_merge($settings, [
             'favicon_url' => $favicon?->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $favicon?->url(),
+            'favicon_links' => $this->resolveFaviconLinks($favicon),
+            'site_default_featured_media' => $this->serializeMediaOption($siteDefaultFeaturedMedia),
             'admin_palette' => $this->resolveActivePalette($settings),
         ]);
 
         return $this->publicPayloadCache;
+    }
+
+    public function canonicalBaseUrl(?string $requestHost = null): string
+    {
+        $settings = $this->all();
+        $configuredUrl = (string) config('app.url', '');
+        $configuredScheme = parse_url($configuredUrl, PHP_URL_SCHEME);
+        $configuredHost = parse_url($configuredUrl, PHP_URL_HOST);
+        $configuredPort = parse_url($configuredUrl, PHP_URL_PORT);
+        $configuredPath = trim((string) parse_url($configuredUrl, PHP_URL_PATH), '/');
+        $scheme = (string) ($settings['seo_canonical_scheme'] ?? (is_string($configuredScheme) ? $configuredScheme : 'https'));
+        $host = is_string($configuredHost) && $configuredHost !== ''
+            ? $configuredHost
+            : ($requestHost !== null && $requestHost !== '' ? $requestHost : 'localhost');
+
+        $host = $this->applySeoCanonicalWwwMode($host, (string) ($settings['seo_canonical_www_mode'] ?? 'preserve'));
+        $authority = $host;
+        $defaultPort = $scheme === 'https' ? 443 : 80;
+
+        if (is_numeric($configuredPort) && (int) $configuredPort !== $defaultPort) {
+            $authority .= ':'.(int) $configuredPort;
+        }
+
+        $base = $scheme.'://'.$authority;
+
+        return $configuredPath !== '' ? $base.'/'.trim($configuredPath, '/') : $base;
+    }
+
+    public function canonicalUrl(string $path = '/', ?string $requestHost = null, bool $isHome = false): string
+    {
+        $base = rtrim($this->canonicalBaseUrl($requestHost), '/');
+        $normalizedPath = ltrim($this->normalizePublicPath($path, $isHome), '/');
+
+        if ($normalizedPath === '') {
+            return $base.'/';
+        }
+
+        return $base.'/'.$normalizedPath;
+    }
+
+    public function normalizePublicPath(string $path = '/', bool $isHome = false): string
+    {
+        $trimmed = trim($path);
+
+        if ($trimmed === '' || $trimmed === '/') {
+            return '/';
+        }
+
+        $normalized = '/'.trim($trimmed, '/');
+
+        if ($isHome) {
+            return rtrim($normalized, '/').'/';
+        }
+
+        if (! ($this->all()['seo_trailing_slash'] ?? false)) {
+            return $normalized;
+        }
+
+        return rtrim($normalized, '/').'/';
     }
 
     public function adminPayload(): array
@@ -266,6 +420,9 @@ class SettingsManager
         $settings = $this->publicPayload();
         $currentFavicon = $settings['favicon_media_id'] !== null
             ? MediaFile::query()->find($settings['favicon_media_id'])
+            : null;
+        $currentSiteDefaultFeaturedMedia = $settings['site_default_featured_media_id'] !== null
+            ? MediaFile::query()->find($settings['site_default_featured_media_id'])
             : null;
 
         return [
@@ -276,6 +433,7 @@ class SettingsManager
                 'preview_url' => $currentFavicon->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $currentFavicon->url(),
                 'url' => $currentFavicon->url(),
             ] : null,
+            'current_site_default_featured_media' => $this->serializeMediaOption($currentSiteDefaultFeaturedMedia),
             'options' => [
                 'date_formats' => $this->dateFormatOptions()->values()->all(),
                 'time_formats' => $this->timeFormatOptions()->values()->all(),
@@ -312,32 +470,169 @@ class SettingsManager
                     ['value' => 'balanced', 'label' => 'Balanced'],
                     ['value' => 'aggressive', 'label' => 'Aggressive'],
                 ],
+                'seo_sitemap_change_frequencies' => [
+                    ['value' => 'hourly', 'label' => 'Каждый час'],
+                    ['value' => 'daily', 'label' => 'Ежедневно'],
+                    ['value' => 'weekly', 'label' => 'Еженедельно'],
+                    ['value' => 'monthly', 'label' => 'Ежемесячно'],
+                    ['value' => 'yearly', 'label' => 'Ежегодно'],
+                ],
+                'seo_canonical_schemes' => [
+                    ['value' => 'https', 'label' => 'HTTPS'],
+                    ['value' => 'http', 'label' => 'HTTP'],
+                ],
+                'seo_canonical_www_modes' => [
+                    ['value' => 'preserve', 'label' => 'Как в APP_URL'],
+                    ['value' => 'with_www', 'label' => 'Принудительно с www'],
+                    ['value' => 'without_www', 'label' => 'Принудительно без www'],
+                ],
+                'seo_social_networks' => [
+                    ['value' => 'facebook', 'label' => 'Facebook'],
+                    ['value' => 'x', 'label' => 'X / Twitter'],
+                    ['value' => 'linkedin', 'label' => 'LinkedIn'],
+                    ['value' => 'telegram', 'label' => 'Telegram'],
+                    ['value' => 'whatsapp', 'label' => 'WhatsApp'],
+                ],
                 'home_pages' => Page::query()
+                    ->with('language')
                     ->orderBy('title')
-                    ->get(['id', 'title', 'slug', 'is_home'])
+                    ->get(['id', 'title', 'slug', 'is_home', 'language_id'])
                     ->map(fn (Page $page): array => [
                         'value' => $page->id,
                         'label' => $page->title,
                         'path' => $page->path,
+                        'public_url' => $this->languages->pageRelativeUrl($page),
+                        'language_id' => $page->language_id,
+                        'language_code' => $page->language?->code,
+                        'language_name' => $page->language?->native_name,
                         'is_home' => (bool) $page->is_home,
                     ])
                     ->values()
                     ->all(),
+                'languages' => $this->languages->all()->map(fn ($language): array => [
+                    'value' => $language->id,
+                    'code' => $language->code,
+                    'locale' => $language->locale,
+                    'label' => $language->native_name,
+                    'name' => $language->name,
+                    'direction' => $language->direction,
+                    'is_default' => (bool) $language->is_default,
+                    'is_active' => (bool) $language->is_active,
+                ])->values()->all(),
+                'language_directions' => [
+                    ['value' => 'ltr', 'label' => __('languages.directions.ltr')],
+                    ['value' => 'rtl', 'label' => __('languages.directions.rtl')],
+                ],
                 'favicon_files' => MediaFile::query()
                     ->latest('id')
                     ->limit(100)
                     ->get()
-                    ->map(fn (MediaFile $file): array => [
-                        'value' => $file->id,
-                        'label' => $file->title ?: $file->original_name,
-                        'preview_url' => $file->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $file->url(),
-                        'url' => $file->url(),
-                    ])
+                    ->map(fn (MediaFile $file): array => $this->serializeMediaOption($file) ?? [])
+                    ->filter(fn (array $file): bool => $file !== [])
+                    ->values()
+                    ->all(),
+                'site_featured_media_files' => MediaFile::query()
+                    ->latest('id')
+                    ->limit(100)
+                    ->get()
+                    ->map(fn (MediaFile $file): array => $this->serializeMediaOption($file) ?? [])
+                    ->filter(fn (array $file): bool => $file !== [])
                     ->values()
                     ->all(),
             ],
         ];
     }
+
+    protected function syncFaviconAssets(?int $faviconMediaId): void
+    {
+        if ($faviconMediaId === null) {
+            return;
+        }
+
+        $favicon = MediaFile::query()->find($faviconMediaId);
+
+        if ($favicon === null) {
+            return;
+        }
+
+        $variants = $this->mediaVariants->ensureNamedVariants(
+            $favicon,
+            config('media.favicons.variants', []),
+        );
+
+        if ($variants !== ($favicon->variants ?? [])) {
+            $favicon->forceFill(['variants' => $variants])->save();
+        }
+    }
+
+    protected function resolveFaviconLinks(?MediaFile $favicon): array
+    {
+        if ($favicon === null) {
+            return [];
+        }
+
+        $links = [];
+        $definitions = config('media.favicons.variants', []);
+
+        foreach ($definitions as $variantName => $definition) {
+            $url = $favicon->variantUrl((string) $variantName) ?? $favicon->url();
+            $width = Arr::get($definition, 'width');
+            $height = Arr::get($definition, 'height');
+            $sizes = is_numeric($width) && is_numeric($height)
+                ? ((int) $width).'x'.((int) $height)
+                : null;
+            $rel = (string) Arr::get($definition, 'rel', $variantName === 'apple-touch-icon' ? 'apple-touch-icon' : 'icon');
+
+            $links[] = array_filter([
+                'rel' => $rel,
+                'href' => $url,
+                'type' => (string) Arr::get($definition, 'type', 'image/png'),
+                'sizes' => $sizes,
+            ], static fn (mixed $value): bool => $value !== null && $value !== '');
+        }
+
+        if ($links === []) {
+            $links[] = [
+                'rel' => 'icon',
+                'href' => $favicon->url(),
+                'type' => (string) ($favicon->mime_type ?: 'image/png'),
+            ];
+        }
+
+        return $links;
+    }
+
+    protected function serializeMediaOption(?MediaFile $file): ?array
+    {
+        if ($file === null) {
+            return null;
+        }
+
+        return [
+            'value' => $file->id,
+            'label' => $file->title ?: $file->original_name,
+            'preview_url' => $file->variantUrl((string) config('media.preview_variant', 'thumbnail')) ?? $file->url(),
+            'url' => $file->url(),
+        ];
+    }
+
+    protected function normalizeSocialNetworks(mixed $value): array
+    {
+        $allowed = ['facebook', 'x', 'linkedin', 'telegram', 'whatsapp'];
+
+        if (! is_array($value)) {
+            return config('settings.defaults.seo_social_networks', []);
+        }
+
+        return array_values(array_unique(array_values(array_filter(
+            array_map(
+                static fn (mixed $item): ?string => is_string($item) && in_array($item, $allowed, true) ? $item : null,
+                $value,
+            ),
+            static fn (?string $item): bool => $item !== null,
+        ))));
+    }
+
 
     protected function mediaVariantOptions(array $settings): array
     {
@@ -643,6 +938,59 @@ class SettingsManager
     protected function resolveTimeFormat(string $format): string
     {
         return $this->timeFormatOptions()->pluck('value')->contains($format) ? $format : 'H:i';
+    }
+
+    protected function resolveSeoChangeFrequency(string $frequency): string
+    {
+        return in_array($frequency, ['hourly', 'daily', 'weekly', 'monthly', 'yearly'], true) ? $frequency : 'weekly';
+    }
+
+    protected function resolveSeoCanonicalScheme(string $scheme): string
+    {
+        return in_array($scheme, ['https', 'http'], true) ? $scheme : 'https';
+    }
+
+    protected function resolveSeoCanonicalWwwMode(string $mode): string
+    {
+        return in_array($mode, ['preserve', 'with_www', 'without_www'], true) ? $mode : 'preserve';
+    }
+
+    protected function normalizeHomePageIds(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return collect($value)
+            ->mapWithKeys(function (mixed $pageId, mixed $languageId): array {
+                if (! is_numeric($languageId)) {
+                    return [];
+                }
+
+                $normalizedLanguageId = (string) (int) $languageId;
+
+                if ($pageId === null || $pageId === '' || $pageId === 'null') {
+                    return [$normalizedLanguageId => null];
+                }
+
+                return is_numeric($pageId)
+                    ? [$normalizedLanguageId => (int) $pageId]
+                    : [];
+            })
+            ->all();
+    }
+
+    protected function applySeoCanonicalWwwMode(string $host, string $mode): string
+    {
+        if ($host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP) !== false || ! str_contains($host, '.')) {
+            return $host;
+        }
+
+        return match ($mode) {
+            'with_www' => str_starts_with($host, 'www.') ? $host : 'www.'.$host,
+            'without_www' => str_starts_with($host, 'www.') ? substr($host, 4) : $host,
+            default => $host,
+        };
     }
 
     protected function resolveMediaVariant(string $variant): string

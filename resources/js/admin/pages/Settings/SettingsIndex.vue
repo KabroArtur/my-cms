@@ -7,7 +7,7 @@ import AdminButton from '../../components/ui/AdminButton.vue'
 import AdminCard from '../../components/ui/AdminCard.vue'
 import AdminPage from '../../components/ui/AdminPage.vue'
 import { useAdminNotifications } from '../../composables/useAdminNotifications'
-import { clearCmsCache, fetchSiteSettings, updateSiteSettings } from '../../api/settings'
+import { clearCmsCache, createLanguage, deleteLanguage, fetchSiteSettings, updateLanguage, updateSiteSettings } from '../../api/settings'
 import { rememberCmsSettings } from '../../composables/useCmsSettings'
 
 const loading = ref(true)
@@ -21,6 +21,10 @@ const canManageGeneral = ref(false)
 const canManageAppearance = ref(false)
 const canManageCache = ref(false)
 const canManageSecurity = ref(false)
+const canManageSeo = computed(() => canManageGeneral.value)
+const languages = ref([])
+const editingLanguageId = ref(null)
+const defaultLanguage = computed(() => languages.value.find((language) => language.is_default) ?? null)
 const options = reactive({
     date_formats: [],
     time_formats: [],
@@ -31,8 +35,13 @@ const options = reactive({
     admin_light_palettes: [],
     admin_dark_palettes: [],
     theme_asset_obfuscation_presets: [],
+    seo_sitemap_change_frequencies: [],
+    seo_canonical_schemes: [],
+    seo_canonical_www_modes: [],
+    seo_social_networks: [],
     home_pages: [],
     favicon_files: [],
+    site_featured_media_files: [],
 })
 
 const cacheStats = reactive({
@@ -41,12 +50,25 @@ const cacheStats = reactive({
     last_cleared_at: null,
 })
 
+const languageForm = reactive({
+    name: '',
+    native_name: '',
+    code: '',
+    locale: '',
+    direction: 'ltr',
+    is_default: false,
+    is_active: true,
+    sort_order: 0,
+})
+
 const form = reactive({
     site_name: 'My CMS',
     favicon_media_id: '',
+    site_default_featured_media_id: '',
     date_format: 'd.m.Y',
     time_format: 'H:i',
     home_page_id: '',
+    home_page_ids: {},
     site_theme: 'default',
     site_featured_media_variant: 'original',
     media_default_insert_variant: 'original',
@@ -73,6 +95,19 @@ const form = reactive({
     cache_data_enabled: true,
     cache_response_enabled: true,
     cache_response_ttl: 0,
+    seo_allow_indexing: true,
+    seo_allow_following: true,
+    seo_sitemap_enabled: true,
+    seo_sitemap_change_frequency: 'weekly',
+    seo_canonical_scheme: 'https',
+    seo_canonical_www_mode: 'preserve',
+    seo_trailing_slash: false,
+    seo_open_graph_enabled: true,
+    seo_social_networks: [],
+    seo_hreflang_enabled: true,
+    seo_favicon_enabled: true,
+    seo_sitemap_excluded_paths: '',
+    seo_robots_custom_rules: '',
     admin_entry_path: 'admin',
     security_rate_limit_enabled: true,
     security_rate_limit_per_minute: 180,
@@ -94,6 +129,10 @@ const adminEntryPreviewUrl = computed(() => {
 
     return `${origin}/${safe}`
 })
+
+const publicSiteOrigin = computed(() => typeof window !== 'undefined' ? window.location.origin : '')
+const robotsPreviewUrl = computed(() => `${publicSiteOrigin.value}/robots.txt`)
+const sitemapPreviewUrl = computed(() => `${publicSiteOrigin.value}/sitemap.xml`)
 
 const securityProfiles = [
     {
@@ -145,14 +184,70 @@ function applySecurityProfile(profile) {
     Object.assign(form, profile.values)
 }
 
+function resetLanguageForm() {
+    editingLanguageId.value = null
+    languageForm.name = ''
+    languageForm.native_name = ''
+    languageForm.code = ''
+    languageForm.locale = ''
+    languageForm.direction = 'ltr'
+    languageForm.is_active = true
+    languageForm.sort_order = 0
+}
+
+function fillLanguageForm(language) {
+    editingLanguageId.value = language?.id ?? null
+    languageForm.name = language?.name ?? ''
+    languageForm.native_name = language?.native_name ?? ''
+    languageForm.code = language?.code ?? ''
+    languageForm.locale = language?.locale ?? ''
+    languageForm.direction = language?.direction ?? 'ltr'
+    languageForm.is_active = language?.is_active ?? true
+    languageForm.sort_order = language?.sort_order ?? 0
+}
+
+async function setDefaultLanguage(language) {
+    if (!language || language.is_default) {
+        return
+    }
+
+    errorMessage.value = ''
+
+    try {
+        await updateLanguage(language.id, {
+            name: language.name,
+            native_name: language.native_name,
+            code: language.code,
+            locale: language.locale,
+            direction: language.direction,
+            is_default: true,
+            is_active: true,
+            sort_order: language.sort_order,
+        })
+
+        notifySuccess(`Главный язык переключен на ${language.native_name}.`)
+        await loadSettings()
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message ?? Object.values(error.response?.data?.errors ?? {})?.flat?.()[0] ?? 'Не удалось изменить язык по умолчанию.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
+}
+
+function homePageOptionsForLanguage(languageId) {
+    return (options.home_pages ?? []).filter((page) => String(page.language_id) === String(languageId))
+}
+
 function fillForm(payload) {
     const settings = payload.settings ?? {}
 
     form.site_name = settings.site_name ?? 'My CMS'
     form.favicon_media_id = settings.favicon_media_id ?? ''
+    form.site_default_featured_media_id = settings.site_default_featured_media_id ?? ''
     form.date_format = settings.date_format ?? 'd.m.Y'
     form.time_format = settings.time_format ?? 'H:i'
     form.home_page_id = settings.home_page_id ?? ''
+    form.home_page_ids = settings.home_page_ids ?? {}
     form.site_theme = settings.site_theme ?? 'default'
     form.site_featured_media_variant = settings.site_featured_media_variant ?? 'original'
     form.media_default_insert_variant = settings.media_default_insert_variant ?? 'original'
@@ -180,6 +275,19 @@ function fillForm(payload) {
     form.cache_data_enabled = settings.cache_data_enabled ?? legacyCacheEnabled
     form.cache_response_enabled = settings.cache_response_enabled ?? legacyCacheEnabled
     form.cache_response_ttl = settings.cache_response_ttl ?? 0
+    form.seo_allow_indexing = settings.seo_allow_indexing ?? true
+    form.seo_allow_following = settings.seo_allow_following ?? true
+    form.seo_sitemap_enabled = settings.seo_sitemap_enabled ?? true
+    form.seo_sitemap_change_frequency = settings.seo_sitemap_change_frequency ?? 'weekly'
+    form.seo_canonical_scheme = settings.seo_canonical_scheme ?? 'https'
+    form.seo_canonical_www_mode = settings.seo_canonical_www_mode ?? 'preserve'
+    form.seo_trailing_slash = settings.seo_trailing_slash ?? false
+    form.seo_open_graph_enabled = settings.seo_open_graph_enabled ?? true
+    form.seo_social_networks = Array.isArray(settings.seo_social_networks) ? [...settings.seo_social_networks] : []
+    form.seo_hreflang_enabled = settings.seo_hreflang_enabled ?? true
+    form.seo_favicon_enabled = settings.seo_favicon_enabled ?? true
+    form.seo_sitemap_excluded_paths = settings.seo_sitemap_excluded_paths ?? ''
+    form.seo_robots_custom_rules = settings.seo_robots_custom_rules ?? ''
     form.admin_entry_path = settings.admin_entry_path ?? 'admin'
     form.security_rate_limit_enabled = settings.security_rate_limit_enabled ?? true
     form.security_rate_limit_per_minute = settings.security_rate_limit_per_minute ?? 180
@@ -195,6 +303,7 @@ function fillForm(payload) {
         cms_version: null,
         last_cleared_at: null,
     })
+    languages.value = payload.languages ?? []
 
     Object.assign(options, payload.options ?? {})
 }
@@ -220,6 +329,8 @@ async function loadSettings() {
         if (
             (activeSettingsTab.value === 'general' && !canManageGeneral.value)
             || (activeSettingsTab.value === 'appearance' && !canManageAppearance.value)
+            || (activeSettingsTab.value === 'languages' && !canManageGeneral.value)
+            || (activeSettingsTab.value === 'seo' && !canManageSeo.value)
             || (activeSettingsTab.value === 'cache' && !canManageCache.value)
             || (activeSettingsTab.value === 'security' && !canManageSecurity.value)
         ) {
@@ -249,6 +360,13 @@ async function submitForm() {
     try {
         const submitPayload = { ...form }
 
+        submitPayload.home_page_ids = { ...(form.home_page_ids ?? {}) }
+        submitPayload.seo_social_networks = Array.isArray(form.seo_social_networks) ? [...form.seo_social_networks] : []
+
+        if (defaultLanguage.value) {
+            submitPayload.home_page_id = submitPayload.home_page_ids[defaultLanguage.value.id] ?? ''
+        }
+
         submitPayload.cms_palette = submitPayload.admin_theme_mode === 'dark'
             ? submitPayload.admin_dark_palette
             : submitPayload.admin_light_palette
@@ -259,10 +377,25 @@ async function submitForm() {
             delete submitPayload.date_format
             delete submitPayload.time_format
             delete submitPayload.home_page_id
+            delete submitPayload.home_page_ids
             delete submitPayload.site_theme
+            delete submitPayload.seo_allow_indexing
+            delete submitPayload.seo_allow_following
+            delete submitPayload.seo_sitemap_enabled
+            delete submitPayload.seo_sitemap_change_frequency
+            delete submitPayload.seo_canonical_scheme
+            delete submitPayload.seo_canonical_www_mode
+            delete submitPayload.seo_trailing_slash
+            delete submitPayload.seo_open_graph_enabled
+            delete submitPayload.seo_social_networks
+            delete submitPayload.seo_hreflang_enabled
+            delete submitPayload.seo_favicon_enabled
+            delete submitPayload.seo_sitemap_excluded_paths
+            delete submitPayload.seo_robots_custom_rules
         }
 
         if (!canManageAppearance.value) {
+            delete submitPayload.site_default_featured_media_id
             delete submitPayload.site_featured_media_variant
             delete submitPayload.media_default_insert_variant
             delete submitPayload.media_image_optimize
@@ -348,6 +481,55 @@ async function clearCache() {
     }
 }
 
+async function submitLanguageForm() {
+    errorMessage.value = ''
+
+    try {
+        const payload = {
+            ...languageForm,
+            code: languageForm.code.trim().toLowerCase(),
+            locale: languageForm.locale.trim(),
+        }
+
+        delete payload.is_default
+
+        if (editingLanguageId.value) {
+            await updateLanguage(editingLanguageId.value, payload)
+            notifySuccess('Язык сохранен.')
+        } else {
+            await createLanguage(payload)
+            notifySuccess('Язык добавлен.')
+        }
+
+        resetLanguageForm()
+        await loadSettings()
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message ?? Object.values(error.response?.data?.errors ?? {})?.flat?.()[0] ?? 'Не удалось сохранить язык.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
+}
+
+async function removeLanguage(language) {
+    const confirmed = window.confirm(`Удалить язык "${language.native_name}"?`)
+
+    if (!confirmed) {
+        return
+    }
+
+    errorMessage.value = ''
+
+    try {
+        const payload = await deleteLanguage(language.id)
+        notifySuccess(payload.message ?? 'Язык удален.')
+        await loadSettings()
+    } catch (error) {
+        errorMessage.value = error.response?.data?.message ?? Object.values(error.response?.data?.errors ?? {})?.flat?.()[0] ?? 'Не удалось удалить язык.'
+        notifyError(errorMessage.value)
+        console.error(error)
+    }
+}
+
 onMounted(loadSettings)
 </script>
 
@@ -374,6 +556,12 @@ onMounted(loadSettings)
                         </button>
                         <button v-if="canManageAppearance" type="button" class="admin-tab" :class="{ 'is-active': activeSettingsTab === 'appearance' }" @click="activeSettingsTab = 'appearance'">
                             Внешний вид
+                        </button>
+                        <button v-if="canManageGeneral" type="button" class="admin-tab" :class="{ 'is-active': activeSettingsTab === 'languages' }" @click="activeSettingsTab = 'languages'">
+                            Языки
+                        </button>
+                        <button v-if="canManageSeo" type="button" class="admin-tab" :class="{ 'is-active': activeSettingsTab === 'seo' }" @click="activeSettingsTab = 'seo'">
+                            SEO
                         </button>
                         <button v-if="canManageCache" type="button" class="admin-tab" :class="{ 'is-active': activeSettingsTab === 'cache' }" @click="activeSettingsTab = 'cache'">
                             Кэш
@@ -420,14 +608,19 @@ onMounted(loadSettings)
                         </label>
 
                         <label class="admin-form-label">
-                            <span>Главная страница</span>
-                            <select v-model="form.home_page_id" class="admin-select">
-                                <option value="">Автовыбор</option>
-                                <option v-for="page in options.home_pages" :key="page.value" :value="page.value">
-                                    {{ page.label }}{{ page.path ? ` (/${page.path})` : ' (/)' }}
-                                </option>
-                            </select>
-                            <small class="muted">Главная теперь выбирается здесь, а не в каждой странице отдельно.</small>
+                            <span>Главные страницы по языкам</span>
+                            <div class="admin-stack">
+                                <label v-for="language in languages" :key="language.id" class="admin-form-label">
+                                    <span>{{ language.native_name }} <small class="muted">({{ language.code }}{{ language.is_default ? ', основной язык' : '' }})</small></span>
+                                    <select v-model="form.home_page_ids[language.id]" class="admin-select">
+                                        <option value="">Автовыбор</option>
+                                        <option v-for="page in homePageOptionsForLanguage(language.id)" :key="page.value" :value="page.value">
+                                            {{ page.label }}{{ page.path ? ` (/${page.path})` : language.is_default ? ' (/)' : ` (/${language.code})` }}
+                                        </option>
+                                    </select>
+                                </label>
+                            </div>
+                            <small class="muted">Для default-языка главная живет на `/`, для остальных используется код языка: например `/ua/`, `/en/` и т.д.</small>
                         </label>
 
                         <label class="admin-form-label">
@@ -444,6 +637,17 @@ onMounted(loadSettings)
 
                     <section v-show="activeSettingsTab === 'appearance'" class="settings-tab-panel">
                         <div class="page-meta-grid">
+                        <label class="admin-form-label settings-span-2">
+                            <span>Общая обложка сайта</span>
+                            <MediaPickerField
+                                v-model="form.site_default_featured_media_id"
+                                title="Выбрать общую обложку сайта"
+                                return-type="id"
+                                :allow-upload="true"
+                            />
+                            <small class="muted">Используется как fallback для страницы без своей обложки. Если у страницы задано собственное изображение, оно имеет приоритет и в шаблоне, и в Open Graph.</small>
+                        </label>
+
                         <label class="admin-form-label">
                             <span>Размер обложки на сайте</span>
                             <select v-model="form.site_featured_media_variant" class="admin-select">
@@ -569,6 +773,207 @@ onMounted(loadSettings)
                     </div>
                     </section>
 
+                    <section v-show="activeSettingsTab === 'languages'" class="settings-tab-panel">
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">Языки сайта</p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label">
+                                    <span>Название</span>
+                                    <input v-model="languageForm.name" class="admin-input" type="text" placeholder="English">
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Нативное название</span>
+                                    <input v-model="languageForm.native_name" class="admin-input" type="text" placeholder="English / Українська">
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Код языка</span>
+                                    <input v-model="languageForm.code" class="admin-input" type="text" placeholder="en">
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Locale</span>
+                                    <input v-model="languageForm.locale" class="admin-input" type="text" placeholder="en_US">
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Направление текста</span>
+                                    <select v-model="languageForm.direction" class="admin-select">
+                                        <option v-for="direction in options.language_directions || []" :key="direction.value" :value="direction.value">
+                                            {{ direction.label }}
+                                        </option>
+                                    </select>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Порядок сортировки</span>
+                                    <input v-model.number="languageForm.sort_order" class="admin-input" type="number" min="0" step="1">
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span><input v-model="languageForm.is_active" type="checkbox"> Активный язык</span>
+                                </label>
+                            </div>
+
+                            <div class="admin-actions-row">
+                                <AdminButton type="button" @click="submitLanguageForm">
+                                    {{ editingLanguageId ? 'Сохранить язык' : 'Добавить язык' }}
+                                </AdminButton>
+                                <AdminButton v-if="editingLanguageId" type="button" @click="resetLanguageForm">
+                                    Отменить редактирование
+                                </AdminButton>
+                            </div>
+                        </div>
+
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">Список языков</p>
+                            <p v-if="languages.length === 0" class="muted">Языки пока не добавлены.</p>
+                            <div v-else class="page-trash-grid">
+                                <article v-for="language in languages" :key="language.id" class="page-trash-card">
+                                    <div>
+                                        <h3>{{ language.native_name }} <span class="muted">({{ language.code }})</span></h3>
+                                        <p class="muted">{{ language.name }} | {{ language.locale }} | {{ language.direction }} | sort {{ language.sort_order }}</p>
+                                        <p class="muted">{{ language.is_default ? 'По умолчанию' : 'Не по умолчанию' }} | {{ language.is_active ? 'Активный' : 'Выключен' }}</p>
+                                    </div>
+
+                                    <div class="admin-actions-row">
+                                        <label class="settings-default-language-toggle">
+                                            <input
+                                                type="radio"
+                                                name="default-language"
+                                                :checked="language.is_default"
+                                                @change="setDefaultLanguage(language)"
+                                            >
+                                            <span>Главный</span>
+                                        </label>
+                                        <AdminButton type="button" @click="fillLanguageForm(language)">
+                                            Редактировать
+                                        </AdminButton>
+                                        <AdminButton type="button" variant="danger" @click="removeLanguage(language)">
+                                            Удалить
+                                        </AdminButton>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section v-show="activeSettingsTab === 'seo'" class="settings-tab-panel">
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">Индексация сайта</p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label">
+                                    <span><input v-model="form.seo_allow_indexing" type="checkbox"> Разрешить индексирование страниц</span>
+                                    <small class="muted">Управляет `meta robots` и главным правилом в robots.txt автоматически.</small>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span><input v-model="form.seo_allow_following" type="checkbox"> Разрешить роботам переходить по ссылкам</span>
+                                    <small class="muted">При выключении страницы автоматически отдают `nofollow`.</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">Социальные превью и favicon</p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label">
+                                    <span><input v-model="form.seo_open_graph_enabled" type="checkbox"> Выводить Open Graph / social meta</span>
+                                    <small class="muted">Добавляет og:title, og:description, og:image и, при выборе X, twitter-card теги.</small>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span><input v-model="form.seo_favicon_enabled" type="checkbox"> Выводить favicon и touch icons</span>
+                                    <small class="muted">При сохранении CMS подготовит набор размеров 16, 32, 180, 192 и 512 px для выбранного favicon.</small>
+                                </label>
+
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Соцсети, для которых готовить разметку</span>
+                                    <div class="settings-checkbox-grid">
+                                        <label v-for="network in options.seo_social_networks || []" :key="network.value" class="settings-checkbox-card">
+                                            <input v-model="form.seo_social_networks" type="checkbox" :value="network.value">
+                                            <span>{{ network.label }}</span>
+                                        </label>
+                                    </div>
+                                    <small class="muted">Facebook, LinkedIn, Telegram и WhatsApp используют OG-теги. Для X дополнительно выводятся twitter-card теги.</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">Канонический домен</p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label">
+                                    <span>Основной протокол</span>
+                                    <select v-model="form.seo_canonical_scheme" class="admin-select">
+                                        <option v-for="scheme in options.seo_canonical_schemes" :key="scheme.value" :value="scheme.value">
+                                            {{ scheme.label }}
+                                        </option>
+                                    </select>
+                                    <small class="muted">Используется в canonical URL, robots.txt и sitemap, чтобы не было смешения http и https.</small>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Режим www</span>
+                                    <select v-model="form.seo_canonical_www_mode" class="admin-select">
+                                        <option v-for="mode in options.seo_canonical_www_modes" :key="mode.value" :value="mode.value">
+                                            {{ mode.label }}
+                                        </option>
+                                    </select>
+                                    <small class="muted">Переключает основной домен на вариант с www или без www поверх APP_URL.</small>
+                                </label>
+
+                                <label class="admin-form-label settings-span-2">
+                                    <span><input v-model="form.seo_trailing_slash" type="checkbox"> Добавлять завершающий слеш в URL и canonical для всех страниц, кроме главной</span>
+                                    <small class="muted">Влияет на canonical, hreflang, sitemap и публичные ссылки CMS. Главные страницы языков остаются без дополнительного хвостового слеша.</small>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span><input v-model="form.seo_hreflang_enabled" type="checkbox"> Выводить hreflang для мультиязычных страниц</span>
+                                    <small class="muted">Теги появятся только если активных языков больше одного и у страницы есть переводы.</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">Sitemap и robots.txt</p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label">
+                                    <span><input v-model="form.seo_sitemap_enabled" type="checkbox"> Публиковать sitemap.xml автоматически</span>
+                                    <small class="muted">Карта сайта собирается автоматически из опубликованных публичных страниц CMS.</small>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Частота обновления sitemap</span>
+                                    <select v-model="form.seo_sitemap_change_frequency" class="admin-select" :disabled="!form.seo_sitemap_enabled">
+                                        <option v-for="frequency in options.seo_sitemap_change_frequencies" :key="frequency.value" :value="frequency.value">
+                                            {{ frequency.label }}
+                                        </option>
+                                    </select>
+                                    <small class="muted">Поле записывается в `changefreq`, чтобы поисковые системы понимали ожидаемую динамику сайта.</small>
+                                </label>
+
+                                <p class="muted settings-span-2">Sitemap отдает index-файл и при росте количества страниц автоматически разбивается на несколько частей.</p>
+
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Исключить пути из sitemap</span>
+                                    <textarea v-model="form.seo_sitemap_excluded_paths" class="admin-textarea" rows="4" placeholder="privacy-policy\nthanks\nsecret/landing"></textarea>
+                                    <small class="muted">По одному пути на строку, без домена. Например `privacy-policy` исключит страницу `/privacy-policy`.</small>
+                                </label>
+
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Дополнительные правила robots.txt</span>
+                                    <textarea v-model="form.seo_robots_custom_rules" class="admin-textarea" rows="5" placeholder="Disallow: /admin/\nAllow: /storage/\nCrawl-delay: 5"></textarea>
+                                    <small class="muted">Необязательно. Этот блок будет добавлен после автоматически сгенерированных правил.</small>
+                                </label>
+                            </div>
+
+                            <p class="muted">Robots: <a :href="robotsPreviewUrl" target="_blank" rel="noopener">{{ robotsPreviewUrl }}</a></p>
+                            <p class="muted">Sitemap: <a :href="sitemapPreviewUrl" target="_blank" rel="noopener">{{ sitemapPreviewUrl }}</a></p>
+                        </div>
+                    </section>
+
                     <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
                     <p v-if="adminPathNoticeUrl" class="muted">
                         Новый URL админки: <a :href="adminPathNoticeUrl">{{ adminPathNoticeUrl }}</a>
@@ -683,3 +1088,32 @@ onMounted(loadSettings)
         </section>
     </AdminPage>
 </template>
+
+<style scoped>
+.settings-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+}
+
+.settings-checkbox-card {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.12));
+    border-radius: 0.85rem;
+    background: var(--admin-panel, rgba(255, 255, 255, 0.72));
+}
+
+.settings-default-language-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.12));
+    border-radius: 0.85rem;
+    background: var(--admin-panel, rgba(255, 255, 255, 0.72));
+    color: inherit;
+}
+</style>

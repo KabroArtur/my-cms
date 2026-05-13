@@ -302,3 +302,19 @@ it('returns 503 for public pages when emergency mode is enabled', function () {
         ->assertStatus(503)
         ->assertSee('Emergency maintenance window');
 });
+
+it('renders page-level noindex and nofollow meta robots', function () {
+    Page::query()->create([
+        'title' => 'Private SEO page',
+        'slug' => 'private-seo-page',
+        'status' => PageStatus::Published,
+        'visibility' => PageVisibility::Public,
+        'seo_noindex' => true,
+        'seo_nofollow' => true,
+        'published_at' => now()->subMinute(),
+    ]);
+
+    $this->get('/private-seo-page')
+        ->assertOk()
+        ->assertSee('<meta name="robots" content="noindex,nofollow">', false);
+});

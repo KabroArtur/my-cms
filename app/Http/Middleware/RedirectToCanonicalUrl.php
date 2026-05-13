@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Core\Settings\Services\SettingsManager;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +19,7 @@ class RedirectToCanonicalUrl
             return $next($request);
         }
 
-        $canonicalUrl = (string) config('app.url');
+        $canonicalUrl = app(SettingsManager::class)->canonicalBaseUrl($request->getHost());
 
         if ($canonicalUrl === '') {
             return $next($request);
