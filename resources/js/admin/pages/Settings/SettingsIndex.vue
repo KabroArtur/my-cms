@@ -535,8 +535,6 @@ onMounted(loadSettings)
 
 <template>
     <AdminPage
-        eyebrow="Settings"
-        title="Настройки"
         description="Базовые настройки сайта, медиаслоя и внешнего вида административной системы."
     >
         <template #actions>

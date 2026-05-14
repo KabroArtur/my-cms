@@ -173,6 +173,24 @@ const standalonePluginLinks = computed(() => {
         }));
 });
 
+const allNavItems = computed(() => {
+    const items = [];
+
+    links.value.forEach((l) => items.push(l));
+
+    standalonePluginLinks.value.forEach((l) => items.push(l));
+
+    pluginGroups.value.forEach((group) => {
+        group.directItems.forEach((i) => items.push(i));
+
+        group.subgroups.forEach((sub) => {
+            sub.items.forEach((i) => items.push(i));
+        });
+    });
+
+    return items;
+});
+
 const routeLabels = {
     dashboard: "Панель",
     pages: "Страницы",
@@ -193,6 +211,16 @@ const routeLabels = {
     "blog-categories": "Blog: Категории",
     "blog-tags": "Blog: Теги",
     "admin-not-found": "Страница не найдена",
+};
+
+const getIconNameByRoute = (to) => {
+    if (to.includes("posts")) return "note";
+    if (to.includes("categories")) return "category";
+    if (to.includes("tags")) return "tags";
+    if (to.includes("settings")) return "settings";
+    if (to.includes("sections") || to.includes("notes")) return "note";
+
+    return "note";
 };
 
 const breadcrumbs = computed(() => {
@@ -230,6 +258,33 @@ const breadcrumbs = computed(() => {
     });
 
     return items;
+});
+
+const currentNavLink = computed(() => {
+    const path = route.path;
+
+    if (path === "/admin") {
+        return { label: "Обзор CMS" };
+    }
+
+    const segments = path.split("/").filter(Boolean);
+    const recordsIndex = segments.indexOf("records");
+
+    if (recordsIndex !== -1 && segments[recordsIndex + 1] === "sections") {
+        return { label: "Создать раздел" };
+    }
+
+    if (recordsIndex !== -1 && segments[recordsIndex + 1]) {
+        return { label: segments[recordsIndex + 1] };
+    }
+
+    return (
+        [...allNavItems.value]
+            .sort((a, b) => b.to.length - a.to.length)
+            .find((item) => path.startsWith(item.to)) ?? {
+            label: "Раздел",
+        }
+    );
 });
 
 const isDark = computed(() => themeMode.value === "dark");
@@ -508,7 +563,14 @@ onBeforeUnmount(() => {
                         :class="{ 'is-active': isPluginGroupActive(group) }"
                         @click="togglePluginGroup(group.label)"
                     >
-                        <span>{{ group.label }}</span>
+                        <span
+                            ><Icon
+                                name="record"
+                                width="20"
+                                height="20"
+                                class="nav-link__icon"
+                            />{{ group.label }}</span
+                        >
                         <Icon
                             name="arrow-down"
                             width="20"
@@ -519,107 +581,126 @@ onBeforeUnmount(() => {
                             }"
                         />
                     </button>
-
-                    <div
-                        v-if="isPluginGroupOpen(group.label)"
-                        class="admin-nav__subgroup"
-                    >
-                        <template
-                            v-for="item in group.directItems"
-                            :key="`${group.label}-${item.to}`"
+                    <Transition name="slide">
+                        <div
+                            v-if="isPluginGroupOpen(group.label)"
+                            class="admin-nav__subgroup"
                         >
-                            <RouterLink
-                                v-if="!item.external"
-                                :to="item.to"
-                                class="nav-link nav-link--sub"
-                                :class="{ 'is-active': isLinkActive(item) }"
-                                active-class=""
-                                exact-active-class=""
+                            <template
+                                v-for="item in group.directItems"
+                                :key="`${group.label}-${item.to}`"
                             >
-                                {{ item.label }}
-                            </RouterLink>
+                                <RouterLink
+                                    v-if="!item.external"
+                                    :to="item.to"
+                                    class="nav-link-create"
+                                    :class="{ 'is-active': isLinkActive(item) }"
+                                    active-class=""
+                                    exact-active-class=""
+                                >
+                                    {{ item.label
+                                    }}<Icon
+                                        name="create"
+                                        width="22"
+                                        height="22"
+                                    />
+                                </RouterLink>
 
-                            <a
-                                v-else
-                                :href="item.to"
-                                class="nav-link nav-link--sub"
-                            >
-                                {{ item.label }}
-                            </a>
-                        </template>
+                                <a
+                                    v-else
+                                    :href="item.to"
+                                    class="nav-link nav-link--sub"
+                                >
+                                    {{ item.label }}
+                                </a>
+                            </template>
 
-                        <template
-                            v-for="subgroup in group.subgroups"
-                            :key="`${group.label}-${subgroup.label}`"
-                        >
-                            <button
-                                type="button"
-                                class="nav-link nav-link--subgroup"
-                                :class="{
-                                    'is-active': isPluginSubgroupActive(
-                                        group.label,
-                                        subgroup,
-                                    ),
-                                }"
-                                @click="
-                                    togglePluginSubgroup(
-                                        group.label,
-                                        subgroup.label,
-                                    )
-                                "
+                            <template
+                                v-for="subgroup in group.subgroups"
+                                :key="`${group.label}-${subgroup.label}`"
                             >
-                                <span>{{ subgroup.label }}</span>
-                                <Icon
-                                    name="arrow-down"
-                                    width="18"
-                                    height="18"
-                                    class="nav-link__arrow"
+                                <button
+                                    type="button"
+                                    class="nav-link nav-link--subgroup"
                                     :class="{
                                         'is-open': isPluginSubgroupOpen(
                                             group.label,
                                             subgroup.label,
                                         ),
                                     }"
-                                />
-                            </button>
-
-                            <div
-                                v-if="
-                                    isPluginSubgroupOpen(
-                                        group.label,
-                                        subgroup.label,
-                                    )
-                                "
-                                class="admin-nav__subgroup-inner"
-                            >
-                                <template
-                                    v-for="item in subgroup.items"
-                                    :key="`${group.label}-${subgroup.label}-${item.to}`"
+                                    @click="
+                                        togglePluginSubgroup(
+                                            group.label,
+                                            subgroup.label,
+                                        )
+                                    "
                                 >
-                                    <RouterLink
-                                        v-if="!item.external"
-                                        :to="item.to"
-                                        class="nav-link nav-link--sub nav-link--sublevel"
+                                    <span>{{ subgroup.label }}</span>
+                                    <Icon
+                                        name="arrow-down"
+                                        width="18"
+                                        height="18"
+                                        class="nav-link__arrow"
                                         :class="{
-                                            'is-active': isLinkActive(item),
+                                            'is-open': isPluginSubgroupOpen(
+                                                group.label,
+                                                subgroup.label,
+                                            ),
                                         }"
-                                        active-class=""
-                                        exact-active-class=""
-                                    >
-                                        {{ item.label }}
-                                    </RouterLink>
+                                    />
+                                </button>
 
-                                    <a
-                                        v-else
-                                        :href="item.to"
-                                        class="nav-link nav-link--sub nav-link--sublevel"
+                                <Transition name="slide">
+                                    <div
+                                        v-if="
+                                            isPluginSubgroupOpen(
+                                                group.label,
+                                                subgroup.label,
+                                            )
+                                        "
+                                        class="admin-nav__subgroup-inner"
                                     >
-                                        {{ item.label }}
-                                    </a>
-                                </template>
-                            </div>
-                        </template>
-                    </div>
+                                        <template
+                                            v-for="item in subgroup.items"
+                                            :key="`${group.label}-${subgroup.label}-${item.to}`"
+                                        >
+                                            <RouterLink
+                                                v-if="!item.external"
+                                                :to="item.to"
+                                                class="nav-link nav-link--sub"
+                                                :class="{
+                                                    'is-active':
+                                                        isLinkActive(item),
+                                                }"
+                                                active-class=""
+                                                exact-active-class=""
+                                            >
+                                                <Icon
+                                                    :name="
+                                                        getIconNameByRoute(
+                                                            item.to,
+                                                        )
+                                                    "
+                                                    width="16"
+                                                    height="16"
+                                                    class=""
+                                                />
+                                                {{ item.label }}
+                                            </RouterLink>
+
+                                            <a
+                                                v-else
+                                                :href="item.to"
+                                                class="nav-link nav-link--sub"
+                                            >
+                                                {{ item.label }}
+                                            </a>
+                                        </template>
+                                    </div>
+                                </Transition>
+                            </template>
+                        </div>
+                    </Transition>
                 </template>
 
                 <template
@@ -645,7 +726,7 @@ onBeforeUnmount(() => {
 
             <div class="admin-sidebar__footer">
                 <p v-if="errorMessage" class="error-text">
-                    <strong>{{ errorMessage }}</strong>
+                    {{ errorMessage }}
                 </p>
                 <div v-if="loading" class="muted">Загрузка сессии...</div>
 
@@ -659,7 +740,15 @@ onBeforeUnmount(() => {
                         class="admin-user-badge"
                         @click.stop="toggleUserMenu"
                     >
-                        {{ displayName }}
+                        <span
+                            ><Icon
+                                name="avatar"
+                                width="16"
+                                height="16"
+                                class="admin-user-menu__item__icon"
+                            />{{ displayName }}</span
+                        >
+
                         <Icon
                             name="arrow-down"
                             width="20"
@@ -739,12 +828,15 @@ onBeforeUnmount(() => {
                 >
                     <Icon
                         name="menu"
-                        width="30"
-                        height="30"
+                        width="34"
+                        height="34"
                         class="admin-menu-button__icon"
                     />
                 </button>
                 <div class="admin-topbar__meta">
+                    <h1 class="admin-page-header__title">
+                        {{ currentNavLink.label }}
+                    </h1>
                     <nav class="admin-breadcrumbs" aria-label="Хлебные крошки">
                         <template
                             v-for="(item, index) in breadcrumbs"
@@ -763,8 +855,9 @@ onBeforeUnmount(() => {
                             <span
                                 v-if="index < breadcrumbs.length - 1"
                                 class="admin-breadcrumbs__sep"
-                                >/</span
                             >
+                                <Icon name="arrow-down" width="22" height="22"
+                            /></span>
                         </template>
                     </nav>
                 </div>

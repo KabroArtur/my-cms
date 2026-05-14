@@ -1,82 +1,90 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { fetchCurrentUser } from '../../api/auth'
+import { computed, onMounted, reactive, ref } from "vue";
+import { fetchCurrentUser } from "../../api/auth";
 import {
     createBlogPost,
     deleteBlogPost,
     fetchBlogCategories,
     fetchBlogPosts,
     fetchBlogTags,
-} from '../../api/blog'
-import AdminButton from '../../components/ui/AdminButton.vue'
-import AdminCard from '../../components/ui/AdminCard.vue'
-import AdminPage from '../../components/ui/AdminPage.vue'
-import { useAdminNotifications } from '../../composables/useAdminNotifications'
+} from "../../api/blog";
+import AdminButton from "../../components/ui/AdminButton.vue";
+import AdminCard from "../../components/ui/AdminCard.vue";
+import AdminPage from "../../components/ui/AdminPage.vue";
+import { useAdminNotifications } from "../../composables/useAdminNotifications";
 
-const loading = ref(false)
-const saving = ref(false)
-const deletingId = ref(null)
-const errorMessage = ref('')
-const posts = ref([])
-const categories = ref([])
-const tags = ref([])
-const permissions = ref(new Set())
-const { notifyError, notifySuccess } = useAdminNotifications()
+const loading = ref(false);
+const saving = ref(false);
+const deletingId = ref(null);
+const errorMessage = ref("");
+const posts = ref([]);
+const categories = ref([]);
+const tags = ref([]);
+const permissions = ref(new Set());
+const { notifyError, notifySuccess } = useAdminNotifications();
 
 const form = reactive({
-    title: '',
-    slug: '',
-    excerpt: '',
-    content: '',
-    category_id: '',
+    title: "",
+    slug: "",
+    excerpt: "",
+    content: "",
+    category_id: "",
     tag_ids: [],
     is_published: false,
-})
+});
 
-const canManagePosts = computed(() => permissions.value.has('blog.posts.manage'))
-const canAccess = computed(() => permissions.value.has('blog.access'))
+const canManagePosts = computed(() =>
+    permissions.value.has("blog.posts.manage"),
+);
+const canAccess = computed(() => permissions.value.has("blog.access"));
 
 async function loadAll() {
-    loading.value = true
-    errorMessage.value = ''
+    loading.value = true;
+    errorMessage.value = "";
 
     try {
-        const [mePayload, postsPayload, categoriesPayload, tagsPayload] = await Promise.all([
-            fetchCurrentUser(),
-            fetchBlogPosts(),
-            fetchBlogCategories(),
-            fetchBlogTags(),
-        ])
+        const [mePayload, postsPayload, categoriesPayload, tagsPayload] =
+            await Promise.all([
+                fetchCurrentUser(),
+                fetchBlogPosts(),
+                fetchBlogCategories(),
+                fetchBlogTags(),
+            ]);
 
-        permissions.value = new Set(mePayload.data?.permissions ?? [])
-        posts.value = Array.isArray(postsPayload.items) ? postsPayload.items : []
-        categories.value = Array.isArray(categoriesPayload.items) ? categoriesPayload.items : []
-        tags.value = Array.isArray(tagsPayload.items) ? tagsPayload.items : []
+        permissions.value = new Set(mePayload.data?.permissions ?? []);
+        posts.value = Array.isArray(postsPayload.items)
+            ? postsPayload.items
+            : [];
+        categories.value = Array.isArray(categoriesPayload.items)
+            ? categoriesPayload.items
+            : [];
+        tags.value = Array.isArray(tagsPayload.items) ? tagsPayload.items : [];
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Не удалось загрузить Blog.'
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Не удалось загрузить Blog.";
+        console.error(error);
     } finally {
-        loading.value = false
+        loading.value = false;
     }
 }
 
 function resetForm() {
-    form.title = ''
-    form.slug = ''
-    form.excerpt = ''
-    form.content = ''
-    form.category_id = ''
-    form.tag_ids = []
-    form.is_published = false
+    form.title = "";
+    form.slug = "";
+    form.excerpt = "";
+    form.content = "";
+    form.category_id = "";
+    form.tag_ids = [];
+    form.is_published = false;
 }
 
 async function submitPost() {
     if (!canManagePosts.value) {
-        return
+        return;
     }
 
-    saving.value = true
-    errorMessage.value = ''
+    saving.value = true;
+    errorMessage.value = "";
 
     try {
         await createBlogPost({
@@ -87,69 +95,93 @@ async function submitPost() {
             category_id: form.category_id || null,
             tag_ids: form.tag_ids,
             is_published: form.is_published,
-        })
-        resetForm()
-        await loadAll()
-        notifySuccess('Пост создан.')
+        });
+        resetForm();
+        await loadAll();
+        notifySuccess("Пост создан.");
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Не удалось сохранить пост.'
-        notifyError(errorMessage.value)
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Не удалось сохранить пост.";
+        notifyError(errorMessage.value);
+        console.error(error);
     } finally {
-        saving.value = false
+        saving.value = false;
     }
 }
 
 async function removePost(id) {
     if (!canManagePosts.value) {
-        return
+        return;
     }
 
-    deletingId.value = id
-    errorMessage.value = ''
+    deletingId.value = id;
+    errorMessage.value = "";
 
     try {
-        await deleteBlogPost(id)
-        await loadAll()
-        notifySuccess('Пост удален.')
+        await deleteBlogPost(id);
+        await loadAll();
+        notifySuccess("Пост удален.");
     } catch (error) {
-        errorMessage.value = error?.response?.data?.message || 'Не удалось удалить пост.'
-        notifyError(errorMessage.value)
-        console.error(error)
+        errorMessage.value =
+            error?.response?.data?.message || "Не удалось удалить пост.";
+        notifyError(errorMessage.value);
+        console.error(error);
     } finally {
-        deletingId.value = null
+        deletingId.value = null;
     }
 }
 
-onMounted(loadAll)
+onMounted(loadAll);
 </script>
 
 <template>
-    <AdminPage eyebrow="Blog" title="Записи" description="Управление постами блога в SPA-режиме.">
+    <AdminPage description="Управление постами блога в SPA-режиме.">
         <AdminCard>
-            <p v-if="errorMessage" class="error-text"><strong>{{ errorMessage }}</strong></p>
+            <p v-if="errorMessage" class="error-text">
+                <strong>{{ errorMessage }}</strong>
+            </p>
             <p v-if="loading" class="muted">Загрузка...</p>
-            <p v-else-if="!canAccess" class="error-text">Нет доступа к разделу Blog.</p>
+            <p v-else-if="!canAccess" class="error-text">
+                Нет доступа к разделу Blog.
+            </p>
 
             <form v-else class="admin-form-stack" @submit.prevent="submitPost">
                 <label class="admin-form-label">
                     <span>Заголовок</span>
-                    <input v-model="form.title" class="admin-input" type="text" required>
+                    <input
+                        v-model="form.title"
+                        class="admin-input"
+                        type="text"
+                        required
+                    />
                 </label>
 
                 <label class="admin-form-label">
                     <span>Slug</span>
-                    <input v-model="form.slug" class="admin-input" type="text" placeholder="auto from title">
+                    <input
+                        v-model="form.slug"
+                        class="admin-input"
+                        type="text"
+                        placeholder="auto from title"
+                    />
                 </label>
 
                 <label class="admin-form-label">
                     <span>Краткое описание</span>
-                    <input v-model="form.excerpt" class="admin-input" type="text">
+                    <input
+                        v-model="form.excerpt"
+                        class="admin-input"
+                        type="text"
+                    />
                 </label>
 
                 <label class="admin-form-label">
                     <span>Контент</span>
-                    <textarea v-model="form.content" class="admin-textarea" rows="6"></textarea>
+                    <textarea
+                        v-model="form.content"
+                        class="admin-textarea"
+                        rows="6"
+                    ></textarea>
                 </label>
 
                 <div class="page-meta-grid">
@@ -157,7 +189,11 @@ onMounted(loadAll)
                         <span>Категория</span>
                         <select v-model="form.category_id" class="admin-select">
                             <option value="">Без категории</option>
-                            <option v-for="category in categories" :key="category.id" :value="category.id">
+                            <option
+                                v-for="category in categories"
+                                :key="category.id"
+                                :value="category.id"
+                            >
                                 {{ category.name }}
                             </option>
                         </select>
@@ -165,8 +201,16 @@ onMounted(loadAll)
 
                     <label class="admin-form-label">
                         <span>Теги</span>
-                        <select v-model="form.tag_ids" class="admin-select" multiple>
-                            <option v-for="tag in tags" :key="tag.id" :value="tag.id">
+                        <select
+                            v-model="form.tag_ids"
+                            class="admin-select"
+                            multiple
+                        >
+                            <option
+                                v-for="tag in tags"
+                                :key="tag.id"
+                                :value="tag.id"
+                            >
                                 {{ tag.name }}
                             </option>
                         </select>
@@ -175,13 +219,17 @@ onMounted(loadAll)
 
                 <label class="admin-form-label">
                     <span>
-                        <input v-model="form.is_published" type="checkbox">
+                        <input v-model="form.is_published" type="checkbox" />
                         Опубликовать
                     </span>
                 </label>
 
-                <AdminButton type="submit" variant="primary" :disabled="saving || !canManagePosts">
-                    {{ saving ? 'Сохраняем...' : 'Создать пост' }}
+                <AdminButton
+                    type="submit"
+                    variant="primary"
+                    :disabled="saving || !canManagePosts"
+                >
+                    {{ saving ? "Сохраняем..." : "Создать пост" }}
                 </AdminButton>
             </form>
         </AdminCard>
@@ -206,16 +254,24 @@ onMounted(loadAll)
                             <strong>{{ post.title }}</strong>
                             <p class="muted">/{{ post.slug }}</p>
                         </td>
-                        <td>{{ post.category?.name || '—' }}</td>
-                        <td>{{ post.is_published ? 'Опубликован' : 'Черновик' }}</td>
+                        <td>{{ post.category?.name || "—" }}</td>
+                        <td>
+                            {{ post.is_published ? "Опубликован" : "Черновик" }}
+                        </td>
                         <td>
                             <AdminButton
                                 type="button"
                                 variant="danger"
-                                :disabled="deletingId === post.id || !canManagePosts"
+                                :disabled="
+                                    deletingId === post.id || !canManagePosts
+                                "
                                 @click="removePost(post.id)"
                             >
-                                {{ deletingId === post.id ? 'Удаляем...' : 'Удалить' }}
+                                {{
+                                    deletingId === post.id
+                                        ? "Удаляем..."
+                                        : "Удалить"
+                                }}
                             </AdminButton>
                         </td>
                     </tr>

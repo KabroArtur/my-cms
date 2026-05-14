@@ -462,152 +462,186 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 4px 0;
-}
+    margin-block: 16px 4px;
 
-.admin-nav__plugin-divider::before,
-.admin-nav__plugin-divider::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--admin-color-border);
+    &::before,
+    &::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--admin-color-text-muted);
+        opacity: 0.5;
+    }
+    span {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--admin-color-text-muted);
+        white-space: nowrap;
+        opacity: 0.7;
+    }
 }
-
-.admin-nav__plugin-divider span {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--admin-color-text-muted);
-    white-space: nowrap;
-    opacity: 0.7;
-}
-
 /* ---- Plugin group toggle (top level) ---- */
-.nav-link--group {
+.nav-link--group,
+.nav-link--subgroup {
     width: 100%;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    cursor: pointer;
-    text-align: left;
+    justify-content: space-between;
+
+    &.is-active {
+        background: var(--admin-color-primary);
+        color: var(--admin-color-primary-contrast);
+        border-color: var(--admin-color-primary);
+    }
+
+    span {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 }
 
-.nav-link--group.is-active {
-    background: var(--admin-color-primary);
-    color: var(--admin-color-primary-contrast);
-    border-color: var(--admin-color-primary);
+.slide-enter-active,
+.slide-leave-active {
+    overflow: hidden;
+    transition:
+        max-height 0.35s ease,
+        opacity 0.35s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+    max-height: 0;
+    opacity: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+    max-height: 700px;
+    opacity: 1;
 }
 
 .nav-link__arrow {
-    transition: transform 0.2s ease;
-    font-size: 11px;
-    opacity: 0.6;
-}
+    fill: var(--admin-color-text);
+    transform: rotate(-90deg);
+    transition: transform 0.3s ease;
 
-.nav-link__arrow.is-open {
-    transform: rotate(180deg);
-}
-
-/* ---- Items container under group ---- */
-.admin-nav__subgroup {
-    display: grid;
-    gap: 1px;
-    margin-top: 2px;
-    padding-left: 10px;
-    border-left: 2px solid var(--admin-color-border);
-    margin-left: 4px;
+    &.is-open {
+        transform: rotate(-180deg);
+    }
 }
 
 /* ---- Direct sub-items ---- */
 .nav-link--sub {
-    padding: 7px 10px;
-    font-size: 13px;
-    font-weight: 500;
-    border: 1px solid transparent;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 550;
+    border: none;
     background: transparent;
     color: var(--admin-color-text-muted);
-    border-radius: var(--admin-radius-sm);
+    border-radius: 0;
+    transition:
+        color 0.3s ease,
+        padding-left 0.3s ease,
+        background 0.3s ease;
+
+    &:hover,
+    &:focus-visible {
+        color: var(--admin-color-text);
+        background: color-mix(
+            in srgb,
+            var(--admin-color-primary) 12%,
+            var(--admin-color-surface)
+        );
+
+        svg {
+            fill: var(--admin-color-text);
+        }
+    }
+
+    svg {
+        fill: var(--admin-color-text-muted);
+        transition: fill 0.3s ease;
+    }
+
+    &.is-active {
+        background: color-mix(
+            in srgb,
+            var(--admin-color-primary) 30%,
+            var(--admin-color-surface)
+        );
+        color: var(--admin-color-text);
+    }
 }
 
-.nav-link--sub:hover {
-    background: color-mix(
-        in srgb,
-        var(--admin-color-primary) 7%,
-        var(--admin-color-surface)
-    );
-    color: var(--admin-color-text);
-    transform: none;
+.admin-nav__subgroup {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 12px;
+    margin-left: 4px;
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 1.5px;
+        border-radius: var(--admin-radius-sm);
+        background: var(--admin-color-primary);
+    }
 }
 
-.nav-link--sub.is-active {
-    background: color-mix(
-        in srgb,
-        var(--admin-color-primary) 12%,
-        var(--admin-color-surface)
-    );
-    border-color: color-mix(
-        in srgb,
-        var(--admin-color-primary) 28%,
-        transparent
-    );
-    color: var(--admin-color-primary);
-}
-
-/* ---- Subgroup toggle (section name, e.g. «Blog») ---- */
 .nav-link--subgroup {
-    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: pointer;
-    text-align: left;
-    padding: 7px 10px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--admin-color-text);
-    background: transparent;
-    border: 1px solid transparent;
+    border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-sm);
+    background: var(--admin-color-surface);
+
+    &.is-open {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
 }
 
-.nav-link--subgroup:hover {
-    background: color-mix(
-        in srgb,
-        var(--admin-color-primary) 7%,
-        var(--admin-color-surface)
-    );
-}
-
-.nav-link--subgroup.is-active {
-    color: var(--admin-color-primary);
-}
-
-/* ---- Deep items under subgroup (Записи, Категории, Теги…) ---- */
 .admin-nav__subgroup-inner {
     display: grid;
-    gap: 1px;
-    padding-left: 8px;
-    border-left: 2px solid
-        color-mix(in srgb, var(--admin-color-primary) 30%, transparent);
-    margin-left: 6px;
-    margin-bottom: 4px;
+    overflow: hidden;
+    border-left: 1px solid var(--admin-color-border);
+    border-right: 1px solid var(--admin-color-border);
+    border-bottom: 1px solid var(--admin-color-border);
+    border-top: none;
+    border-radius: 0 0 var(--admin-radius-sm) var(--admin-radius-sm);
+    background: color-mix(
+        in srgb,
+        var(--admin-color-surface) 96%,
+        var(--admin-color-text)
+    );
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    margin-top: -6px;
 }
 
 .nav-link--sublevel {
-    padding: 5px 8px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--admin-color-text-muted);
-}
-
-.nav-link--sublevel:hover {
+    font-weight: 550;
     color: var(--admin-color-text);
-}
+    text-shadow: 0.3px 0.3px 0.3px var(--admin-color-text-shadow);
 
-.nav-link--sublevel.is-active {
-    color: var(--admin-color-primary);
-    font-weight: 600;
+    &:hover,
+    &:focus-visible {
+        color: var(--admin-color-text);
+    }
+
+    &.is-active {
+        font-weight: 600;
+        color: var(--admin-color-text);
+        background: var(--admin-color-primary);
+    }
 }
 
 .field-definition-editor {
@@ -1646,5 +1680,5 @@
 
 .icon {
     flex-shrink: 0;
-    filter: drop-shadow(0 0.5px 0.5px var(--admin-color-bg));
+    filter: drop-shadow(0 0.4px 0.4px var(--admin-color-text-shadow));
 }

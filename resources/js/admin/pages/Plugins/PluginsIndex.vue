@@ -154,8 +154,6 @@ onMounted(loadPlugins);
 
 <template>
     <AdminPage
-        eyebrow="Модули"
-        title="Плагины"
         description="Установка, включение, выключение и удаление модулей CMS."
     >
         <AdminCard>

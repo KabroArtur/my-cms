@@ -1391,12 +1391,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <AdminPage
-        eyebrow="Media"
-        title="Медиатека"
-        description="Управление файлами и папками"
-        :breadcrumbs="breadcrumbs"
-    >
+    <AdminPage description="Управление файлами и папками.">
         <input
             ref="fileInput"
             type="file"

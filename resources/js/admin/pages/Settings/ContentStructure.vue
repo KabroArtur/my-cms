@@ -406,8 +406,6 @@ onMounted(async () => {
 
 <template>
     <AdminPage
-        eyebrow="Settings"
-        title="Структура контента"
         description="Наборы дополнительных полей для шаблонов и страниц."
     >
         <p v-if="!accessChecked && !errorMessage" class="muted">Проверка прав доступа...</p>

@@ -108,11 +108,7 @@ onMounted(loadAll);
 </script>
 
 <template>
-    <AdminPage
-        eyebrow="Blog"
-        title="Категории"
-        description="Категории для постов блога."
-    >
+    <AdminPage description="Категории для постов блога.">
         <AdminCard>
             <p v-if="errorMessage" class="error-text">
                 <strong>{{ errorMessage }}</strong>

@@ -2,7 +2,6 @@
     <section class="panel-stack">
         <div class="panel-header">
             <div>
-                <p class="eyebrow">{{ eyebrow }}</p>
                 <h1>{{ title }}</h1>
                 <p v-if="description" class="muted">{{ description }}</p>
             </div>

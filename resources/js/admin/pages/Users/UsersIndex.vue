@@ -1,206 +1,214 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import AdminBadge from '../../components/ui/AdminBadge.vue'
-import AdminButton from '../../components/ui/AdminButton.vue'
-import AdminCard from '../../components/ui/AdminCard.vue'
-import AdminPage from '../../components/ui/AdminPage.vue'
-import { useAdminNotifications } from '../../composables/useAdminNotifications'
-import { fetchRoles } from '../../api/roles'
-import { createUser, deleteUser, fetchUsers, updateUser } from '../../api/users'
+import { onMounted, reactive, ref } from "vue";
+import { RouterLink } from "vue-router";
+import AdminBadge from "../../components/ui/AdminBadge.vue";
+import AdminButton from "../../components/ui/AdminButton.vue";
+import AdminCard from "../../components/ui/AdminCard.vue";
+import AdminPage from "../../components/ui/AdminPage.vue";
+import { useAdminNotifications } from "../../composables/useAdminNotifications";
+import { fetchRoles } from "../../api/roles";
+import {
+    createUser,
+    deleteUser,
+    fetchUsers,
+    updateUser,
+} from "../../api/users";
 
-const loading = ref(true)
-const errorMessage = ref('')
-const users = ref([])
-const roles = ref([])
-const saving = ref(false)
-const validationErrors = ref({})
-const editingId = ref(null)
-const showPassword = ref(false)
-const { notifyError, notifySuccess } = useAdminNotifications()
+const loading = ref(true);
+const errorMessage = ref("");
+const users = ref([]);
+const roles = ref([]);
+const saving = ref(false);
+const validationErrors = ref({});
+const editingId = ref(null);
+const showPassword = ref(false);
+const { notifyError, notifySuccess } = useAdminNotifications();
 
 const form = reactive({
-    name: '',
-    username: '',
-    email: '',
-    password: '',
+    name: "",
+    username: "",
+    email: "",
+    password: "",
     role_slugs: [],
-})
+});
 
 function generateStrongPassword(length = 12) {
-    const safeLength = Math.max(10, Number(length) || 10)
-    const lowers = 'abcdefghijkmnopqrstuvwxyz'
-    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-    const digits = '23456789'
-    const symbols = '!@#$%^&*()-_=+[]{};:,.?'
-    const all = `${lowers}${uppers}${digits}${symbols}`
+    const safeLength = Math.max(10, Number(length) || 10);
+    const lowers = "abcdefghijkmnopqrstuvwxyz";
+    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const digits = "23456789";
+    const symbols = "!@#$%^&*()-_=+[]{};:,.?";
+    const all = `${lowers}${uppers}${digits}${symbols}`;
 
-    const pick = (charset) => charset[randomInt(charset.length)]
+    const pick = (charset) => charset[randomInt(charset.length)];
     const passwordChars = [
         pick(lowers),
         pick(uppers),
         pick(digits),
         pick(symbols),
-    ]
+    ];
 
     while (passwordChars.length < safeLength) {
-        passwordChars.push(pick(all))
+        passwordChars.push(pick(all));
     }
 
     for (let index = passwordChars.length - 1; index > 0; index -= 1) {
-        const swapIndex = randomInt(index + 1)
-        const current = passwordChars[index]
-        passwordChars[index] = passwordChars[swapIndex]
-        passwordChars[swapIndex] = current
+        const swapIndex = randomInt(index + 1);
+        const current = passwordChars[index];
+        passwordChars[index] = passwordChars[swapIndex];
+        passwordChars[swapIndex] = current;
     }
 
-    form.password = passwordChars.join('')
+    form.password = passwordChars.join("");
 }
 
 function randomInt(max) {
-    const bytes = new Uint32Array(1)
-    window.crypto.getRandomValues(bytes)
+    const bytes = new Uint32Array(1);
+    window.crypto.getRandomValues(bytes);
 
-    return bytes[0] % max
+    return bytes[0] % max;
 }
 
 function togglePasswordVisibility() {
-    showPassword.value = !showPassword.value
+    showPassword.value = !showPassword.value;
 }
 
 function resetForm() {
-    editingId.value = null
-    showPassword.value = false
-    validationErrors.value = {}
-    form.name = ''
-    form.username = ''
-    form.email = ''
-    form.password = ''
-    form.role_slugs = []
+    editingId.value = null;
+    showPassword.value = false;
+    validationErrors.value = {};
+    form.name = "";
+    form.username = "";
+    form.email = "";
+    form.password = "";
+    form.role_slugs = [];
 }
 
 function startEdit(user) {
-    editingId.value = user.id
-    showPassword.value = false
-    validationErrors.value = {}
-    errorMessage.value = ''
-    form.name = user.name ?? ''
-    form.username = user.username ?? ''
-    form.email = user.email ?? ''
-    form.password = ''
-    form.role_slugs = [...(user.roles ?? [])]
+    editingId.value = user.id;
+    showPassword.value = false;
+    validationErrors.value = {};
+    errorMessage.value = "";
+    form.name = user.name ?? "";
+    form.username = user.username ?? "";
+    form.email = user.email ?? "";
+    form.password = "";
+    form.role_slugs = [...(user.roles ?? [])];
 }
 
 function toggleRole(slug) {
     if (form.role_slugs.includes(slug)) {
-        form.role_slugs = form.role_slugs.filter((value) => value !== slug)
+        form.role_slugs = form.role_slugs.filter((value) => value !== slug);
 
-        return
+        return;
     }
 
-    form.role_slugs = [...form.role_slugs, slug]
+    form.role_slugs = [...form.role_slugs, slug];
 }
 
 async function loadUsers() {
-    loading.value = true
-    errorMessage.value = ''
+    loading.value = true;
+    errorMessage.value = "";
 
     try {
-        const payload = await fetchUsers()
-        users.value = payload.data ?? []
+        const payload = await fetchUsers();
+        users.value = payload.data ?? [];
     } catch (error) {
-        errorMessage.value = 'Не удалось загрузить пользователей.'
-        console.error(error)
+        errorMessage.value = "Не удалось загрузить пользователей.";
+        console.error(error);
     } finally {
-        loading.value = false
+        loading.value = false;
     }
 }
 
 async function loadRoles() {
     try {
-        const payload = await fetchRoles()
-        roles.value = payload.data ?? []
+        const payload = await fetchRoles();
+        roles.value = payload.data ?? [];
     } catch (error) {
-        console.error(error)
+        console.error(error);
     }
 }
 
 async function submitForm() {
-    saving.value = true
-    errorMessage.value = ''
-    validationErrors.value = {}
+    saving.value = true;
+    errorMessage.value = "";
+    validationErrors.value = {};
 
     try {
         if (editingId.value) {
-            const payload = await updateUser(editingId.value, form)
-            const index = users.value.findIndex((user) => user.id === editingId.value)
+            const payload = await updateUser(editingId.value, form);
+            const index = users.value.findIndex(
+                (user) => user.id === editingId.value,
+            );
 
             if (index !== -1) {
-                users.value[index] = payload.data
+                users.value[index] = payload.data;
             }
 
-            notifySuccess('Пользователь обновлен.')
+            notifySuccess("Пользователь обновлен.");
         } else {
-            const payload = await createUser(form)
-            users.value.push(payload.data)
-            notifySuccess('Пользователь создан.')
+            const payload = await createUser(form);
+            users.value.push(payload.data);
+            notifySuccess("Пользователь создан.");
         }
 
-        resetForm()
+        resetForm();
     } catch (error) {
         if (error.response?.status === 422) {
-            validationErrors.value = error.response.data.errors ?? {}
+            validationErrors.value = error.response.data.errors ?? {};
         } else {
             errorMessage.value = editingId.value
-                ? 'Не удалось обновить пользователя.'
-                : 'Не удалось создать пользователя.'
-            notifyError(errorMessage.value)
+                ? "Не удалось обновить пользователя."
+                : "Не удалось создать пользователя.";
+            notifyError(errorMessage.value);
         }
 
-        console.error(error)
+        console.error(error);
     } finally {
-        saving.value = false
+        saving.value = false;
     }
 }
 
 async function removeUser(user) {
-    const confirmed = window.confirm(`Удалить пользователя "${user.username}"?`)
+    const confirmed = window.confirm(
+        `Удалить пользователя "${user.username}"?`,
+    );
 
     if (!confirmed) {
-        return
+        return;
     }
 
-    errorMessage.value = ''
+    errorMessage.value = "";
 
     try {
-        await deleteUser(user.id)
-        users.value = users.value.filter((item) => item.id !== user.id)
-        notifySuccess('Пользователь удален.')
+        await deleteUser(user.id);
+        users.value = users.value.filter((item) => item.id !== user.id);
+        notifySuccess("Пользователь удален.");
 
         if (editingId.value === user.id) {
-            resetForm()
+            resetForm();
         }
     } catch (error) {
-        errorMessage.value = error.response?.data?.message ?? 'Не удалось удалить пользователя.'
-        notifyError(errorMessage.value)
-        console.error(error)
+        errorMessage.value =
+            error.response?.data?.message ?? "Не удалось удалить пользователя.";
+        notifyError(errorMessage.value);
+        console.error(error);
     }
 }
 
 onMounted(async () => {
-    await Promise.all([loadUsers(), loadRoles()])
-})
+    await Promise.all([loadUsers(), loadRoles()]);
+});
 </script>
 
 <template>
     <AdminPage
-        eyebrow="Users"
-        title="Пользователи"
         description="Простой список пользователей, ролей и разрешений административной системы."
     >
         <template #actions>
             <div class="users-toolbar__actions">
-                    <RouterLink :to="{ name: 'roles' }" class="button-link">
+                <RouterLink :to="{ name: 'roles' }" class="button-link">
                     Доступы и роли
                 </RouterLink>
             </div>
@@ -208,41 +216,93 @@ onMounted(async () => {
 
         <div class="users-grid">
             <AdminCard>
-                <h2>{{ editingId ? 'Редактирование пользователя' : 'Новый пользователь' }}</h2>
+                <h2>
+                    {{
+                        editingId
+                            ? "Редактирование пользователя"
+                            : "Новый пользователь"
+                    }}
+                </h2>
 
                 <form class="admin-form-stack" @submit.prevent="submitForm">
                     <label class="admin-form-label">
                         <span>Name</span>
-                        <input v-model="form.name" class="admin-input" type="text">
-                        <small v-if="validationErrors.name" class="error-text">{{ validationErrors.name[0] }}</small>
+                        <input
+                            v-model="form.name"
+                            class="admin-input"
+                            type="text"
+                        />
+                        <small
+                            v-if="validationErrors.name"
+                            class="error-text"
+                            >{{ validationErrors.name[0] }}</small
+                        >
                     </label>
 
                     <label class="admin-form-label">
                         <span>Login</span>
-                        <input v-model="form.username" class="admin-input" type="text">
-                        <small v-if="validationErrors.username" class="error-text">{{ validationErrors.username[0] }}</small>
+                        <input
+                            v-model="form.username"
+                            class="admin-input"
+                            type="text"
+                        />
+                        <small
+                            v-if="validationErrors.username"
+                            class="error-text"
+                            >{{ validationErrors.username[0] }}</small
+                        >
                     </label>
 
                     <label class="admin-form-label">
                         <span>Email</span>
-                        <input v-model="form.email" class="admin-input" type="email">
-                        <small v-if="validationErrors.email" class="error-text">{{ validationErrors.email[0] }}</small>
+                        <input
+                            v-model="form.email"
+                            class="admin-input"
+                            type="email"
+                        />
+                        <small
+                            v-if="validationErrors.email"
+                            class="error-text"
+                            >{{ validationErrors.email[0] }}</small
+                        >
                     </label>
 
                     <label class="admin-form-label">
                         <span>Password</span>
                         <div class="admin-actions-row">
-                            <AdminButton type="button" @click="generateStrongPassword(12)">
+                            <AdminButton
+                                type="button"
+                                @click="generateStrongPassword(12)"
+                            >
                                 Сгенерировать пароль
                             </AdminButton>
-                            <AdminButton type="button" @click="togglePasswordVisibility">
+                            <AdminButton
+                                type="button"
+                                @click="togglePasswordVisibility"
+                            >
                                 <span aria-hidden="true">&#128065;</span>
-                                {{ showPassword ? ' Скрыть' : ' Показать' }}
+                                {{ showPassword ? " Скрыть" : " Показать" }}
                             </AdminButton>
                         </div>
-                        <input v-model="form.password" class="admin-input" :type="showPassword ? 'text' : 'password'" :placeholder="editingId ? 'Оставить пустым, чтобы не менять' : ''">
-                        <small v-if="validationErrors.password" class="error-text">{{ validationErrors.password[0] }}</small>
-                        <small class="muted">Минимум 6 символов. Кнопка генерирует сложный пароль от 10 символов.</small>
+                        <input
+                            v-model="form.password"
+                            class="admin-input"
+                            :type="showPassword ? 'text' : 'password'"
+                            :placeholder="
+                                editingId
+                                    ? 'Оставить пустым, чтобы не менять'
+                                    : ''
+                            "
+                        />
+                        <small
+                            v-if="validationErrors.password"
+                            class="error-text"
+                            >{{ validationErrors.password[0] }}</small
+                        >
+                        <small class="muted"
+                            >Минимум 6 символов. Кнопка генерирует сложный
+                            пароль от 10 символов.</small
+                        >
                     </label>
 
                     <fieldset class="admin-fieldset">
@@ -257,19 +317,35 @@ onMounted(async () => {
                                 :checked="form.role_slugs.includes(role.slug)"
                                 type="checkbox"
                                 @change="toggleRole(role.slug)"
-                            >
+                            />
                             <span>{{ role.name }} ({{ role.slug }})</span>
                         </label>
                     </fieldset>
 
-                    <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+                    <p v-if="errorMessage" class="error-text">
+                        {{ errorMessage }}
+                    </p>
 
                     <div class="admin-actions-row">
-                        <AdminButton type="submit" variant="primary" :disabled="saving">
-                            {{ saving ? 'Сохранение...' : (editingId ? 'Сохранить пользователя' : 'Создать пользователя') }}
+                        <AdminButton
+                            type="submit"
+                            variant="primary"
+                            :disabled="saving"
+                        >
+                            {{
+                                saving
+                                    ? "Сохранение..."
+                                    : editingId
+                                      ? "Сохранить пользователя"
+                                      : "Создать пользователя"
+                            }}
                         </AdminButton>
 
-                        <AdminButton v-if="editingId" type="button" @click="resetForm">
+                        <AdminButton
+                            v-if="editingId"
+                            type="button"
+                            @click="resetForm"
+                        >
                             Отмена
                         </AdminButton>
                     </div>
@@ -280,13 +356,23 @@ onMounted(async () => {
                 <div class="users-toolbar">
                     <div>
                         <h2>Список пользователей</h2>
-                        <p class="muted">Управление доступами вынесено в отдельный экран, но вход в него находится прямо здесь.</p>
+                        <p class="muted">
+                            Управление доступами вынесено в отдельный экран, но
+                            вход в него находится прямо здесь.
+                        </p>
                     </div>
                 </div>
 
                 <p v-if="loading" class="muted">Загрузка пользователей...</p>
-                <p v-else-if="errorMessage && users.length === 0" class="error-text">{{ errorMessage }}</p>
-                <p v-else-if="users.length === 0" class="muted">Пользователи пока не найдены.</p>
+                <p
+                    v-else-if="errorMessage && users.length === 0"
+                    class="error-text"
+                >
+                    {{ errorMessage }}
+                </p>
+                <p v-else-if="users.length === 0" class="muted">
+                    Пользователи пока не найдены.
+                </p>
 
                 <table v-else class="data-table">
                     <thead>
@@ -325,14 +411,23 @@ onMounted(async () => {
                                     {{ permission }}
                                 </AdminBadge>
                             </td>
-                            <td>{{ user.two_factor_enabled ? 'On' : 'Off' }}</td>
+                            <td>
+                                {{ user.two_factor_enabled ? "On" : "Off" }}
+                            </td>
                             <td>
                                 <div class="admin-actions-row">
-                                    <AdminButton type="button" @click="startEdit(user)">
+                                    <AdminButton
+                                        type="button"
+                                        @click="startEdit(user)"
+                                    >
                                         Edit
                                     </AdminButton>
 
-                                    <AdminButton type="button" variant="danger" @click="removeUser(user)">
+                                    <AdminButton
+                                        type="button"
+                                        variant="danger"
+                                        @click="removeUser(user)"
+                                    >
                                         Delete
                                     </AdminButton>
                                 </div>
