@@ -4,6 +4,8 @@ import { RouterLink } from "vue-router";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import Icon from "../../components/ui/Icon.vue";
+import AdminSelect from "../../components/ui/AdminSelect.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import {
     formatCmsDateTime,
@@ -376,6 +378,15 @@ onMounted(async () => {
     languageOptions.value = settingsPayload.options?.languages ?? [];
     await loadPages();
 });
+
+const allCount = computed(() => pages.value.length);
+const publishedCount = computed(
+    () => pages.value.filter((p) => p.status === "published").length,
+);
+const archivedCount = computed(
+    () => pages.value.filter((p) => p.status === "archived").length,
+);
+const trashCount = computed(() => trashedPages.value.length);
 </script>
 
 <template>
@@ -385,72 +396,77 @@ onMounted(async () => {
         <template #actions>
             <div class="admin-actions-row">
                 <AdminButton type="button" @click="menuModalOpen = true">
-                    Меню
+                    <Icon name="menu-btn" width="18" height="18" />Меню
                 </AdminButton>
 
-                <RouterLink :to="{ name: 'page-create' }" class="button-link">
-                    Новая страница
+                <RouterLink :to="{ name: 'page-create' }" class="button-base">
+                    <Icon name="new" width="18" height="18" />Новая страница
                 </RouterLink>
             </div>
         </template>
 
         <div class="admin-page-grid">
             <AdminCard>
-                <label class="admin-form-label">
-                    <span>Язык</span>
-                    <select
-                        v-model="languageFilter"
-                        class="admin-select"
-                        @change="handleLanguageFilterChange"
+                <div class="admin-page-head">
+                    <div
+                        class="admin-tabs"
+                        role="tablist"
+                        aria-label="Фильтр страниц"
                     >
-                        <option value="all">Все языки</option>
-                        <option
-                            v-for="language in languageOptions"
-                            :key="language.value"
-                            :value="String(language.value)"
+                        <button
+                            type="button"
+                            class="admin-tab"
+                            :class="{ 'is-active': activeTab === 'all' }"
+                            @click="activeTab = 'all'"
                         >
-                            {{ language.label }}
-                        </option>
-                    </select>
-                </label>
+                            Все
+                            <span class="tab-count">{{ allCount }}</span>
+                        </button>
 
-                <div
-                    class="admin-tabs"
-                    role="tablist"
-                    aria-label="Фильтр страниц"
-                >
-                    <button
-                        type="button"
-                        class="admin-tab"
-                        :class="{ 'is-active': activeTab === 'all' }"
-                        @click="activeTab = 'all'"
-                    >
-                        Все
-                    </button>
-                    <button
-                        type="button"
-                        class="admin-tab"
-                        :class="{ 'is-active': activeTab === 'published' }"
-                        @click="activeTab = 'published'"
-                    >
-                        Опубликованные
-                    </button>
-                    <button
-                        type="button"
-                        class="admin-tab"
-                        :class="{ 'is-active': activeTab === 'archived' }"
-                        @click="activeTab = 'archived'"
-                    >
-                        Архив
-                    </button>
-                    <button
-                        type="button"
-                        class="admin-tab"
-                        :class="{ 'is-active': activeTab === 'trash' }"
-                        @click="activeTab = 'trash'"
-                    >
-                        Корзина
-                    </button>
+                        <button
+                            type="button"
+                            class="admin-tab"
+                            :class="{ 'is-active': activeTab === 'published' }"
+                            @click="activeTab = 'published'"
+                        >
+                            Опубликованные
+                            <span class="tab-count">{{ publishedCount }}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="admin-tab"
+                            :class="{ 'is-active': activeTab === 'archived' }"
+                            @click="activeTab = 'archived'"
+                        >
+                            Архив
+                            <span class="tab-count">{{ archivedCount }}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="admin-tab"
+                            :class="{ 'is-active': activeTab === 'trash' }"
+                            @click="activeTab = 'trash'"
+                        >
+                            Корзина
+                            <span class="tab-count">{{ trashCount }}</span>
+                        </button>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <div class="admin-form-label">
+                            <Icon name="language" width="20" height="20" />Язык:
+                        </div>
+
+                        <AdminSelect
+                            v-model="languageFilter"
+                            :options="[
+                                { value: 'all', label: 'Все языки' },
+                                ...languageOptions,
+                            ]"
+                        />
+                    </div>
                 </div>
 
                 <p v-if="loading" class="muted">Загрузка страниц...</p>
@@ -618,59 +634,63 @@ onMounted(async () => {
                 </div>
             </AdminCard>
         </div>
+        <Transition name="modal">
+            <div
+                v-if="menuModalOpen"
+                class="admin-modal"
+                @click.self="menuModalOpen = false"
+            >
+                <div class="admin-modal__dialog admin-modal__dialog--wide">
+                    <div class="admin-modal__header">
+                        <div>
+                            <h2>Меню страниц</h2>
+                        </div>
 
-        <div
-            v-if="menuModalOpen"
-            class="admin-modal"
-            @click.self="menuModalOpen = false"
-        >
-            <div class="admin-modal__dialog admin-modal__dialog--wide">
-                <div class="admin-modal__header">
-                    <div>
-                        <p class="eyebrow">Pages</p>
-                        <h2>Меню страниц</h2>
+                        <div class="admin-actions-row">
+                            <AdminButton
+                                type="button"
+                                class="button-save"
+                                :disabled="savingTree || !treeDirty"
+                                @click="handleTreeSave"
+                            >
+                                <Icon name="save" width="16" height="16" />
+                                {{
+                                    savingTree
+                                        ? "Сохранение..."
+                                        : "Сохранить структуру"
+                                }}
+                            </AdminButton>
+                            <AdminButton
+                                type="button"
+                                class="button-close"
+                                @click="menuModalOpen = false"
+                                ><Icon name="close" width="22" height="22" />
+                            </AdminButton>
+                        </div>
                     </div>
 
-                    <div class="admin-actions-row">
-                        <AdminButton
-                            type="button"
-                            :disabled="savingTree || !treeDirty"
-                            @click="handleTreeSave"
-                        >
-                            {{
-                                savingTree
-                                    ? "Сохранение..."
-                                    : "Сохранить структуру"
-                            }}
-                        </AdminButton>
-                        <AdminButton
-                            type="button"
-                            @click="menuModalOpen = false"
-                        >
-                            Закрыть
-                        </AdminButton>
-                    </div>
-                </div>
+                    <div class="admin-modal__body">
+                        <p v-if="loading" class="muted">
+                            Загрузка структуры...
+                        </p>
+                        <p v-else-if="treePages.length === 0" class="muted">
+                            Для структуры меню пока нет страниц.
+                        </p>
 
-                <div class="admin-modal__body">
-                    <p v-if="loading" class="muted">Загрузка структуры...</p>
-                    <p v-else-if="treePages.length === 0" class="muted">
-                        Для структуры меню пока нет страниц.
-                    </p>
-
-                    <div v-else class="page-tree-shell">
-                        <PageMenuTreeItem
-                            :nodes="menuTree"
-                            :level="0"
-                            :ancestor-ids="[]"
-                            :dragging-id="draggingPageId"
-                            :status-labels="statusLabels"
-                            @move="handleTreeMove"
-                            @dragging-change="draggingPageId = $event"
-                        />
+                        <div v-else class="page-tree-shell">
+                            <PageMenuTreeItem
+                                :nodes="menuTree"
+                                :level="0"
+                                :ancestor-ids="[]"
+                                :dragging-id="draggingPageId"
+                                :status-labels="statusLabels"
+                                @move="handleTreeMove"
+                                @dragging-change="draggingPageId = $event"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </Transition>
     </AdminPage>
 </template>

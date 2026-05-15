@@ -71,7 +71,7 @@ class LoginRequest extends FormRequest
             ]);
 
             throw ValidationException::withMessages([
-                'login' => 'Неверный логин или пароль.',
+                'login' => 'Неверный логин или пароль',
             ]);
         }
 

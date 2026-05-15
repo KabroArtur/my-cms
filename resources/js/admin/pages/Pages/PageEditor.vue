@@ -38,6 +38,7 @@ import PageContentToolbar from "../../components/ui/PageContentToolbar.vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import { fetchApplicableAdditionalFields } from "../../api/additionalFields";
 import { loadCmsSettings } from "../../composables/useCmsSettings";
@@ -613,8 +614,8 @@ onBeforeUnmount(() => {
                     Перейти на страницу
                 </a>
 
-                <RouterLink :to="{ name: 'pages' }" class="button-link">
-                    К списку
+                <RouterLink :to="{ name: 'pages' }" class="button-base">
+                    <Icon name="return" width="18" height="18" /> К списку
                 </RouterLink>
             </div>
         </template>

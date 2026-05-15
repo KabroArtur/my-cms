@@ -3,7 +3,9 @@
         <div class="panel-header">
             <div>
                 <h1>{{ title }}</h1>
-                <p v-if="description" class="muted">{{ description }}</p>
+                <p v-if="description" class="muted description">
+                    {{ description }}
+                </p>
             </div>
             <slot name="actions" />
         </div>

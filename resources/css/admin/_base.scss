@@ -90,6 +90,19 @@ select:-webkit-autofill:focus {
     margin: 0;
 }
 
+.panel-card .muted {
+    margin-block: 10px;
+    text-align: center;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.description {
+    margin-left: 6px;
+}
+
 .error-text {
     text-align: center;
     line-height: 1.2;
@@ -103,9 +116,68 @@ select:-webkit-autofill:focus {
     gap: 14px;
 }
 
-.admin-form-label {
-    display: grid;
-    gap: var(--admin-space-2);
+.admin-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.admin-checkbox input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-checkbox span {
+    position: relative;
+    margin-left: 65px;
+}
+
+.admin-checkbox span::before {
+    content: "";
+    position: absolute;
+    left: -30px;
+    top: 50%;
+    translate: 0 -50%;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--admin-radius-xs);
+    border: 1.5px solid var(--admin-color-border);
+    background: var(--admin-color-surface);
+    transition: all 0.3s ease;
+}
+
+.admin-checkbox span::after {
+    content: "✓";
+    position: absolute;
+    left: -26px;
+    top: 50%;
+    translate: 0 -50%;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--admin-color-text-accent);
+    opacity: 0;
+    transform: scale(0.2);
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
+}
+
+.admin-checkbox input:checked + span::before {
+    background: var(--admin-color-primary);
+    border-color: var(--admin-color-primary);
+}
+
+.admin-checkbox input:checked + span::after {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.admin-checkbox:hover span::before {
+    border-color: var(--admin-color-primary);
 }
 
 .admin-input,
@@ -140,6 +212,7 @@ select:-webkit-autofill:focus {
 
 .admin-actions-row {
     display: flex;
+    justify-content: center;
     gap: var(--admin-space-2);
     flex-wrap: wrap;
 }
