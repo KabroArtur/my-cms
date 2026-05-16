@@ -17,6 +17,63 @@ p {
 
 button {
     cursor: pointer;
+    outline: none;
+}
+
+input,
+textarea {
+    outline: none;
+}
+
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px var(--login-surface) inset !important;
+    -webkit-text-fill-color: var(--login-text) !important;
+    caret-color: var(--login-text);
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+input:-moz-autofill,
+textarea:-moz-autofill,
+select:-moz-autofill {
+    caret-color: var(--login-bg);
+    background-color: var(--login-surface) !important;
+    color: var(--login-text) !important;
+}
+
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill:focus {
+    caret-color: var(--login-text);
+    -webkit-box-shadow: 0 0 0px 1000px var(--login-surface) inset !important;
+    -webkit-text-fill-color: var(--login-text) !important;
+}
+
+::-webkit-scrollbar {
+    width: 3px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: var(--admin-radius-sm);
+    margin-block: 16px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--admin-color-primary);
+    border-radius: var(--admin-radius-lg);
+    transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--admin-color-primary);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--admin-color-primary) rgba(0, 0, 0, 0.05);
 }
 
 .eyebrow {
@@ -29,13 +86,29 @@ button {
 }
 
 .muted {
-    margin: 0;
     color: var(--admin-color-text-muted);
+    margin: 0;
+}
+
+.panel-card .muted {
+    margin-block: 10px;
+    text-align: center;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.description {
+    margin-left: 6px;
 }
 
 .error-text {
-    margin: 0;
+    text-align: center;
+    line-height: 1.2;
+    font-weight: 600;
     color: var(--admin-color-danger);
+    margin: 0;
 }
 
 .admin-form-stack {
@@ -43,9 +116,68 @@ button {
     gap: 14px;
 }
 
-.admin-form-label {
-    display: grid;
-    gap: var(--admin-space-2);
+.admin-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.admin-checkbox input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-checkbox span {
+    position: relative;
+    margin-left: 65px;
+}
+
+.admin-checkbox span::before {
+    content: "";
+    position: absolute;
+    left: -30px;
+    top: 50%;
+    translate: 0 -50%;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--admin-radius-xs);
+    border: 1.5px solid var(--admin-color-border);
+    background: var(--admin-color-surface);
+    transition: all 0.3s ease;
+}
+
+.admin-checkbox span::after {
+    content: "✓";
+    position: absolute;
+    left: -26px;
+    top: 50%;
+    translate: 0 -50%;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--admin-color-text-accent);
+    opacity: 0;
+    transform: scale(0.2);
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
+}
+
+.admin-checkbox input:checked + span::before {
+    background: var(--admin-color-primary);
+    border-color: var(--admin-color-primary);
+}
+
+.admin-checkbox input:checked + span::after {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.admin-checkbox:hover span::before {
+    border-color: var(--admin-color-primary);
 }
 
 .admin-input,
@@ -56,8 +188,8 @@ button {
     border: 1px solid var(--admin-color-border-strong);
     border-radius: var(--admin-radius-sm);
     font: inherit;
-    background: var(--admin-color-surface);
     color: var(--admin-color-text);
+    background: var(--admin-color-surface);
 }
 
 .admin-input::placeholder,
@@ -80,6 +212,7 @@ button {
 
 .admin-actions-row {
     display: flex;
+    justify-content: center;
     gap: var(--admin-space-2);
     flex-wrap: wrap;
 }

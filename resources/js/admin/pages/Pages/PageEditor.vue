@@ -38,6 +38,7 @@ import PageContentToolbar from "../../components/ui/PageContentToolbar.vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import { fetchApplicableAdditionalFields } from "../../api/additionalFields";
 import { loadCmsSettings } from "../../composables/useCmsSettings";
@@ -165,7 +166,8 @@ const resolvedParent = computed(
 );
 const publicUrl = computed(() => {
     const segments = [];
-    const usesPrefix = selectedLanguage.value && !selectedLanguage.value.is_default;
+    const usesPrefix =
+        selectedLanguage.value && !selectedLanguage.value.is_default;
 
     if (usesPrefix) {
         segments.push(selectedLanguage.value.code);
@@ -583,7 +585,8 @@ watch(
     () => {
         if (
             resolvedParent.value &&
-            String(resolvedParent.value.language_id) !== String(form.language_id)
+            String(resolvedParent.value.language_id) !==
+                String(form.language_id)
         ) {
             form.parent_id = "";
         }
@@ -597,8 +600,6 @@ onBeforeUnmount(() => {
 
 <template>
     <AdminPage
-        eyebrow="Pages"
-        :title="pageTitle"
         description="Карточка страницы для полного редактирования полей и контента."
     >
         <template #actions>
@@ -613,8 +614,8 @@ onBeforeUnmount(() => {
                     Перейти на страницу
                 </a>
 
-                <RouterLink :to="{ name: 'pages' }" class="button-link">
-                    К списку
+                <RouterLink :to="{ name: 'pages' }" class="button-base">
+                    <Icon name="return" width="18" height="18" /> К списку
                 </RouterLink>
             </div>
         </template>
@@ -629,8 +630,8 @@ onBeforeUnmount(() => {
                             <div>
                                 <h2>Основное</h2>
                                 <p class="muted">
-                                    Название, адрес страницы и краткое описание для
-                                    списков и предпросмотра.
+                                    Название, адрес страницы и краткое описание
+                                    для списков и предпросмотра.
                                 </p>
                             </div>
                         </div>
@@ -638,13 +639,18 @@ onBeforeUnmount(() => {
                         <div class="page-identity-grid">
                             <label class="admin-form-label">
                                 <span>Язык</span>
-                                <select v-model="form.language_id" class="admin-select">
+                                <select
+                                    v-model="form.language_id"
+                                    class="admin-select"
+                                >
                                     <option
                                         v-for="language in languageOptions"
                                         :key="language.value"
                                         :value="language.value"
                                     >
-                                        {{ language.label }} ({{ language.code }})
+                                        {{ language.label }} ({{
+                                            language.code
+                                        }})
                                     </option>
                                 </select>
                                 <small
@@ -664,7 +670,10 @@ onBeforeUnmount(() => {
                                     placeholder="Например, О компании"
                                     @input="syncSlugFromTitle"
                                 />
-                                <small v-if="validationErrors.title" class="error-text">
+                                <small
+                                    v-if="validationErrors.title"
+                                    class="error-text"
+                                >
                                     {{ validationErrors.title[0] }}
                                 </small>
                             </label>
@@ -678,10 +687,15 @@ onBeforeUnmount(() => {
                                     placeholder="o-kompanii"
                                     @input="handleSlugInput"
                                 />
-                                <small v-if="validationErrors.slug" class="error-text">
+                                <small
+                                    v-if="validationErrors.slug"
+                                    class="error-text"
+                                >
                                     {{ validationErrors.slug[0] }}
                                 </small>
-                                <small class="muted">Полный адрес: {{ publicUrl }}</small>
+                                <small class="muted"
+                                    >Полный адрес: {{ publicUrl }}</small
+                                >
                             </label>
                         </div>
 
@@ -709,7 +723,10 @@ onBeforeUnmount(() => {
                                 rows="4"
                                 placeholder="Краткое описание страницы"
                             ></textarea>
-                            <small v-if="validationErrors.excerpt" class="error-text">
+                            <small
+                                v-if="validationErrors.excerpt"
+                                class="error-text"
+                            >
                                 {{ validationErrors.excerpt[0] }}
                             </small>
                         </label>
@@ -722,8 +739,8 @@ onBeforeUnmount(() => {
                             <div>
                                 <h2>Контент</h2>
                                 <p class="muted">
-                                    Основное содержимое страницы. Панель инструментов
-                                    остаётся рядом с редактором.
+                                    Основное содержимое страницы. Панель
+                                    инструментов остаётся рядом с редактором.
                                 </p>
                             </div>
                         </div>
@@ -743,14 +760,16 @@ onBeforeUnmount(() => {
                 </AdminCard>
 
                 <AdminCard>
-                    <section class="page-editor-section additional-fields-block">
+                    <section
+                        class="page-editor-section additional-fields-block"
+                    >
                         <div class="additional-fields-block__header">
                             <div>
                                 <h2>Дополнительные поля</h2>
                                 <p class="muted">
                                     Поля текущего шаблона и структуры контента.
-                                    Сгруппированы отдельно от основного текста, чтобы не
-                                    мешать редактированию.
+                                    Сгруппированы отдельно от основного текста,
+                                    чтобы не мешать редактированию.
                                 </p>
                             </div>
 
@@ -763,7 +782,10 @@ onBeforeUnmount(() => {
                             </RouterLink>
                         </div>
 
-                        <p v-if="additionalFieldGroups.length === 0" class="muted">
+                        <p
+                            v-if="additionalFieldGroups.length === 0"
+                            class="muted"
+                        >
                             Для текущего шаблона нет подключенных наборов полей.
                         </p>
 
@@ -790,12 +812,16 @@ onBeforeUnmount(() => {
                                 </small>
                             </summary>
 
-                            <div class="admin-stack additional-fields-group__body">
+                            <div
+                                class="admin-stack additional-fields-group__body"
+                            >
                                 <CustomFieldRenderer
                                     v-for="field in group.fields"
                                     :key="field.key"
                                     :field="field"
-                                    :model-value="additionalFieldValues[field.key]"
+                                    :model-value="
+                                        additionalFieldValues[field.key]
+                                    "
                                     :errors="validationErrors"
                                     :path="`additional_fields.${field.key}`"
                                     @update:model-value="
@@ -812,18 +838,28 @@ onBeforeUnmount(() => {
                 </AdminCard>
 
                 <div class="page-editor-footer">
-                    <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
-                    <p v-if="!isCreateMode && !canUpdatePage" class="error-text">
-                        Только автор страницы или администратор может ее изменять.
+                    <p v-if="errorMessage" class="error-text">
+                        {{ errorMessage }}
+                    </p>
+                    <p
+                        v-if="!isCreateMode && !canUpdatePage"
+                        class="error-text"
+                    >
+                        Только автор страницы или администратор может ее
+                        изменять.
                     </p>
 
                     <div class="admin-actions-row">
                         <AdminButton
                             type="submit"
                             variant="primary"
-                            :disabled="saving || (!isCreateMode && !canUpdatePage)"
+                            :disabled="
+                                saving || (!isCreateMode && !canUpdatePage)
+                            "
                         >
-                            {{ saving ? "Сохранение..." : "Сохранить страницу" }}
+                            {{
+                                saving ? "Сохранение..." : "Сохранить страницу"
+                            }}
                         </AdminButton>
 
                         <RouterLink :to="{ name: 'pages' }" class="button-link">
@@ -835,7 +871,9 @@ onBeforeUnmount(() => {
 
             <div class="page-editor-layout__aside">
                 <AdminCard>
-                    <section class="page-editor-section page-editor-aside-section">
+                    <section
+                        class="page-editor-section page-editor-aside-section"
+                    >
                         <div class="page-editor-section__header">
                             <div>
                                 <h2>Публикация</h2>
@@ -858,19 +896,27 @@ onBeforeUnmount(() => {
                             <span>Статус публикации</span>
                             <select v-model="form.status" class="admin-select">
                                 <option value="draft">Черновик</option>
-                                <option value="pending_review">На проверке</option>
+                                <option value="pending_review">
+                                    На проверке
+                                </option>
                                 <option value="scheduled">Запланирована</option>
                                 <option value="published">Опубликована</option>
                                 <option value="archived">Архив</option>
                             </select>
-                            <small v-if="validationErrors.status" class="error-text">
+                            <small
+                                v-if="validationErrors.status"
+                                class="error-text"
+                            >
                                 {{ validationErrors.status[0] }}
                             </small>
                         </label>
 
                         <label class="admin-form-label">
                             <span>Видимость</span>
-                            <select v-model="form.visibility" class="admin-select">
+                            <select
+                                v-model="form.visibility"
+                                class="admin-select"
+                            >
                                 <option value="public">Публичная</option>
                                 <option value="private">Скрытая</option>
                             </select>
@@ -899,7 +945,10 @@ onBeforeUnmount(() => {
 
                         <label class="admin-form-label">
                             <span>Родительская страница</span>
-                            <select v-model="form.parent_id" class="admin-select">
+                            <select
+                                v-model="form.parent_id"
+                                class="admin-select"
+                            >
                                 <option value="">Без родителя</option>
                                 <option
                                     v-for="page in availableParents"
@@ -907,7 +956,11 @@ onBeforeUnmount(() => {
                                     :value="page.id"
                                 >
                                     {{ page.title }}
-                                    ({{ page.is_home ? "/" : `/${page.path || page.slug}` }})
+                                    ({{
+                                        page.is_home
+                                            ? "/"
+                                            : `/${page.path || page.slug}`
+                                    }})
                                 </option>
                             </select>
                             <small
@@ -920,7 +973,10 @@ onBeforeUnmount(() => {
 
                         <label class="admin-form-label">
                             <span>Шаблон</span>
-                            <select v-model="form.template" class="admin-select">
+                            <select
+                                v-model="form.template"
+                                class="admin-select"
+                            >
                                 <option
                                     v-for="option in templateOptions"
                                     :key="option.value"
@@ -929,7 +985,10 @@ onBeforeUnmount(() => {
                                     {{ option.label }}
                                 </option>
                             </select>
-                            <small v-if="validationErrors.template" class="error-text">
+                            <small
+                                v-if="validationErrors.template"
+                                class="error-text"
+                            >
                                 {{ validationErrors.template[0] }}
                             </small>
                         </label>
@@ -937,13 +996,15 @@ onBeforeUnmount(() => {
                 </AdminCard>
 
                 <AdminCard>
-                    <section class="page-editor-section page-editor-aside-section">
+                    <section
+                        class="page-editor-section page-editor-aside-section"
+                    >
                         <div class="page-editor-section__header">
                             <div>
                                 <h2>SEO и обложка</h2>
                                 <p class="muted">
-                                    Поисковый сниппет и визуальная обложка собраны в
-                                    одном боковом блоке.
+                                    Поисковый сниппет и визуальная обложка
+                                    собраны в одном боковом блоке.
                                 </p>
                             </div>
                         </div>
@@ -968,25 +1029,35 @@ onBeforeUnmount(() => {
                             ></textarea>
                         </label>
 
-                        <label class="admin-form-label page-editor-checkbox-label">
+                        <label
+                            class="admin-form-label page-editor-checkbox-label"
+                        >
                             <span class="page-editor-checkbox-text">
-                                <input v-model="form.seo_noindex" type="checkbox" />
+                                <input
+                                    v-model="form.seo_noindex"
+                                    type="checkbox"
+                                />
                                 Не индексировать страницу
                             </span>
                             <small class="muted">
-                                Страница получит meta robots noindex и автоматически
-                                выпадет из sitemap.
+                                Страница получит meta robots noindex и
+                                автоматически выпадет из sitemap.
                             </small>
                         </label>
 
-                        <label class="admin-form-label page-editor-checkbox-label">
+                        <label
+                            class="admin-form-label page-editor-checkbox-label"
+                        >
                             <span class="page-editor-checkbox-text">
-                                <input v-model="form.seo_nofollow" type="checkbox" />
+                                <input
+                                    v-model="form.seo_nofollow"
+                                    type="checkbox"
+                                />
                                 Не передавать follow по ссылкам страницы
                             </span>
                             <small class="muted">
-                                Переопределяет только follow-часть robots для текущей
-                                страницы.
+                                Переопределяет только follow-часть robots для
+                                текущей страницы.
                             </small>
                         </label>
 

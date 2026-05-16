@@ -312,7 +312,7 @@ onMounted(loadWorkspace)
 </script>
 
 <template>
-    <AdminPage eyebrow="Записи" :title="section ? section.name : 'Раздел'" description="Внутри раздела доступны вкладки записи, категории, теги и настройки.">
+    <AdminPage description="Внутри раздела доступны вкладки записи, категории, теги и настройки.">
         <AdminCard>
             <p v-if="errorMessage" class="error-text"><strong>{{ errorMessage }}</strong></p>
             <p v-if="loading" class="muted">Загрузка...</p>

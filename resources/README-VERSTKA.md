@@ -210,7 +210,7 @@
 
 ```vue
 <template>
-	<router-view />
+    <router-view />
 </template>
 ```
 
@@ -243,9 +243,9 @@
 
 ```vue
 <template>
-	<button :class="buttonClass" :type="type" :disabled="disabled">
-		<slot />
-	</button>
+    <button :class="buttonClass" :type="type" :disabled="disabled">
+        <slot />
+    </button>
 </template>
 ```
 
@@ -296,7 +296,11 @@
 Пример структуры:
 
 ```vue
-<AdminPage eyebrow="Media" title="Медиатека" description="Управление файлами и папками">
+<AdminPage
+    eyebrow="Media"
+    title="Медиатека"
+    description="Управление файлами и папками"
+>
 	<template #actions>
 		<AdminButton type="button" variant="primary">Добавить</AdminButton>
 	</template>
@@ -313,9 +317,9 @@
 
 ```vue
 <template>
-	<section class="panel-card">
-		<slot />
-	</section>
+    <section class="panel-card">
+        <slot />
+    </section>
 </template>
 ```
 
@@ -346,19 +350,25 @@
 
 ```vue
 <template>
-	<AdminPage eyebrow="Settings" title="Настройки" description="Основные параметры сайта">
-		<section class="panel-card admin-form-stack">
-			<label class="admin-form-label">
-				<span>Название сайта</span>
-				<input class="admin-input" type="text">
-			</label>
+    <AdminPage
+        eyebrow="Settings"
+        title="Настройки"
+        description="Основные параметры сайта"
+    >
+        <section class="panel-card admin-form-stack">
+            <label class="admin-form-label">
+                <span>Название сайта</span>
+                <input class="admin-input" type="text" />
+            </label>
 
-			<div class="admin-actions-row">
-				<AdminButton type="submit" variant="primary">Сохранить</AdminButton>
-				<AdminButton type="button">Отмена</AdminButton>
-			</div>
-		</section>
-	</AdminPage>
+            <div class="admin-actions-row">
+                <AdminButton type="submit" variant="primary"
+                    >Сохранить</AdminButton
+                >
+                <AdminButton type="button">Отмена</AdminButton>
+            </div>
+        </section>
+    </AdminPage>
 </template>
 ```
 
