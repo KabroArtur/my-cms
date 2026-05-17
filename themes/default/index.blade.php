@@ -155,6 +155,39 @@
             margin-bottom: 0;
         }
 
+        .site-content video {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 0 20px;
+            border: 1px solid var(--site-border);
+            border-radius: 20px;
+            background: #120f0c;
+            box-shadow: 0 20px 50px rgba(28, 25, 23, 0.12);
+        }
+
+        .site-content a[download] {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border: 1px solid var(--site-border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            color: var(--site-accent);
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .site-content a[download]::before {
+            content: "Файл";
+            color: var(--site-muted);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
         .site-footer {
             margin-top: 24px;
             color: var(--site-muted);

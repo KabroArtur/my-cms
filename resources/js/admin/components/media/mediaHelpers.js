@@ -1,4 +1,5 @@
 export const DEFAULT_MEDIA_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp'
+export const DEFAULT_MEDIA_LIBRARY_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,image/svg+xml,application/pdf,text/plain,text/markdown,text/csv,application/json,application/xml,text/xml,.txt,.md,.csv,.json,.xml,.log,application/zip,application/x-zip-compressed,application/vnd.rar,application/x-rar-compressed,application/x-7z-compressed,.zip,.rar,.7z,video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.webm,.ogv,.mov,.avi,.mkv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
 
 const mimeByExtension = {
     jpg: 'image/jpeg',
@@ -8,6 +9,29 @@ const mimeByExtension = {
     webp: 'image/webp',
     avif: 'image/avif',
     bmp: 'image/bmp',
+    svg: 'image/svg+xml',
+    pdf: 'application/pdf',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    csv: 'text/csv',
+    json: 'application/json',
+    xml: 'application/xml',
+    log: 'text/plain',
+    zip: 'application/zip',
+    rar: 'application/vnd.rar',
+    '7z': 'application/x-7z-compressed',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    ogv: 'video/ogg',
+    mov: 'video/quicktime',
+    avi: 'video/x-msvideo',
+    mkv: 'video/x-matroska',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
 
 export function normalizeToArray(value) {
@@ -181,18 +205,19 @@ export function isAcceptedUpload(file, accept = DEFAULT_MEDIA_ACCEPT) {
 
     const fileMimeType = String(file?.type ?? '').toLowerCase()
     const extension = getExtension(file?.name ?? '')
+    const inferredMimeType = resolveMimeTypeByExtension(extension)
 
     return accepted.some((rule) => {
         if (rule.endsWith('/*')) {
             const prefix = rule.slice(0, -1)
 
-            return fileMimeType.startsWith(prefix)
+            return fileMimeType.startsWith(prefix) || inferredMimeType.startsWith(prefix)
         }
 
         if (rule.startsWith('.')) {
             return extension === rule.slice(1)
         }
 
-        return fileMimeType === rule || resolveMimeTypeByExtension(extension) === rule
+        return fileMimeType === rule || inferredMimeType === rule
     })
 }

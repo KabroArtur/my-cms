@@ -202,6 +202,7 @@ class MediaController extends Controller
         $results = [];
         $uploadedAny = false;
         $maxUploadKb = (int) config('settings.defaults.media_upload_max_kb', 20480);
+        $acceptedMimeTypes = config('media.uploads.accepted_mime_types', []);
 
         foreach (array_keys($request->input('items', [])) as $index) {
             $payload = [
@@ -217,7 +218,7 @@ class MediaController extends Controller
                     'required',
                     'file',
                     'max:'.$maxUploadKb,
-                    'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,image/svg+xml',
+                    'mimetypes:'.implode(',', $acceptedMimeTypes),
                 ],
             ]);
 

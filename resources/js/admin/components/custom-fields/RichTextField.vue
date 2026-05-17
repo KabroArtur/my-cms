@@ -1,10 +1,15 @@
 <script setup>
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
+import VideoNode from "../editor/VideoNode";
+import MediaLibraryModal from "../media/MediaLibraryModal.vue";
+import { DEFAULT_MEDIA_LIBRARY_ACCEPT } from "../media/mediaHelpers";
+import { buildEmbeddedMediaMarkup } from "../media/mediaEmbeds";
 import AdminButton from "../ui/AdminButton.vue";
 
 const props = defineProps({
@@ -19,16 +24,19 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue"]);
+const mediaModalOpen = ref(false)
 
 const editor = useEditor({
     extensions: [
         StarterKit,
+        Image,
         Underline,
         Link.configure({
             openOnClick: false,
             autolink: true,
             protocols: ["http", "https", "mailto", "tel"],
         }),
+        VideoNode,
         Placeholder.configure({
             placeholder: props.placeholder,
         }),
@@ -93,6 +101,28 @@ function editLink() {
 
     editor.value.chain().focus().setLink({ href: normalized }).run();
 }
+
+function openMediaModal() {
+    mediaModalOpen.value = true
+}
+
+function handleMediaInsert(selection) {
+    const items = (Array.isArray(selection) ? selection : [selection]).filter(Boolean)
+
+    if (items.length === 0 || !editor.value) {
+        mediaModalOpen.value = false
+        return
+    }
+
+    const markup = items.map((item) => buildEmbeddedMediaMarkup(item)).join("")
+
+    if (markup !== "") {
+        editor.value.chain().focus().insertContent(markup).run()
+        emit("update:modelValue", editor.value.getHTML())
+    }
+
+    mediaModalOpen.value = false
+}
 </script>
 
 <template>
@@ -146,6 +176,9 @@ function editLink() {
                     @click="editor?.chain().focus().toggleBlockquote().run()"
                     >Quote</AdminButton
                 >
+                <AdminButton type="button" @click="openMediaModal"
+                    >Медиа</AdminButton
+                >
             </div>
         </div>
 
@@ -153,5 +186,26 @@ function editLink() {
             :editor="editor"
             class="admin-editor tiptap-editor compact"
         />
+
+        <MediaLibraryModal
+            :open="mediaModalOpen"
+            title="Вставить медиа в поле"
+            :multiple="true"
+            :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
+            :allow-upload="true"
+            @close="mediaModalOpen = false"
+            @select="handleMediaInsert"
+        />
     </div>
 </template>
+
+<style scoped>
+.custom-rich-text-field :deep(video) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0.75rem 0;
+    border-radius: 14px;
+    background: #0f172a;
+}
+</style>

@@ -470,6 +470,41 @@
     gap: 10px;
 }
 
+.media-library-page__file-meta--upload > * {
+    min-width: 0;
+}
+
+.media-library-page__upload-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.media-library-page__upload-head strong {
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+.media-library-page__upload-error {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: color-mix(
+        in srgb,
+        var(--admin-color-danger) 10%,
+        white
+    );
+    color: var(--admin-color-danger);
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 600;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.media-library-page__upload-error--table {
+    display: block;
+}
+
 .media-library-page__file-card.is-upload-placeholder {
     cursor: default;
 }

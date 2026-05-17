@@ -3,6 +3,42 @@
 return [
     'preview_variant' => 'thumbnail',
 
+    'uploads' => [
+        'accepted_mime_types' => [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/avif',
+            'image/bmp',
+            'image/svg+xml',
+            'application/pdf',
+            'text/plain',
+            'text/markdown',
+            'text/csv',
+            'application/json',
+            'application/xml',
+            'text/xml',
+            'application/zip',
+            'application/x-zip-compressed',
+            'application/vnd.rar',
+            'application/x-rar-compressed',
+            'application/x-7z-compressed',
+            'video/mp4',
+            'video/webm',
+            'video/ogg',
+            'video/quicktime',
+            'video/x-msvideo',
+            'video/x-matroska',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        ],
+    ],
+
     'favicons' => [
         'variants' => [
             'favicon-16' => ['width' => 16, 'height' => 16, 'mode' => 'crop', 'format' => 'png'],

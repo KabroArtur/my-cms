@@ -12,6 +12,8 @@ const props = defineProps({
     },
 })
 
+const emit = defineEmits(['open-media'])
+
 function toolbarButtonClass(isActive) {
     return {
         'tiptap-toolbar-btn': true,
@@ -126,6 +128,7 @@ function insertTable() {
         <span class="tiptap-toolbar-separator" aria-hidden="true"></span>
 
         <div class="tiptap-toolbar-group">
+            <AdminButton type="button" @click="emit('open-media')">Медиа</AdminButton>
             <AdminButton type="button" @click="editor?.chain().focus().undo().run()">Назад</AdminButton>
             <AdminButton type="button" @click="editor?.chain().focus().redo().run()">Вперед</AdminButton>
             <AdminButton type="button" @click="editor?.chain().focus().unsetAllMarks().clearNodes().run()">Сброс</AdminButton>

@@ -30,7 +30,7 @@ import {
 import {
     buildFilename,
     createMediaSelection,
-    DEFAULT_MEDIA_ACCEPT,
+    DEFAULT_MEDIA_LIBRARY_ACCEPT,
     formatBytes,
     getExtension,
     isAcceptedUpload,
@@ -47,6 +47,7 @@ const storageKeys = {
 const fileTypeTabs = [
     { value: "all", label: "Все файлы" },
     { value: "images", label: "Изображения" },
+    { value: "videos", label: "Видео" },
     { value: "documents", label: "Документы" },
     { value: "archives", label: "Архивы" },
     { value: "other", label: "Другое" },
@@ -935,7 +936,7 @@ function queueUploadFiles(nextFiles) {
     }
 
     const acceptedFiles = nextFiles.filter((file) =>
-        isAcceptedUpload(file, DEFAULT_MEDIA_ACCEPT),
+        isAcceptedUpload(file, DEFAULT_MEDIA_LIBRARY_ACCEPT),
     );
 
     uploadQueue.value.push(...nextFiles.map((file) => createUploadItem(file)));
@@ -946,7 +947,7 @@ function queueUploadFiles(nextFiles) {
 }
 
 function createUploadItem(file) {
-    const accepted = isAcceptedUpload(file, DEFAULT_MEDIA_ACCEPT);
+    const accepted = isAcceptedUpload(file, DEFAULT_MEDIA_LIBRARY_ACCEPT);
 
     return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -1188,6 +1189,10 @@ function resolveFileKind(file) {
 
     if (mimeType.startsWith("image/")) {
         return "images";
+    }
+
+    if (mimeType.startsWith("video/")) {
+        return "videos";
     }
 
     if (
@@ -1441,14 +1446,14 @@ onBeforeUnmount(() => {
             type="file"
             hidden
             multiple
-            :accept="DEFAULT_MEDIA_ACCEPT"
+            :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
             @change="handleFileInput"
         />
         <input
             ref="replaceInput"
             type="file"
             hidden
-            :accept="DEFAULT_MEDIA_ACCEPT"
+            :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
             @change="handleReplaceInput"
         />
 
@@ -1931,7 +1936,7 @@ onBeforeUnmount(() => {
                                         </div>
                                         <p
                                             v-if="file.upload_error"
-                                            class="error-text"
+                                            class="media-library-page__upload-error"
                                         >
                                             {{ file.upload_error }}
                                         </p>
@@ -2069,7 +2074,7 @@ onBeforeUnmount(() => {
                                                     <span>{{ file.upload_progress }}%</span>
                                                     <small
                                                         v-if="file.upload_error"
-                                                        class="error-text"
+                                                        class="media-library-page__upload-error media-library-page__upload-error--table"
                                                     >
                                                         {{ file.upload_error }}
                                                     </small>

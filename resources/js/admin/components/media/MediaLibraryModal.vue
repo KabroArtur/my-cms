@@ -90,6 +90,7 @@ const activeFileId = ref(null);
 const uploadQueue = ref([]);
 const dragDepth = ref(0);
 const mainPanelRef = ref(null);
+const uploadInput = ref(null);
 const recentUploadIds = ref([]);
 const folderModalOpen = ref(false);
 const activeTab = ref("library");
@@ -930,6 +931,22 @@ function queueFiles(nextFiles) {
     }
 }
 
+function openUploadDialog() {
+    uploadInput.value?.click();
+}
+
+function handleUploadInput(event) {
+    const nextFiles = Array.from(event.target?.files ?? []);
+
+    if (uploadInput.value) {
+        uploadInput.value.value = "";
+    }
+
+    if (nextFiles.length > 0) {
+        queueFiles(nextFiles);
+    }
+}
+
 function eventHasFiles(event) {
     return Array.from(event.dataTransfer?.types ?? []).includes("Files");
 }
@@ -1164,6 +1181,15 @@ onBeforeUnmount(() => {
 <template>
     <Teleport to="body">
         <div v-if="open" class="admin-modal" @click.self="closeModal">
+            <input
+                ref="uploadInput"
+                type="file"
+                hidden
+                multiple
+                :accept="accept"
+                @change="handleUploadInput"
+            />
+
             <div
                 class="admin-modal__dialog admin-modal__dialog--wide media-library-modal"
                 @click.stop
@@ -1238,6 +1264,14 @@ onBeforeUnmount(() => {
                                         }}</strong>
                                         <span>файлов в текущем списке</span>
                                     </div>
+
+                                    <AdminButton
+                                        v-if="allowUpload"
+                                        type="button"
+                                        @click="openUploadDialog"
+                                    >
+                                        Загрузить файлы
+                                    </AdminButton>
                                 </div>
                             </section>
 
