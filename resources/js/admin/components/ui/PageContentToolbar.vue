@@ -64,7 +64,7 @@ function insertTable() {
 </script>
 
 <template>
-    <div class="admin-editor-toolbar">
+    <div class="admin-editor-toolbar" @mousedown.prevent>
         <div class="tiptap-toolbar-group">
             <AdminButton :class="toolbarButtonClass(editor?.isActive('paragraph'))" type="button" @click="setParagraph">Параграф</AdminButton>
             <AdminButton

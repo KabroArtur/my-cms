@@ -12,7 +12,6 @@ import AdminButton from "../ui/AdminButton.vue";
 import MediaFolders from "./MediaFolders.vue";
 import MediaGrid from "./MediaGrid.vue";
 import MediaSidebar from "./MediaSidebar.vue";
-import MediaUploader from "./MediaUploader.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import {
     createMediaFolder,
@@ -89,10 +88,8 @@ const selectedIdsState = ref([]);
 const selectedItemsById = ref({});
 const activeFileId = ref(null);
 const uploadQueue = ref([]);
-const uploadPanelOpen = ref(false);
 const dragDepth = ref(0);
 const mainPanelRef = ref(null);
-const uploadSectionRef = ref(null);
 const recentUploadIds = ref([]);
 const folderModalOpen = ref(false);
 const activeTab = ref("library");
@@ -125,9 +122,31 @@ const transformForm = reactive({
     format: "original",
 });
 
+const displayedUploadItems = computed(() =>
+    uploadQueue.value.map((item) => ({
+        id: item.id,
+        original_name: item.originalName,
+        alt_text: "",
+        folder_name: resolveUploadFolderName(item.folderId),
+        mime_type: item.mimeType,
+        extension: item.extension,
+        path: item.originalName,
+        size: item.size,
+        size_human: formatBytes(item.size),
+        preview_url: item.previewUrl || "",
+        url: item.previewUrl || "",
+        width: null,
+        height: null,
+        is_upload_placeholder: true,
+        upload_status: item.status,
+        upload_progress: item.progress,
+        upload_error: item.errorMessage,
+    })),
+);
+
 const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase());
 const filteredFiles = computed(() => {
-    const baseFiles = files.value;
+    const baseFiles = [...displayedUploadItems.value, ...files.value];
 
     if (normalizedSearch.value === "") {
         return baseFiles;
@@ -151,20 +170,8 @@ const moveFolderOptions = computed(() => [
     { id: null, name: "Корень", path: "media" },
     ...folderOptions.value,
 ]);
-const uploadProgress = computed(() => {
-    const items = uploadQueue.value.filter((item) => item.file);
-
-    if (items.length === 0) {
-        return 0;
-    }
-
-    const total = items.reduce((sum, item) => sum + item.progress, 0);
-
-    return Math.round(total / items.length);
-});
 const hasFiles = computed(() => filteredFiles.value.length > 0);
 const dragOverlayVisible = computed(() => dragDepth.value > 0);
-const queueCount = computed(() => uploadQueue.value.length);
 const canTransformSelectedFile = computed(() =>
     isTransformableImage(selectedFile.value),
 );
@@ -325,7 +332,6 @@ async function initializeModal() {
     searchQuery.value = "";
     errorMessage.value = "";
     noticeMessage.value = "";
-    uploadPanelOpen.value = false;
     dragDepth.value = 0;
     recentUploadIds.value = [];
     activeTab.value = "library";
@@ -541,6 +547,10 @@ async function removeFolder(folder) {
 }
 
 function handleFileClick(file) {
+    if (isUploadPlaceholder(file)) {
+        return;
+    }
+
     rememberFile(file);
     activeFileId.value = file.id;
 
@@ -588,6 +598,16 @@ function setActiveTab(tab) {
     if (!transformTool.value) {
         transformTool.value = "crop";
     }
+}
+
+function isUploadPlaceholder(file) {
+    return Boolean(file?.is_upload_placeholder);
+}
+
+function resolveUploadFolderName(folderId) {
+    const option = moveFolderOptions.value.find((entry) => entry.id === folderId);
+
+    return option?.name || currentFolder.value?.name || "Корень";
 }
 
 async function saveFileMeta(payload) {
@@ -904,14 +924,6 @@ function queueFiles(nextFiles) {
 
     errorMessage.value = "";
     uploadQueue.value.push(...nextFiles.map((file) => createUploadItem(file)));
-    uploadPanelOpen.value = true;
-
-    nextTick(() => {
-        uploadSectionRef.value?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-        });
-    });
 
     if (!uploading.value && acceptedFiles.length > 0) {
         void uploadQueuedFiles();
@@ -994,21 +1006,15 @@ function updateUploadItem({ id, changes }) {
 function removeUploadItem(id) {
     const item = uploadQueue.value.find((entry) => entry.id === id);
 
+    if (item?.status === "uploading") {
+        return;
+    }
+
     if (item?.previewUrl) {
         URL.revokeObjectURL(item.previewUrl);
     }
 
     uploadQueue.value = uploadQueue.value.filter((entry) => entry.id !== id);
-}
-
-function clearQueue() {
-    uploadQueue.value.forEach((item) => {
-        if (item.previewUrl) {
-            URL.revokeObjectURL(item.previewUrl);
-        }
-    });
-
-    uploadQueue.value = [];
 }
 
 async function uploadQueuedFiles() {
@@ -1024,6 +1030,7 @@ async function uploadQueuedFiles() {
     errorMessage.value = "";
 
     const uploadedIds = [];
+    let uploadedCount = 0;
 
     for (const item of uploadableItems) {
         updateUploadItem({
@@ -1061,14 +1068,19 @@ async function uploadQueuedFiles() {
                 uploadedIds.push(uploadedFile.id);
             }
 
-            updateUploadItem({
-                id: item.id,
-                changes: {
-                    status: "success",
-                    progress: 100,
-                    uploadedFile,
-                },
-            });
+            uploadedCount += 1;
+
+            if (item.previewUrl) {
+                URL.revokeObjectURL(item.previewUrl);
+            }
+
+            files.value = [
+                uploadedFile,
+                ...files.value.filter((entry) => entry.id !== uploadedFile.id),
+            ];
+            uploadQueue.value = uploadQueue.value.filter(
+                (entry) => entry.id !== item.id,
+            );
         } catch (error) {
             updateUploadItem({
                 id: item.id,
@@ -1085,7 +1097,10 @@ async function uploadQueuedFiles() {
 
     uploading.value = false;
     showNotice("Очередь обработана.");
-    await loadLibrary(currentFolderId.value);
+
+    if (uploadedCount > 0) {
+        await loadLibrary(currentFolderId.value);
+    }
 
     recentUploadIds.value = uploadedIds;
 
@@ -1223,20 +1238,6 @@ onBeforeUnmount(() => {
                                         }}</strong>
                                         <span>файлов в текущем списке</span>
                                     </div>
-
-                                    <AdminButton
-                                        v-if="allowUpload"
-                                        type="button"
-                                        @click="
-                                            uploadPanelOpen = !uploadPanelOpen
-                                        "
-                                    >
-                                        {{
-                                            uploadPanelOpen
-                                                ? "Скрыть очередь"
-                                                : `Очередь загрузки${queueCount > 0 ? ` (${queueCount})` : ""}`
-                                        }}
-                                    </AdminButton>
                                 </div>
                             </section>
 
@@ -1387,6 +1388,7 @@ onBeforeUnmount(() => {
                                 :selected-ids="selectedIdsState"
                                 :accent-ids="recentUploadIds"
                                 @select="handleFileClick"
+                                @remove-upload="removeUploadItem"
                             />
 
                             <div
@@ -1411,27 +1413,6 @@ onBeforeUnmount(() => {
                                 В текущей папке пока нет изображений.
                             </p>
 
-                            <details
-                                v-if="allowUpload"
-                                ref="uploadSectionRef"
-                                class="media-library-modal__section"
-                                :open="uploadPanelOpen || queueCount > 0"
-                            >
-                                <summary>Загрузка и очередь</summary>
-                                <MediaUploader
-                                    :queue="uploadQueue"
-                                    :folder-options="moveFolderOptions"
-                                    :uploading="uploading"
-                                    :upload-progress="uploadProgress"
-                                    :accept="accept"
-                                    @queue-files="queueFiles"
-                                    @remove-item="removeUploadItem"
-                                    @clear-queue="clearQueue"
-                                    @upload="uploadQueuedFiles"
-                                    @update-item="updateUploadItem"
-                                />
-                            </details>
-
                             <transition name="media-drag-overlay">
                                 <div
                                     v-if="dragOverlayVisible"
@@ -1440,12 +1421,11 @@ onBeforeUnmount(() => {
                                     <div class="media-library-modal__drag-card">
                                         <strong
                                             >Отпустите файлы, чтобы добавить в
-                                            очередь</strong
+                                            медиатеку</strong
                                         >
                                         <span
-                                            >После добавления откроется блок
-                                            загрузки и мы прокрутим его в
-                                            видимую область.</span
+                                            >Файлы сразу появятся в текущей
+                                            сетке и начнут загружаться.</span
                                         >
                                     </div>
                                 </div>
@@ -1510,36 +1490,6 @@ onBeforeUnmount(() => {
                                             "
                                         ></button>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div class="media-library-modal__editor-facts">
-                                <div>
-                                    <span>Исходник</span
-                                    ><strong>{{
-                                        selectedFile.width &&
-                                        selectedFile.height
-                                            ? `${selectedFile.width} x ${selectedFile.height}`
-                                            : "—"
-                                    }}</strong>
-                                </div>
-                                <div>
-                                    <span>После кадрирования</span
-                                    ><strong>{{
-                                        transformSourceDimensions.width &&
-                                        transformSourceDimensions.height
-                                            ? `${transformSourceDimensions.width} x ${transformSourceDimensions.height}`
-                                            : "—"
-                                    }}</strong>
-                                </div>
-                                <div>
-                                    <span>Итог</span
-                                    ><strong>{{
-                                        transformOutputDimensions.width &&
-                                        transformOutputDimensions.height
-                                            ? `${transformOutputDimensions.width} x ${transformOutputDimensions.height}`
-                                            : "Без изменения размера"
-                                    }}</strong>
                                 </div>
                             </div>
 
@@ -1726,6 +1676,10 @@ onBeforeUnmount(() => {
                             :move-folder-options="moveFolderOptions"
                             :saving="saving"
                             :editable="canTransformSelectedFile"
+                            :show-facts="true"
+                            :cropped-dimensions="transformSourceDimensions"
+                            :output-dimensions="transformOutputDimensions"
+                            :show-transform-facts="activeTab === 'edit' && canTransformSelectedFile"
                             @close="activeFileId = null"
                             @edit="openEditorTab"
                             @save="saveFileMeta"

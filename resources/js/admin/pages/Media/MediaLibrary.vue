@@ -9,6 +9,7 @@ import {
 } from "vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import MediaFactsPanel from "../../components/media/MediaFactsPanel.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import {
     formatCmsDateTime,
@@ -133,28 +134,6 @@ const transformForm = reactive({
     maintain_aspect_ratio: true,
     quality: "",
     format: "original",
-});
-
-const uploadStats = computed(() => ({
-    total: uploadQueue.value.length,
-    queued: uploadQueue.value.filter((item) => item.status === "queued").length,
-    uploading: uploadQueue.value.filter((item) => item.status === "uploading")
-        .length,
-    success: uploadQueue.value.filter((item) => item.status === "success")
-        .length,
-    error: uploadQueue.value.filter((item) => item.status === "error").length,
-}));
-
-const uploadProgress = computed(() => {
-    const items = uploadQueue.value.filter((item) => item.file);
-
-    if (items.length === 0) {
-        return 0;
-    }
-
-    const total = items.reduce((sum, item) => sum + item.progress, 0);
-
-    return Math.round(total / items.length);
 });
 
 const currentFolderId = computed(() => currentFolder.value?.id ?? null);
@@ -307,6 +286,27 @@ const typeOptions = computed(() => {
     }));
 });
 
+const displayedUploadItems = computed(() =>
+    uploadQueue.value.map((item) => ({
+        id: item.id,
+        original_name: item.originalName,
+        alt_text: null,
+        folder_name: resolveUploadFolderName(item.folderId),
+        mime_type: item.mimeType,
+        extension: item.extension,
+        path: item.originalName,
+        size: item.size,
+        size_human: formatBytes(item.size),
+        created_at: null,
+        preview_url: item.previewUrl || "",
+        url: item.previewUrl || "",
+        is_upload_placeholder: true,
+        upload_status: item.status,
+        upload_progress: item.progress,
+        upload_error: item.errorMessage,
+    })),
+);
+
 const filteredFiles = computed(() => {
     let list = [...files.value];
 
@@ -345,7 +345,7 @@ const filteredFiles = computed(() => {
         list = list.filter((file) => matchesSizeFilter(file, sizeFilter.value));
     }
 
-    return sortFiles(list, sortBy.value);
+    return [...displayedUploadItems.value, ...sortFiles(list, sortBy.value)];
 });
 
 watch(
@@ -444,6 +444,19 @@ function replaceLoadedFile(file) {
     files.value = files.value.map((entry) =>
         entry.id === file.id ? createMediaSelection(file) : entry,
     );
+}
+
+function prependLoadedFile(file) {
+    if (!file?.id) {
+        return;
+    }
+
+    const prepared = createMediaSelection(file);
+
+    files.value = [
+        prepared,
+        ...files.value.filter((entry) => entry.id !== prepared.id),
+    ];
 }
 
 function openRoot() {
@@ -550,7 +563,19 @@ async function deleteFolder(folder) {
 }
 
 function openFileDetails(file) {
+    if (isUploadPlaceholder(file)) {
+        return;
+    }
+
     selectedFileId.value = file.id;
+}
+
+function handleDisplayedFileClick(file) {
+    if (isUploadPlaceholder(file)) {
+        return;
+    }
+
+    openFileDetails(file);
 }
 
 function closeFileDetails() {
@@ -943,6 +968,16 @@ function createUploadItem(file) {
     };
 }
 
+function isUploadPlaceholder(file) {
+    return Boolean(file?.is_upload_placeholder);
+}
+
+function resolveUploadFolderName(folderId) {
+    const option = moveFolderOptions.value.find((entry) => entry.id === folderId);
+
+    return option?.name || currentFolder.value?.name || "Корень";
+}
+
 function revokePreview(item) {
     if (item.previewUrl) {
         URL.revokeObjectURL(item.previewUrl);
@@ -987,6 +1022,7 @@ async function uploadQueuedFiles() {
     }
 
     uploading.value = true;
+    let uploadedCount = 0;
 
     const uploadableItems = uploadQueue.value.filter(
         (item) =>
@@ -1002,7 +1038,7 @@ async function uploadQueuedFiles() {
         item.progress = 0;
 
         try {
-            await uploadMediaFile({
+            const response = await uploadMediaFile({
                 folderId: item.folderId,
                 file: item.file,
                 name: item.renameBase,
@@ -1018,9 +1054,12 @@ async function uploadQueuedFiles() {
                 },
             });
 
-            item.status = "success";
-            item.progress = 100;
-            item.errorMessage = "";
+            prependLoadedFile(response.data ?? response);
+            uploadedCount += 1;
+            revokePreview(item);
+            uploadQueue.value = uploadQueue.value.filter(
+                (entry) => entry.id !== item.id,
+            );
         } catch (error) {
             item.status = "error";
             item.progress = 0;
@@ -1030,9 +1069,12 @@ async function uploadQueuedFiles() {
     }
 
     uploading.value = false;
-    await loadLibrary(currentFolderId.value);
 
-    if (uploadQueue.value.every((item) => item.status === "success")) {
+    if (uploadedCount > 0) {
+        await loadLibrary(currentFolderId.value);
+    }
+
+    if (uploadQueue.value.length === 0 && uploadedCount > 0) {
         pushToast("Файлы загружены.");
         return;
     }
@@ -1042,7 +1084,9 @@ async function uploadQueuedFiles() {
     }
 
     pushToast(
-        "Очередь обработки завершена.",
+        uploadQueue.value.some((item) => item.status === "error")
+            ? "Загрузка завершена с ошибками."
+            : "Файлы загружены.",
         uploadQueue.value.some((item) => item.status === "error")
             ? "warning"
             : "success",
@@ -1641,193 +1685,6 @@ onBeforeUnmount(() => {
                         {{ errorMessage }}
                     </p>
 
-                    <section
-                        v-if="uploadQueue.length > 0"
-                        class="media-library-page__section"
-                    >
-                        <div class="media-library-page__section-head">
-                            <div>
-                                <h3>Очередь загрузки</h3>
-                                <p>
-                                    Файлы загружаются сразу после добавления.
-                                    Здесь можно следить за прогрессом и
-                                    ошибками.
-                                </p>
-                            </div>
-
-                            <div
-                                class="admin-actions-row media-library-page__upload-actions"
-                            >
-                                <button
-                                    type="button"
-                                    class="button-link"
-                                    :disabled="uploading"
-                                    @click="clearUploadQueue"
-                                >
-                                    Очистить очередь
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="media-library-page__upload-body">
-                            <div class="media-library-page__upload-summary">
-                                <strong>{{ uploadStats.total }} файлов</strong>
-                                <span
-                                    >Ожидает: {{ uploadStats.queued }} ·
-                                    Загружается: {{ uploadStats.uploading }} ·
-                                    Готово: {{ uploadStats.success }} · Ошибки:
-                                    {{ uploadStats.error }}</span
-                                >
-                            </div>
-
-                            <div class="media-library-page__progress">
-                                <span
-                                    :style="{ width: `${uploadProgress}%` }"
-                                ></span>
-                            </div>
-
-                            <div class="media-library-page__upload-list">
-                                <article
-                                    v-for="item in uploadQueue"
-                                    :key="item.id"
-                                    class="media-library-page__upload-item"
-                                    :class="`is-${item.status}`"
-                                >
-                                    <div
-                                        class="media-library-page__upload-preview"
-                                    >
-                                        <img
-                                            v-if="item.previewUrl"
-                                            :src="item.previewUrl"
-                                            :alt="item.originalName"
-                                        />
-                                        <span v-else>{{
-                                            item.extension
-                                                ? item.extension.toUpperCase()
-                                                : "FILE"
-                                        }}</span>
-                                        <div
-                                            v-if="item.status === 'uploading'"
-                                            class="media-library-page__upload-preview-overlay"
-                                        >
-                                            <span
-                                                class="media-library-page__upload-spinner"
-                                            ></span>
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        class="media-library-page__upload-main"
-                                    >
-                                        <div
-                                            class="media-library-page__upload-head"
-                                        >
-                                            <div>
-                                                <strong>{{
-                                                    item.originalName
-                                                }}</strong>
-                                                <span
-                                                    >{{
-                                                        formatBytes(item.size)
-                                                    }}
-                                                    · {{ item.mimeType }}</span
-                                                >
-                                            </div>
-                                            <span
-                                                class="media-library-page__status-pill"
-                                                :class="`is-${item.status}`"
-                                                >{{
-                                                    resolveUploadStatusLabel(
-                                                        item.status,
-                                                    )
-                                                }}</span
-                                            >
-                                        </div>
-
-                                        <div
-                                            class="media-library-page__upload-fields"
-                                        >
-                                            <label class="admin-form-label">
-                                                <span>Имя файла</span>
-                                                <input
-                                                    v-model="item.renameBase"
-                                                    class="admin-input"
-                                                    type="text"
-                                                    :disabled="
-                                                        item.status ===
-                                                            'uploading' ||
-                                                        item.status ===
-                                                            'success'
-                                                    "
-                                                />
-                                            </label>
-
-                                            <label class="admin-form-label">
-                                                <span>Папка назначения</span>
-                                                <select
-                                                    v-model="item.folderId"
-                                                    class="admin-select"
-                                                    :disabled="
-                                                        item.status ===
-                                                            'uploading' ||
-                                                        item.status ===
-                                                            'success'
-                                                    "
-                                                >
-                                                    <option
-                                                        v-for="option in moveFolderOptions"
-                                                        :key="
-                                                            option.id ?? 'root'
-                                                        "
-                                                        :value="
-                                                            option.id ?? null
-                                                        "
-                                                    >
-                                                        {{
-                                                            option.path ||
-                                                            option.name
-                                                        }}
-                                                    </option>
-                                                </select>
-                                            </label>
-                                        </div>
-
-                                        <div
-                                            class="media-library-page__upload-progress-row"
-                                        >
-                                            <div
-                                                class="media-library-page__progress"
-                                            >
-                                                <span
-                                                    :style="{
-                                                        width: `${item.progress}%`,
-                                                    }"
-                                                ></span>
-                                            </div>
-                                            <span>{{ item.progress }}%</span>
-                                        </div>
-
-                                        <p
-                                            v-if="item.errorMessage"
-                                            class="error-text"
-                                        >
-                                            {{ item.errorMessage }}
-                                        </p>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="button-link media-library-page__danger"
-                                        :disabled="item.status === 'uploading'"
-                                        @click="removeUploadItem(item.id)"
-                                    >
-                                        Удалить
-                                    </button>
-                                </article>
-                            </div>
-                        </div>
-                    </section>
-
                     <section class="media-library-page__section">
                         <div class="media-library-page__section-head">
                             <div>
@@ -1998,10 +1855,16 @@ onBeforeUnmount(() => {
                                     :key="file.id"
                                     class="media-library-page__file-card"
                                     :class="{
+                                        'is-upload-placeholder':
+                                            isUploadPlaceholder(file),
+                                        'is-upload-error':
+                                            isUploadPlaceholder(file) &&
+                                            file.upload_status === 'error',
                                         'is-selected':
+                                            !isUploadPlaceholder(file) &&
                                             selectedFileId === file.id,
                                     }"
-                                    @click="openFileDetails(file)"
+                                    @click="handleDisplayedFileClick(file)"
                                 >
                                     <div
                                         class="media-library-page__file-preview"
@@ -2022,16 +1885,70 @@ onBeforeUnmount(() => {
                                             class="media-library-page__file-fallback"
                                             >{{ filePreviewLabel(file) }}</span
                                         >
+
+                                        <div
+                                            v-if="
+                                                isUploadPlaceholder(file) &&
+                                                file.upload_status === 'uploading'
+                                            "
+                                            class="media-library-page__upload-preview-overlay"
+                                        >
+                                            <span
+                                                class="media-library-page__upload-spinner"
+                                            ></span>
+                                        </div>
                                     </div>
 
-                                    <div class="media-library-page__file-meta">
-                                        <strong>{{
-                                            file.original_name
-                                        }}</strong>
+                                    <div
+                                        v-if="isUploadPlaceholder(file)"
+                                        class="media-library-page__file-meta media-library-page__file-meta--upload"
+                                    >
+                                        <div class="media-library-page__upload-head">
+                                            <strong>{{ file.original_name }}</strong>
+                                            <span
+                                                class="media-library-page__status-pill"
+                                                :class="`is-${file.upload_status}`"
+                                            >
+                                                {{
+                                                    resolveUploadStatusLabel(
+                                                        file.upload_status,
+                                                    )
+                                                }}
+                                            </span>
+                                        </div>
                                         <span>{{ file.size_human }}</span>
-                                        <span>{{
-                                            formatFileDate(file.created_at)
-                                        }}</span>
+                                        <div
+                                            class="media-library-page__upload-progress-row media-library-page__upload-progress-row--card"
+                                        >
+                                            <div class="media-library-page__progress">
+                                                <span
+                                                    :style="{
+                                                        width: `${file.upload_progress}%`,
+                                                    }"
+                                                ></span>
+                                            </div>
+                                            <span>{{ file.upload_progress }}%</span>
+                                        </div>
+                                        <p
+                                            v-if="file.upload_error"
+                                            class="error-text"
+                                        >
+                                            {{ file.upload_error }}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            class="button-link media-library-page__danger media-library-page__upload-card-remove"
+                                            :disabled="file.upload_status === 'uploading'"
+                                            @click.stop="removeUploadItem(file.id)"
+                                        >
+                                            Удалить
+                                        </button>
+                                    </div>
+
+                                    <div v-else class="media-library-page__file-meta">
+                                        <strong>{{ file.original_name }}</strong>
+                                        <span>{{ file.size_human }}</span>
+                                        <span>{{ formatFileDate(file.created_at) }}</span>
                                     </div>
                                 </article>
                             </div>
@@ -2055,10 +1972,13 @@ onBeforeUnmount(() => {
                                             :key="file.id"
                                             class="media-library-page__row"
                                             :class="{
+                                                'is-upload-placeholder':
+                                                    isUploadPlaceholder(file),
                                                 'is-selected':
+                                                    !isUploadPlaceholder(file) &&
                                                     selectedFileId === file.id,
                                             }"
-                                            @click="openFileDetails(file)"
+                                            @click="handleDisplayedFileClick(file)"
                                         >
                                             <td>
                                                 <div
@@ -2098,16 +2018,35 @@ onBeforeUnmount(() => {
                                                         <strong>{{
                                                             file.original_name
                                                         }}</strong>
-                                                        <small>{{
-                                                            file.path
-                                                        }}</small>
+                                                        <small>
+                                                            {{
+                                                                isUploadPlaceholder(
+                                                                    file,
+                                                                )
+                                                                    ? resolveUploadStatusLabel(
+                                                                          file.upload_status,
+                                                                      )
+                                                                    : file.path
+                                                            }}
+                                                        </small>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
-                                                {{
-                                                    resolveTypeOptionLabel(file)
-                                                }}
+                                                <span
+                                                    v-if="isUploadPlaceholder(file)"
+                                                    class="media-library-page__status-pill"
+                                                    :class="`is-${file.upload_status}`"
+                                                >
+                                                    {{
+                                                        resolveUploadStatusLabel(
+                                                            file.upload_status,
+                                                        )
+                                                    }}
+                                                </span>
+                                                <template v-else>
+                                                    {{ resolveTypeOptionLabel(file) }}
+                                                </template>
                                             </td>
                                             <td>{{ file.size_human }}</td>
                                             <td>
@@ -2116,11 +2055,36 @@ onBeforeUnmount(() => {
                                                 }}
                                             </td>
                                             <td>
-                                                {{
-                                                    formatFileDate(
-                                                        file.created_at,
-                                                    )
-                                                }}
+                                                <div
+                                                    v-if="isUploadPlaceholder(file)"
+                                                    class="media-library-page__upload-progress-row media-library-page__upload-progress-row--table"
+                                                >
+                                                    <div class="media-library-page__progress">
+                                                        <span
+                                                            :style="{
+                                                                width: `${file.upload_progress}%`,
+                                                            }"
+                                                        ></span>
+                                                    </div>
+                                                    <span>{{ file.upload_progress }}%</span>
+                                                    <small
+                                                        v-if="file.upload_error"
+                                                        class="error-text"
+                                                    >
+                                                        {{ file.upload_error }}
+                                                    </small>
+                                                    <button
+                                                        type="button"
+                                                        class="button-link media-library-page__danger"
+                                                        :disabled="file.upload_status === 'uploading'"
+                                                        @click.stop="removeUploadItem(file.id)"
+                                                    >
+                                                        Удалить
+                                                    </button>
+                                                </div>
+                                                <template v-else>
+                                                    {{ formatFileDate(file.created_at) }}
+                                                </template>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -2228,38 +2192,6 @@ onBeforeUnmount(() => {
                                         "
                                     ></button>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div
-                            v-if="canTransformSelectedFile"
-                            class="media-library-page__editor-facts"
-                        >
-                            <div>
-                                <span>Исходник</span
-                                ><strong>{{
-                                    selectedFile.width && selectedFile.height
-                                        ? `${selectedFile.width} x ${selectedFile.height}`
-                                        : "—"
-                                }}</strong>
-                            </div>
-                            <div>
-                                <span>После кадрирования</span
-                                ><strong>{{
-                                    transformSourceDimensions.width &&
-                                    transformSourceDimensions.height
-                                        ? `${transformSourceDimensions.width} x ${transformSourceDimensions.height}`
-                                        : "—"
-                                }}</strong>
-                            </div>
-                            <div>
-                                <span>Итог</span
-                                ><strong>{{
-                                    transformOutputDimensions.width &&
-                                    transformOutputDimensions.height
-                                        ? `${transformOutputDimensions.width} x ${transformOutputDimensions.height}`
-                                        : "Без изменения размера"
-                                }}</strong>
                             </div>
                         </div>
 
@@ -2444,36 +2376,12 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="media-library-page__file-info">
-                        <div
-                            class="media-library-page__drawer-facts media-library-page__file-facts"
-                        >
-                            <div>
-                                <span>Путь</span
-                                ><strong>{{ selectedFile.path }}</strong>
-                            </div>
-                            <div>
-                                <span>Размер</span
-                                ><strong>{{ selectedFile.size_human }}</strong>
-                            </div>
-                            <div>
-                                <span>MIME</span
-                                ><strong>{{ selectedFile.mime_type }}</strong>
-                            </div>
-                            <div>
-                                <span>Размеры</span
-                                ><strong>{{
-                                    selectedFile.width && selectedFile.height
-                                        ? `${selectedFile.width} x ${selectedFile.height}`
-                                        : "Не указаны"
-                                }}</strong>
-                            </div>
-                            <div>
-                                <span>Дата загрузки</span
-                                ><strong>{{
-                                    formatFileDate(selectedFile.created_at)
-                                }}</strong>
-                            </div>
-                        </div>
+                        <MediaFactsPanel
+                            :file="selectedFile"
+                            :cropped-dimensions="transformSourceDimensions"
+                            :output-dimensions="transformOutputDimensions"
+                            :show-transform-facts="canTransformSelectedFile"
+                        />
 
                         <form
                             class="admin-form-stack media-library-page__file-form"

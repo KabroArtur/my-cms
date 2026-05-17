@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, watch } from "vue";
 import AdminButton from "../ui/AdminButton.vue";
+import MediaFactsPanel from "./MediaFactsPanel.vue";
 import { stripExtension } from "./mediaHelpers";
 
 const props = defineProps({
@@ -21,6 +22,22 @@ const props = defineProps({
         default: false,
     },
     editable: {
+        type: Boolean,
+        default: false,
+    },
+    showFacts: {
+        type: Boolean,
+        default: true,
+    },
+    croppedDimensions: {
+        type: Object,
+        default: null,
+    },
+    outputDimensions: {
+        type: Object,
+        default: null,
+    },
+    showTransformFacts: {
         type: Boolean,
         default: false,
     },
@@ -98,36 +115,13 @@ function moveFile(event) {
             />
         </div>
 
-        <div class="media-sidebar__facts">
-            <div>
-                <span>URL</span>
-                <strong>{{ file.url }}</strong>
-            </div>
-            <div>
-                <span>Размер</span>
-                <strong>{{ file.size_human }}</strong>
-            </div>
-            <div>
-                <span>Размеры</span>
-                <strong>{{
-                    file.width && file.height
-                        ? `${file.width} x ${file.height}`
-                        : "Неизвестно"
-                }}</strong>
-            </div>
-            <div>
-                <span>Папка</span>
-                <strong>{{ file.folder_name || "Корень" }}</strong>
-            </div>
-            <div>
-                <span>Дата загрузки</span>
-                <strong>{{
-                    file.created_at
-                        ? new Date(file.created_at).toLocaleString()
-                        : "Неизвестно"
-                }}</strong>
-            </div>
-        </div>
+        <MediaFactsPanel
+            v-if="showFacts"
+            :file="file"
+            :cropped-dimensions="croppedDimensions"
+            :output-dimensions="outputDimensions"
+            :show-transform-facts="showTransformFacts"
+        />
 
         <form class="admin-form-stack" @submit.prevent="submit">
             <label class="admin-form-label">
