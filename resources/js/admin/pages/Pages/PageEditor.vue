@@ -73,6 +73,8 @@ const templateOptions = ref([
 ]);
 const languageOptions = ref([]);
 const trailingSlashEnabled = ref(false);
+const contentVisible = ref(true);
+const contentMode = ref("visual");
 const headingLevels = [1, 2, 3, 4, 5, 6];
 const { notifyError, notifySuccess } = useAdminNotifications();
 
@@ -480,6 +482,22 @@ function resetForm() {
     errorMessage.value = "";
 }
 
+function setContentMode(mode) {
+    if (!["visual", "source"].includes(mode)) {
+        return;
+    }
+
+    if (mode === "visual" && contentEditor.value) {
+        const currentHtml = contentEditor.value.getHTML();
+
+        if (currentHtml !== (form.content || "")) {
+            contentEditor.value.commands.setContent(form.content || "", false);
+        }
+    }
+
+    contentMode.value = mode;
+}
+
 async function loadPage() {
     loading.value = true;
     errorMessage.value = "";
@@ -593,6 +611,23 @@ watch(
     },
 );
 
+watch(
+    () => form.content,
+    (value) => {
+        if (contentMode.value !== "visual" || !contentEditor.value) {
+            return;
+        }
+
+        const next = value || "";
+
+        if (contentEditor.value.getHTML() === next) {
+            return;
+        }
+
+        contentEditor.value.commands.setContent(next, false);
+    },
+);
+
 onBeforeUnmount(() => {
     contentEditor.value?.destroy();
 });
@@ -604,6 +639,15 @@ onBeforeUnmount(() => {
     >
         <template #actions>
             <div class="admin-actions-row">
+                <AdminButton
+                    form="page-editor-form"
+                    type="submit"
+                    variant="primary"
+                    :disabled="saving || (!isCreateMode && !canUpdatePage)"
+                >
+                    {{ saving ? "Сохранение..." : "Сохранить страницу" }}
+                </AdminButton>
+
                 <a
                     v-if="canOpenPublicPage"
                     :href="publicUrl"
@@ -622,7 +666,12 @@ onBeforeUnmount(() => {
 
         <p v-if="loading" class="muted">Загрузка страницы...</p>
 
-        <form v-else class="page-editor-layout" @submit.prevent="submitForm">
+        <form
+            v-else
+            id="page-editor-form"
+            class="page-editor-layout"
+            @submit.prevent="submitForm"
+        >
             <div class="page-editor-layout__main">
                 <AdminCard>
                     <section class="page-editor-section">
@@ -743,19 +792,82 @@ onBeforeUnmount(() => {
                                     инструментов остаётся рядом с редактором.
                                 </p>
                             </div>
+
+                            <button
+                                type="button"
+                                class="button-link"
+                                @click="contentVisible = !contentVisible"
+                            >
+                                {{
+                                    contentVisible
+                                        ? "Скрыть контент"
+                                        : "Показать контент"
+                                }}
+                            </button>
                         </div>
 
-                        <label class="admin-form-label">
-                            <span>Содержимое страницы</span>
-                            <PageContentToolbar
-                                :editor="contentEditor"
-                                :heading-levels="headingLevels"
-                            />
-                            <EditorContent
-                                :editor="contentEditor"
-                                class="admin-editor tiptap-editor"
-                            />
+                        <label
+                            v-show="contentVisible"
+                            class="admin-form-label page-editor-content-field"
+                        >
+                            <div class="page-editor-content-field__head">
+                                <span>Содержимое страницы</span>
+
+                                <div class="page-editor-content-mode">
+                                    <button
+                                        type="button"
+                                        class="button-base button-secondary"
+                                        :class="{
+                                            'is-active':
+                                                contentMode === 'visual',
+                                        }"
+                                        @click="setContentMode('visual')"
+                                    >
+                                        Визуально
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="button-base button-secondary"
+                                        :class="{
+                                            'is-active': contentMode === 'source',
+                                        }"
+                                        @click="setContentMode('source')"
+                                    >
+                                        Код
+                                    </button>
+                                </div>
+                            </div>
+
+                            <template v-if="contentMode === 'visual'">
+                                <PageContentToolbar
+                                    :editor="contentEditor"
+                                    :heading-levels="headingLevels"
+                                />
+                                <EditorContent
+                                    :editor="contentEditor"
+                                    class="admin-editor tiptap-editor"
+                                />
+                            </template>
+
+                            <template v-else>
+                                <textarea
+                                    v-model="form.content"
+                                    class="admin-textarea page-editor-source"
+                                    rows="16"
+                                    spellcheck="false"
+                                    placeholder="<p>HTML, inline script и любая разметка страницы...</p>"
+                                ></textarea>
+                                <small class="muted">
+                                    Режим исходного кода редактирует содержимое
+                                    напрямую как HTML-разметку.
+                                </small>
+                            </template>
                         </label>
+
+                        <p v-if="!contentVisible" class="muted">
+                            Блок контента скрыт. Его можно снова открыть кнопкой
+                            в заголовке секции.
+                        </p>
                     </section>
                 </AdminCard>
 
@@ -848,24 +960,6 @@ onBeforeUnmount(() => {
                         Только автор страницы или администратор может ее
                         изменять.
                     </p>
-
-                    <div class="admin-actions-row">
-                        <AdminButton
-                            type="submit"
-                            variant="primary"
-                            :disabled="
-                                saving || (!isCreateMode && !canUpdatePage)
-                            "
-                        >
-                            {{
-                                saving ? "Сохранение..." : "Сохранить страницу"
-                            }}
-                        </AdminButton>
-
-                        <RouterLink :to="{ name: 'pages' }" class="button-link">
-                            Закрыть
-                        </RouterLink>
-                    </div>
                 </div>
             </div>
 
@@ -1096,6 +1190,23 @@ onBeforeUnmount(() => {
     gap: 1rem;
 }
 
+.page-editor-section :deep(.admin-form-label) {
+    display: grid;
+    align-items: start;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.page-editor-section :deep(.admin-form-label > span) {
+    display: block;
+    min-width: 0;
+    line-height: 1.4;
+}
+
+.page-editor-section :deep(.admin-form-label small) {
+    line-height: 1.45;
+}
+
 .page-editor-section__header {
     display: flex;
     align-items: start;
@@ -1147,6 +1258,8 @@ onBeforeUnmount(() => {
 }
 
 .page-editor-checkbox-label {
+    display: flex !important;
+    align-items: flex-start !important;
     gap: 0.45rem;
 }
 
@@ -1155,6 +1268,66 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 0.55rem;
     font-weight: 600;
+}
+
+.page-editor-content-field {
+    min-width: 0;
+}
+
+.page-editor-content-field__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.page-editor-content-mode {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.page-editor-content-mode .button-base.is-active,
+.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base.is-active) {
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18);
+    filter: brightness(1.08) saturate(1.22);
+}
+
+.page-editor-content-field :deep(.admin-editor-toolbar) {
+    margin-bottom: 0;
+}
+
+.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base) {
+    transition:
+        filter 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+}
+
+.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base.is-active) {
+    transform: translateY(-1px);
+}
+
+.page-editor-content-field :deep(.tiptap-editor) {
+    min-width: 0;
+}
+
+.page-editor-content-field :deep(.tiptap),
+.page-editor-content-field :deep(.ProseMirror) {
+    cursor: text;
+}
+
+.page-editor-content-field :deep(.ProseMirror) {
+    min-height: 320px;
+}
+
+.page-editor-source {
+    min-height: 360px;
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+    line-height: 1.5;
+    resize: vertical;
 }
 
 .additional-fields-group {
@@ -1204,6 +1377,11 @@ onBeforeUnmount(() => {
 
     .page-editor-section__header {
         flex-direction: column;
+    }
+
+    .page-editor-content-field__head {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 </style>

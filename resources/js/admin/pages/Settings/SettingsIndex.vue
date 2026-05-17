@@ -702,137 +702,83 @@ onMounted(loadSettings);
                         v-show="activeSettingsTab === 'general'"
                         class="settings-tab-panel"
                     >
-                        <label class="admin-form-label">
-                            <span>Название сайта</span>
-                            <input
-                                v-model="form.site_name"
-                                class="admin-input"
-                                type="text"
-                                placeholder="My CMS"
-                            />
-                        </label>
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">
+                                Основные параметры сайта
+                            </p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Название сайта</span>
+                                    <input
+                                        v-model="form.site_name"
+                                        class="admin-input"
+                                        type="text"
+                                        placeholder="My CMS"
+                                    />
+                                </label>
 
-                        <label class="admin-form-label">
-                            <span>Favicon</span>
-                            <MediaPickerField
-                                v-model="form.favicon_media_id"
-                                title="Выбрать favicon"
-                                return-type="id"
-                                :allow-upload="true"
-                            />
-                            <small class="muted"
-                                >Поле использует общую медиатеку CMS и может
-                                быть вызвано из любого другого раздела.</small
-                            >
-                        </label>
-
-                        <div class="page-meta-grid">
-                            <label class="admin-form-label">
-                                <span>Формат даты</span>
-                                <select
-                                    v-model="form.date_format"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="format in options.date_formats"
-                                        :key="format.value"
-                                        :value="format.value"
+                                <label class="admin-form-label">
+                                    <span>Формат даты</span>
+                                    <select
+                                        v-model="form.date_format"
+                                        class="admin-select"
                                     >
-                                        {{ format.label }}
-                                    </option>
-                                </select>
-                            </label>
-
-                            <label class="admin-form-label">
-                                <span>Формат времени</span>
-                                <select
-                                    v-model="form.time_format"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="format in options.time_formats"
-                                        :key="format.value"
-                                        :value="format.value"
-                                    >
-                                        {{ format.label }}
-                                    </option>
-                                </select>
-                            </label>
-
-                            <label class="admin-form-label">
-                                <span>Главные страницы по языкам</span>
-                                <div class="admin-stack">
-                                    <label
-                                        v-for="language in languages"
-                                        :key="language.id"
-                                        class="admin-form-label"
-                                    >
-                                        <span
-                                            >{{ language.native_name }}
-                                            <small class="muted"
-                                                >({{ language.code
-                                                }}{{
-                                                    language.is_default
-                                                        ? ", основной язык"
-                                                        : ""
-                                                }})</small
-                                            ></span
+                                        <option
+                                            v-for="format in options.date_formats"
+                                            :key="format.value"
+                                            :value="format.value"
                                         >
-                                        <select
-                                            v-model="
-                                                form.home_page_ids[language.id]
-                                            "
-                                            class="admin-select"
-                                        >
-                                            <option value="">Автовыбор</option>
-                                            <option
-                                                v-for="page in homePageOptionsForLanguage(
-                                                    language.id,
-                                                )"
-                                                :key="page.value"
-                                                :value="page.value"
-                                            >
-                                                {{ page.label
-                                                }}{{
-                                                    page.path
-                                                        ? ` (/${page.path})`
-                                                        : language.is_default
-                                                          ? " (/)"
-                                                          : ` (/${language.code})`
-                                                }}
-                                            </option>
-                                        </select>
-                                    </label>
-                                </div>
-                                <small class="muted"
-                                    >Для default-языка главная живет на `/`, для
-                                    остальных используется код языка: например
-                                    `/ua/`, `/en/` и т.д.</small
-                                >
-                            </label>
+                                            {{ format.label }}
+                                        </option>
+                                    </select>
+                                </label>
 
-                            <label class="admin-form-label">
-                                <span>Тема сайта</span>
-                                <select
-                                    v-model="form.site_theme"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="theme in options.themes"
-                                        :key="theme.value"
-                                        :value="theme.value"
+                                <label class="admin-form-label">
+                                    <span>Формат времени</span>
+                                    <select
+                                        v-model="form.time_format"
+                                        class="admin-select"
                                     >
-                                        {{ theme.label }}
-                                    </option>
-                                </select>
-                                <small class="muted">{{
-                                    options.themes.find(
-                                        (theme) =>
-                                            theme.value === form.site_theme,
-                                    )?.description ||
-                                    "Выбирает blade-тему публичного сайта."
-                                }}</small>
-                            </label>
+                                        <option
+                                            v-for="format in options.time_formats"
+                                            :key="format.value"
+                                            :value="format.value"
+                                        >
+                                            {{ format.label }}
+                                        </option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">
+                                Тема и оформление сайта
+                            </p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Тема сайта</span>
+                                    <select
+                                        v-model="form.site_theme"
+                                        class="admin-select"
+                                    >
+                                        <option
+                                            v-for="theme in options.themes"
+                                            :key="theme.value"
+                                            :value="theme.value"
+                                        >
+                                            {{ theme.label }}
+                                        </option>
+                                    </select>
+                                    <small class="muted">{{
+                                        options.themes.find(
+                                            (theme) =>
+                                                theme.value === form.site_theme,
+                                        )?.description ||
+                                        "Выбирает blade-тему публичного сайта."
+                                    }}</small>
+                                </label>
+                            </div>
                         </div>
                     </section>
 
@@ -840,107 +786,133 @@ onMounted(loadSettings);
                         v-show="activeSettingsTab === 'appearance'"
                         class="settings-tab-panel"
                     >
-                        <div class="page-meta-grid">
-                            <label class="admin-form-label settings-span-2">
-                                <span>Общая обложка сайта</span>
-                                <MediaPickerField
-                                    v-model="
-                                        form.site_default_featured_media_id
-                                    "
-                                    title="Выбрать общую обложку сайта"
-                                    return-type="id"
-                                    :allow-upload="true"
-                                />
-                                <small class="muted"
-                                    >Используется как fallback для страницы без
-                                    своей обложки. Если у страницы задано
-                                    собственное изображение, оно имеет приоритет
-                                    и в шаблоне, и в Open Graph.</small
-                                >
-                            </label>
-
-                            <label class="admin-form-label">
-                                <span>Размер обложки на сайте</span>
-                                <select
-                                    v-model="form.site_featured_media_variant"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="variant in options.media_variants"
-                                        :key="variant.value"
-                                        :value="variant.value"
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">
+                                Медиа и визуальная идентика
+                            </p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Favicon сайта</span>
+                                    <MediaPickerField
+                                        v-model="form.favicon_media_id"
+                                        title="Выбрать favicon"
+                                        return-type="id"
+                                        :allow-upload="true"
+                                    />
+                                    <small class="muted"
+                                        >Используется как основной favicon и
+                                        база для touch icons и других размеров.</small
                                     >
-                                        {{ variant.label }}
-                                    </option>
-                                </select>
-                            </label>
+                                </label>
 
-                            <label class="admin-form-label">
-                                <span
-                                    >Размер по умолчанию для вставки в
-                                    контент</span
-                                >
-                                <select
-                                    v-model="form.media_default_insert_variant"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="variant in options.media_variants"
-                                        :key="variant.value"
-                                        :value="variant.value"
+                                <label class="admin-form-label settings-span-2">
+                                    <span>Общая обложка сайта</span>
+                                    <MediaPickerField
+                                        v-model="
+                                            form.site_default_featured_media_id
+                                        "
+                                        title="Выбрать общую обложку сайта"
+                                        return-type="id"
+                                        :allow-upload="true"
+                                    />
+                                    <small class="muted"
+                                        >Используется как fallback для страницы без
+                                        своей обложки. Если у страницы задано
+                                        собственное изображение, оно имеет приоритет
+                                        и в шаблоне, и в Open Graph.</small
                                     >
-                                        {{ variant.label }}
-                                    </option>
-                                </select>
-                            </label>
+                                </label>
 
-                            <label class="admin-form-label">
-                                <span>Режим темы админки</span>
-                                <select
-                                    v-model="form.admin_theme_mode"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="mode in options.admin_theme_modes"
-                                        :key="mode.value"
-                                        :value="mode.value"
+                                <label class="admin-form-label">
+                                    <span>Размер обложки на сайте</span>
+                                    <select
+                                        v-model="form.site_featured_media_variant"
+                                        class="admin-select"
                                     >
-                                        {{ mode.label }}
-                                    </option>
-                                </select>
-                            </label>
+                                        <option
+                                            v-for="variant in options.media_variants"
+                                            :key="variant.value"
+                                            :value="variant.value"
+                                        >
+                                            {{ variant.label }}
+                                        </option>
+                                    </select>
+                                </label>
 
-                            <label class="admin-form-label">
-                                <span>Палитра для светлой темы</span>
-                                <select
-                                    v-model="form.admin_light_palette"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="palette in options.admin_light_palettes"
-                                        :key="palette.value"
-                                        :value="palette.value"
+                                <label class="admin-form-label">
+                                    <span
+                                        >Размер по умолчанию для вставки в
+                                        контент</span
                                     >
-                                        {{ palette.label }}
-                                    </option>
-                                </select>
-                            </label>
+                                    <select
+                                        v-model="form.media_default_insert_variant"
+                                        class="admin-select"
+                                    >
+                                        <option
+                                            v-for="variant in options.media_variants"
+                                            :key="variant.value"
+                                            :value="variant.value"
+                                        >
+                                            {{ variant.label }}
+                                        </option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
 
-                            <label class="admin-form-label">
-                                <span>Палитра для темной темы</span>
-                                <select
-                                    v-model="form.admin_dark_palette"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="palette in options.admin_dark_palettes"
-                                        :key="palette.value"
-                                        :value="palette.value"
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">
+                                Оформление админки
+                            </p>
+                            <div class="page-meta-grid">
+                                <label class="admin-form-label">
+                                    <span>Режим темы админки</span>
+                                    <select
+                                        v-model="form.admin_theme_mode"
+                                        class="admin-select"
                                     >
-                                        {{ palette.label }}
-                                    </option>
-                                </select>
-                            </label>
+                                        <option
+                                            v-for="mode in options.admin_theme_modes"
+                                            :key="mode.value"
+                                            :value="mode.value"
+                                        >
+                                            {{ mode.label }}
+                                        </option>
+                                    </select>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Палитра для светлой темы</span>
+                                    <select
+                                        v-model="form.admin_light_palette"
+                                        class="admin-select"
+                                    >
+                                        <option
+                                            v-for="palette in options.admin_light_palettes"
+                                            :key="palette.value"
+                                            :value="palette.value"
+                                        >
+                                            {{ palette.label }}
+                                        </option>
+                                    </select>
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span>Палитра для темной темы</span>
+                                    <select
+                                        v-model="form.admin_dark_palette"
+                                        class="admin-select"
+                                    >
+                                        <option
+                                            v-for="palette in options.admin_dark_palettes"
+                                            :key="palette.value"
+                                            :value="palette.value"
+                                        >
+                                            {{ palette.label }}
+                                        </option>
+                                    </select>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="settings-cache-card">
@@ -1289,6 +1261,59 @@ onMounted(loadSettings);
 
                         <div class="settings-cache-card">
                             <p class="settings-cache-card__title">
+                                Маршрутизация и главные страницы по языкам
+                            </p>
+                            <label class="admin-form-label">
+                                <span>Главные страницы по языкам</span>
+                                <div class="admin-stack">
+                                    <label
+                                        v-for="language in languages"
+                                        :key="language.id"
+                                        class="admin-form-label"
+                                    >
+                                        <span
+                                            >{{ language.native_name }}
+                                            <small class="muted"
+                                                >({{ language.code }}{{
+                                                    language.is_default
+                                                        ? ", основной язык"
+                                                        : ""
+                                                }})</small
+                                            ></span
+                                        >
+                                        <select
+                                            v-model="form.home_page_ids[language.id]"
+                                            class="admin-select"
+                                        >
+                                            <option value="">Автовыбор</option>
+                                            <option
+                                                v-for="page in homePageOptionsForLanguage(
+                                                    language.id,
+                                                )"
+                                                :key="page.value"
+                                                :value="page.value"
+                                            >
+                                                {{ page.label }}{{
+                                                    page.path
+                                                        ? ` (/${page.path})`
+                                                        : language.is_default
+                                                          ? " (/)"
+                                                          : ` (/${language.code})`
+                                                }}
+                                            </option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <small class="muted"
+                                    >Для default-языка главная живет на `/`, для
+                                    остальных используется код языка: например
+                                    `/ua/`, `/en/` и т.д.</small
+                                >
+                            </label>
+                        </div>
+
+                        <div class="settings-cache-card">
+                            <p class="settings-cache-card__title">
                                 Список языков
                             </p>
                             <p v-if="languages.length === 0" class="muted">
@@ -1367,7 +1392,7 @@ onMounted(loadSettings);
                     >
                         <div class="settings-cache-card">
                             <p class="settings-cache-card__title">
-                                Индексация сайта
+                                Индексация и базовые meta-правила
                             </p>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
@@ -1399,14 +1424,7 @@ onMounted(loadSettings);
                                         отдают `nofollow`.</small
                                     >
                                 </label>
-                            </div>
-                        </div>
 
-                        <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Социальные превью и favicon
-                            </p>
-                            <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span
                                         ><input
@@ -1436,6 +1454,22 @@ onMounted(loadSettings);
                                         >При сохранении CMS подготовит набор
                                         размеров 16, 32, 180, 192 и 512 px для
                                         выбранного favicon.</small
+                                    >
+                                </label>
+
+                                <label class="admin-form-label">
+                                    <span
+                                        ><input
+                                            v-model="form.seo_hreflang_enabled"
+                                            type="checkbox"
+                                        />
+                                        Выводить hreflang для мультиязычных
+                                        страниц</span
+                                    >
+                                    <small class="muted"
+                                        >Теги появятся только если активных
+                                        языков больше одного и у страницы есть
+                                        переводы.</small
                                     >
                                 </label>
 
@@ -1472,7 +1506,7 @@ onMounted(loadSettings);
 
                         <div class="settings-cache-card">
                             <p class="settings-cache-card__title">
-                                Канонический домен
+                                Канонический домен и структура URL
                             </p>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
@@ -1531,22 +1565,6 @@ onMounted(loadSettings);
                                         и публичные ссылки CMS. Главные страницы
                                         языков остаются без дополнительного
                                         хвостового слеша.</small
-                                    >
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_hreflang_enabled"
-                                            type="checkbox"
-                                        />
-                                        Выводить hreflang для мультиязычных
-                                        страниц</span
-                                    >
-                                    <small class="muted"
-                                        >Теги появятся только если активных
-                                        языков больше одного и у страницы есть
-                                        переводы.</small
                                     >
                                 </label>
                             </div>
