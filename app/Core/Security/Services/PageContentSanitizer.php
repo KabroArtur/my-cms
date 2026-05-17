@@ -17,6 +17,10 @@ class PageContentSanitizer
     {
         $config = (new HtmlSanitizerConfig())
             ->allowSafeElements()
+            ->allowElement('video', ['src', 'controls', 'preload'])
+            ->allowAttribute('download', 'a')
+            ->allowAttribute('target', 'a')
+            ->allowAttribute('rel', 'a')
             ->allowRelativeLinks()
             ->allowRelativeMedias();
 

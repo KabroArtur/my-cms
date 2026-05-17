@@ -26,14 +26,18 @@ import {
     TableHeader,
     TableCell,
 } from "@tiptap/extension-table";
+import VideoNode from "../../components/editor/VideoNode";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { fetchCurrentUser } from "../../api/auth";
 import CustomFieldRenderer from "../../components/custom-fields/CustomFieldRenderer.vue";
+import MediaLibraryModal from "../../components/media/MediaLibraryModal.vue";
 import {
     cloneValue,
     defaultValueForField,
 } from "../../components/custom-fields/customFields";
 import MediaPickerField from "../../components/media/MediaPickerField.vue";
+import { DEFAULT_MEDIA_LIBRARY_ACCEPT } from "../../components/media/mediaHelpers";
+import { buildEmbeddedMediaMarkup } from "../../components/media/mediaEmbeds";
 import PageContentToolbar from "../../components/ui/PageContentToolbar.vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
@@ -75,6 +79,7 @@ const languageOptions = ref([]);
 const trailingSlashEnabled = ref(false);
 const contentVisible = ref(true);
 const contentMode = ref("visual");
+const contentMediaModalOpen = ref(false);
 const headingLevels = [1, 2, 3, 4, 5, 6];
 const { notifyError, notifySuccess } = useAdminNotifications();
 
@@ -128,6 +133,7 @@ const contentEditor = useEditor({
             protocols: ["http", "https", "mailto", "tel"],
         }),
         Image,
+        VideoNode,
         Table.configure({
             resizable: true,
         }),
@@ -498,6 +504,28 @@ function setContentMode(mode) {
     contentMode.value = mode;
 }
 
+function openContentMediaModal() {
+    contentMediaModalOpen.value = true;
+}
+
+function handleContentMediaInsert(selection) {
+    const items = (Array.isArray(selection) ? selection : [selection]).filter(Boolean);
+
+    if (items.length === 0 || !contentEditor.value) {
+        contentMediaModalOpen.value = false;
+        return;
+    }
+
+    const markup = items.map((item) => buildEmbeddedMediaMarkup(item)).join("");
+
+    if (markup !== "") {
+        contentEditor.value.chain().focus().insertContent(markup).run();
+        form.content = contentEditor.value.getHTML();
+    }
+
+    contentMediaModalOpen.value = false;
+}
+
 async function loadPage() {
     loading.value = true;
     errorMessage.value = "";
@@ -842,10 +870,21 @@ onBeforeUnmount(() => {
                                 <PageContentToolbar
                                     :editor="contentEditor"
                                     :heading-levels="headingLevels"
+                                    @open-media="openContentMediaModal"
                                 />
                                 <EditorContent
                                     :editor="contentEditor"
                                     class="admin-editor tiptap-editor"
+                                />
+
+                                <MediaLibraryModal
+                                    :open="contentMediaModalOpen"
+                                    title="Вставить медиа в контент"
+                                    :multiple="true"
+                                    :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
+                                    :allow-upload="true"
+                                    @close="contentMediaModalOpen = false"
+                                    @select="handleContentMediaInsert"
                                 />
                             </template>
 
@@ -1315,6 +1354,28 @@ onBeforeUnmount(() => {
 .page-editor-content-field :deep(.tiptap),
 .page-editor-content-field :deep(.ProseMirror) {
     cursor: text;
+}
+
+.page-editor-content-field :deep(.tiptap video),
+.page-editor-content-field :deep(.ProseMirror video) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px;
+    background: #0f172a;
+}
+
+.page-editor-content-field :deep(.tiptap .page-content-embed),
+.page-editor-content-field :deep(.ProseMirror .page-content-embed) {
+    display: grid;
+    gap: 0.6rem;
+    margin: 1rem 0;
+}
+
+.page-editor-content-field :deep(.tiptap .page-content-embed figcaption),
+.page-editor-content-field :deep(.ProseMirror .page-content-embed figcaption) {
+    color: rgba(71, 85, 105, 0.92);
+    font-size: 0.9rem;
 }
 
 .page-editor-content-field :deep(.ProseMirror) {
