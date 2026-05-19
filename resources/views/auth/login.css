@@ -2,10 +2,10 @@
     color-scheme: light;
     --login-bg: #f2f4f8;
     --login-surface: #ffffff;
-    --login-border: rgb(193, 197, 185);
+    --login-border: #aec3ba;
     --login-text: #2b484d;
     --login-muted: #5e7483;
-    --login-accent: #4c9614;
+    --login-accent: #4b945d;
     --login-danger: #b3261e;
     --login-shadow: 0 0 10px 4px rgba(22, 32, 51, 0.12);
     --login-radius-sm: 8px;
@@ -93,7 +93,7 @@ select:-webkit-autofill:focus {
     justify-content: center;
     gap: 6px;
     font-size: 32px;
-    font-weight: 550;
+    font-weight: 500;
     color: var(--login-muted);
     text-transform: uppercase;
     letter-spacing: 1.2px;
@@ -126,7 +126,7 @@ select:-webkit-autofill:focus {
     width: 100%;
     border: 1.2px solid var(--login-border);
     border-radius: var(--login-radius-sm);
-    padding: 12px 14px;
+    padding: 10px 14px;
     font-size: 16px;
     line-height: 1;
     color: var(--login-text);

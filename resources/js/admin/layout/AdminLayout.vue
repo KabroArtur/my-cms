@@ -543,16 +543,6 @@ onBeforeUnmount(() => {
                     </a>
                 </template>
 
-                <div
-                    v-if="
-                        pluginGroups.length > 0 ||
-                        standalonePluginLinks.length > 0
-                    "
-                    class="admin-nav__plugin-divider"
-                >
-                    <span>Плагины</span>
-                </div>
-
                 <template
                     v-for="group in pluginGroups"
                     :key="`plugin-group-${group.label}`"
@@ -834,9 +824,6 @@ onBeforeUnmount(() => {
                     />
                 </button>
                 <div class="admin-topbar__meta">
-                    <h1 class="admin-page-header__title">
-                        {{ currentNavLink.label }}
-                    </h1>
                     <nav class="admin-breadcrumbs" aria-label="Хлебные крошки">
                         <template
                             v-for="(item, index) in breadcrumbs"
@@ -856,10 +843,14 @@ onBeforeUnmount(() => {
                                 v-if="index < breadcrumbs.length - 1"
                                 class="admin-breadcrumbs__sep"
                             >
-                                <Icon name="arrow-down" width="22" height="22"
+                                <Icon name="arrow-down" width="20" height="20"
                             /></span>
                         </template>
                     </nav>
+
+                    <h1 class="admin-page-header__title">
+                        {{ currentNavLink.label }}
+                    </h1>
                 </div>
             </header>
 

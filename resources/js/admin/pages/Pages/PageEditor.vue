@@ -42,6 +42,7 @@ import PageContentToolbar from "../../components/ui/PageContentToolbar.vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import AdminSelect from "../../components/ui/AdminSelect.vue";
 import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import { fetchApplicableAdditionalFields } from "../../api/additionalFields";
@@ -509,7 +510,9 @@ function openContentMediaModal() {
 }
 
 function handleContentMediaInsert(selection) {
-    const items = (Array.isArray(selection) ? selection : [selection]).filter(Boolean);
+    const items = (Array.isArray(selection) ? selection : [selection]).filter(
+        Boolean,
+    );
 
     if (items.length === 0 || !contentEditor.value) {
         contentMediaModalOpen.value = false;
@@ -670,10 +673,12 @@ onBeforeUnmount(() => {
                 <AdminButton
                     form="page-editor-form"
                     type="submit"
-                    variant="primary"
+                    variant="secondary"
                     :disabled="saving || (!isCreateMode && !canUpdatePage)"
                 >
-                    {{ saving ? "Сохранение..." : "Сохранить страницу" }}
+                    <Icon name="save" width="18" height="18" />{{
+                        saving ? "Сохранение..." : "Сохранить страницу"
+                    }}
                 </AdminButton>
 
                 <a
@@ -683,11 +688,11 @@ onBeforeUnmount(() => {
                     target="_blank"
                     rel="noopener"
                 >
-                    Перейти на страницу
+                    <Icon name="show" width="18" height="18" />
                 </a>
 
                 <RouterLink :to="{ name: 'pages' }" class="button-base">
-                    <Icon name="return" width="18" height="18" /> К списку
+                    <Icon name="return" width="18" height="18" />
                 </RouterLink>
             </div>
         </template>
@@ -713,23 +718,18 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <div class="page-identity-grid">
-                            <label class="admin-form-label">
+                        <div class="page-editor">
+                            <label class="page-editor__label-lang">
                                 <span>Язык</span>
-                                <select
+                                <AdminSelect
                                     v-model="form.language_id"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="language in languageOptions"
-                                        :key="language.value"
-                                        :value="language.value"
-                                    >
-                                        {{ language.label }} ({{
-                                            language.code
-                                        }})
-                                    </option>
-                                </select>
+                                    :options="
+                                        languageOptions.map((l) => ({
+                                            value: l.value,
+                                            label: `${l.label} (${l.code})`,
+                                        }))
+                                    "
+                                />
                                 <small
                                     v-if="validationErrors.language_id"
                                     class="error-text"
@@ -738,7 +738,7 @@ onBeforeUnmount(() => {
                                 </small>
                             </label>
 
-                            <label class="admin-form-label">
+                            <label class="page-editor__label">
                                 <span>Название страницы</span>
                                 <input
                                     v-model="form.title"
@@ -755,7 +755,7 @@ onBeforeUnmount(() => {
                                 </small>
                             </label>
 
-                            <label class="admin-form-label">
+                            <label class="page-editor__label">
                                 <span>URL</span>
                                 <input
                                     v-model="form.slug"
@@ -776,7 +776,7 @@ onBeforeUnmount(() => {
                             </label>
                         </div>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Группа переводов</span>
                             <input
                                 v-model="form.translation_group_id"
@@ -792,7 +792,7 @@ onBeforeUnmount(() => {
                             </small>
                         </label>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Описание</span>
                             <textarea
                                 v-model="form.excerpt"
@@ -836,7 +836,7 @@ onBeforeUnmount(() => {
 
                         <label
                             v-show="contentVisible"
-                            class="admin-form-label page-editor-content-field"
+                            class="page-editor__label page-editor-content-field"
                         >
                             <div class="page-editor-content-field__head">
                                 <span>Содержимое страницы</span>
@@ -857,7 +857,8 @@ onBeforeUnmount(() => {
                                         type="button"
                                         class="button-base button-secondary"
                                         :class="{
-                                            'is-active': contentMode === 'source',
+                                            'is-active':
+                                                contentMode === 'source',
                                         }"
                                         @click="setContentMode('source')"
                                     >
@@ -1025,17 +1026,27 @@ onBeforeUnmount(() => {
                             <p class="muted">Создал: {{ creatorLabel }}</p>
                         </div>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Статус публикации</span>
-                            <select v-model="form.status" class="admin-select">
-                                <option value="draft">Черновик</option>
-                                <option value="pending_review">
-                                    На проверке
-                                </option>
-                                <option value="scheduled">Запланирована</option>
-                                <option value="published">Опубликована</option>
-                                <option value="archived">Архив</option>
-                            </select>
+                            <AdminSelect
+                                v-model="form.status"
+                                :options="[
+                                    { value: 'draft', label: 'Черновик' },
+                                    {
+                                        value: 'pending_review',
+                                        label: 'На проверке',
+                                    },
+                                    {
+                                        value: 'scheduled',
+                                        label: 'Запланирована',
+                                    },
+                                    {
+                                        value: 'published',
+                                        label: 'Опубликована',
+                                    },
+                                    { value: 'archived', label: 'Архив' },
+                                ]"
+                            />
                             <small
                                 v-if="validationErrors.status"
                                 class="error-text"
@@ -1044,15 +1055,15 @@ onBeforeUnmount(() => {
                             </small>
                         </label>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Видимость</span>
-                            <select
+                            <AdminSelect
                                 v-model="form.visibility"
-                                class="admin-select"
-                            >
-                                <option value="public">Публичная</option>
-                                <option value="private">Скрытая</option>
-                            </select>
+                                :options="[
+                                    { value: 'public', label: 'Публичная' },
+                                    { value: 'private', label: 'Скрытая' },
+                                ]"
+                            />
                             <small
                                 v-if="validationErrors.visibility"
                                 class="error-text"
@@ -1061,7 +1072,7 @@ onBeforeUnmount(() => {
                             </small>
                         </label>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Дата публикации</span>
                             <input
                                 v-model="form.published_at"
@@ -1076,26 +1087,18 @@ onBeforeUnmount(() => {
                             </small>
                         </label>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Родительская страница</span>
-                            <select
+                            <AdminSelect
                                 v-model="form.parent_id"
-                                class="admin-select"
-                            >
-                                <option value="">Без родителя</option>
-                                <option
-                                    v-for="page in availableParents"
-                                    :key="page.id"
-                                    :value="page.id"
-                                >
-                                    {{ page.title }}
-                                    ({{
-                                        page.is_home
-                                            ? "/"
-                                            : `/${page.path || page.slug}`
-                                    }})
-                                </option>
-                            </select>
+                                :options="[
+                                    { value: '', label: 'Без родителя' },
+                                    ...availableParents.map((page) => ({
+                                        value: page.id,
+                                        label: `${page.title} (${page.is_home ? '/' : `/${page.path || page.slug}`})`,
+                                    })),
+                                ]"
+                            />
                             <small
                                 v-if="validationErrors.parent_id"
                                 class="error-text"
@@ -1104,20 +1107,17 @@ onBeforeUnmount(() => {
                             </small>
                         </label>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>Шаблон</span>
-                            <select
+                            <AdminSelect
                                 v-model="form.template"
-                                class="admin-select"
-                            >
-                                <option
-                                    v-for="option in templateOptions"
-                                    :key="option.value"
-                                    :value="option.value"
-                                >
-                                    {{ option.label }}
-                                </option>
-                            </select>
+                                :options="
+                                    templateOptions.map((option) => ({
+                                        value: option.value,
+                                        label: option.label,
+                                    }))
+                                "
+                            />
                             <small
                                 v-if="validationErrors.template"
                                 class="error-text"
@@ -1142,7 +1142,7 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>SEO заголовок</span>
                             <input
                                 v-model="form.meta_title"
@@ -1152,7 +1152,7 @@ onBeforeUnmount(() => {
                             />
                         </label>
 
-                        <label class="admin-form-label">
+                        <label class="page-editor__label">
                             <span>SEO описание</span>
                             <textarea
                                 v-model="form.meta_description"
@@ -1163,7 +1163,7 @@ onBeforeUnmount(() => {
                         </label>
 
                         <label
-                            class="admin-form-label page-editor-checkbox-label"
+                            class="page-editor__label page-editor-checkbox-label"
                         >
                             <span class="page-editor-checkbox-text">
                                 <input
@@ -1179,7 +1179,7 @@ onBeforeUnmount(() => {
                         </label>
 
                         <label
-                            class="admin-form-label page-editor-checkbox-label"
+                            class="page-editor__label page-editor-checkbox-label"
                         >
                             <span class="page-editor-checkbox-text">
                                 <input
@@ -1209,240 +1209,3 @@ onBeforeUnmount(() => {
         </form>
     </AdminPage>
 </template>
-
-<style scoped>
-.page-editor-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.9fr);
-    gap: 1rem;
-    align-items: start;
-}
-
-.page-editor-layout__main,
-.page-editor-layout__aside {
-    display: grid;
-    gap: 1rem;
-}
-
-.page-editor-section {
-    display: grid;
-    gap: 1rem;
-}
-
-.page-editor-section :deep(.admin-form-label) {
-    display: grid;
-    align-items: start;
-    gap: 0.5rem;
-    min-width: 0;
-}
-
-.page-editor-section :deep(.admin-form-label > span) {
-    display: block;
-    min-width: 0;
-    line-height: 1.4;
-}
-
-.page-editor-section :deep(.admin-form-label small) {
-    line-height: 1.45;
-}
-
-.page-editor-section__header {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
-.page-editor-section__header h2 {
-    margin: 0;
-    font-size: 1rem;
-}
-
-.page-editor-section__header p {
-    margin: 0.25rem 0 0;
-}
-
-.page-identity-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-}
-
-.page-editor-aside-section {
-    display: grid;
-    gap: 1rem;
-}
-
-.page-editor-footer {
-    display: grid;
-    gap: 0.85rem;
-}
-
-.page-featured-media {
-    display: grid;
-    gap: 0.65rem;
-}
-
-.page-featured-media > span {
-    font-size: 0.95rem;
-    font-weight: 600;
-}
-
-.page-preview-box__value {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 700;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
-
-.page-editor-checkbox-label {
-    display: flex !important;
-    align-items: flex-start !important;
-    gap: 0.45rem;
-}
-
-.page-editor-checkbox-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    font-weight: 600;
-}
-
-.page-editor-content-field {
-    min-width: 0;
-}
-
-.page-editor-content-field__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
-.page-editor-content-mode {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.page-editor-content-mode .button-base.is-active,
-.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base.is-active) {
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18);
-    filter: brightness(1.08) saturate(1.22);
-}
-
-.page-editor-content-field :deep(.admin-editor-toolbar) {
-    margin-bottom: 0;
-}
-
-.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base) {
-    transition:
-        filter 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
-}
-
-.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base.is-active) {
-    transform: translateY(-1px);
-}
-
-.page-editor-content-field :deep(.tiptap-editor) {
-    min-width: 0;
-}
-
-.page-editor-content-field :deep(.tiptap),
-.page-editor-content-field :deep(.ProseMirror) {
-    cursor: text;
-}
-
-.page-editor-content-field :deep(.tiptap video),
-.page-editor-content-field :deep(.ProseMirror video) {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    border-radius: 16px;
-    background: #0f172a;
-}
-
-.page-editor-content-field :deep(.tiptap .page-content-embed),
-.page-editor-content-field :deep(.ProseMirror .page-content-embed) {
-    display: grid;
-    gap: 0.6rem;
-    margin: 1rem 0;
-}
-
-.page-editor-content-field :deep(.tiptap .page-content-embed figcaption),
-.page-editor-content-field :deep(.ProseMirror .page-content-embed figcaption) {
-    color: rgba(71, 85, 105, 0.92);
-    font-size: 0.9rem;
-}
-
-.page-editor-content-field :deep(.ProseMirror) {
-    min-height: 320px;
-}
-
-.page-editor-source {
-    min-height: 360px;
-    font-family:
-        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-    line-height: 1.5;
-    resize: vertical;
-}
-
-.additional-fields-group {
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    border-radius: 20px;
-    background: rgba(248, 250, 252, 0.9);
-}
-
-.additional-fields-group + .additional-fields-group {
-    margin-top: 0.9rem;
-}
-
-.additional-fields-group__summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.1rem;
-    cursor: pointer;
-    list-style: none;
-}
-
-.additional-fields-group__summary::-webkit-details-marker {
-    display: none;
-}
-
-.additional-fields-group__body {
-    padding: 0 1.1rem 1.1rem;
-}
-
-@media (max-width: 1080px) {
-    .page-editor-layout {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-@media (max-width: 900px) {
-    .page-identity-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 720px) {
-    .page-identity-grid {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .page-editor-section__header {
-        flex-direction: column;
-    }
-
-    .page-editor-content-field__head {
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
-</style>

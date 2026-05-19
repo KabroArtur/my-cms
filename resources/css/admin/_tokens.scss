@@ -34,23 +34,25 @@
     --admin-color-surface-muted: #5e7483;
     --admin-color-border: #aec3ba;
     --admin-color-border-strong: #afcea6;
-    --admin-color-text: #2b484d;
+    --admin-color-text: #2b4d40;
     --admin-color-text-accent: #ffffff;
     --admin-color-text-shadow: #235100;
     --admin-color-text-muted: #2a4b1f;
-    --admin-color-primary: #4c9614;
+    --admin-color-primary: #4b945d;
     --admin-color-primary-contrast: #133b51;
-    --admin-color-success: #4c9614;
+    --admin-color-success: #639939;
     --admin-color-danger: #d6001d;
     --admin-color-warning: #ffa600;
     --admin-color-info: #1e58bc;
+    --admin-color-shadow: #0f172a49;
     --admin-color-info-text: #133251;
-    --installed-text: #576079;
-    --installed-bg: #bbc1d84b;
-    --not-installed-text: #1c3885;
-    --not-installed-bg: #9ab8ff47;
-    --is-enabled-text: #078332;
-    --is-enabled-bg: #a4ffbe75;
+
+    --badge-draft-text: #609dff;
+    --badge-pending-text: #ffb22c;
+    --badge-scheduled-text: #af4dff;
+    --badge-published-text: #00ab3f;
+    --badge-archived-text: #7588a1;
+    --badge-home-text: #9333ea;
 }
 
 :root[data-admin-theme-mode="dark"][data-admin-theme-palette="midnight"] {
@@ -63,19 +65,20 @@
     --admin-color-text-accent: #e7e7ff;
     --admin-color-text-shadow: #110d3c;
     --admin-color-text-muted: #adb0ea;
-    --admin-color-primary: #4a1edc;
+    --admin-color-primary: #553ea0;
     --admin-color-primary-contrast: #ffffff;
     --admin-color-success: #60f4b1;
     --admin-color-danger: #e44444;
     --admin-color-warning: #ffdc4f;
-    --admin-color-info: #2372fa;
-    --installed-text: #c6ceff;
-    --installed-bg: #10227c5e;
-    --not-installed-text: #334155;
-    --not-installed-text: #60f4d9;
-    --not-installed-bg: #05595375;
-    --is-enabled-text: #d6aeff;
-    --is-enabled-bg: #401b588b;
+    --admin-color-info: #306cd3;
+    --admin-color-shadow: #00020691;
+
+    --badge-draft-text: #91bede;
+    --badge-pending-text: #ea8400;
+    --badge-scheduled-text: #e1f500;
+    --badge-published-text: #3cc980;
+    --badge-archived-text: #b5c1d3;
+    --badge-home-text: #b86fe4;
 }
 
 :root[data-admin-theme-mode="light"][data-admin-theme-palette="sand"] {

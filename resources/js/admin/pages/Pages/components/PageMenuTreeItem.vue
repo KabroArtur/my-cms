@@ -1,12 +1,13 @@
 <script setup>
-import { inject, provide, reactive } from 'vue'
-import { RouterLink } from 'vue-router'
+import { inject, provide, reactive } from "vue";
+import { RouterLink } from "vue-router";
+import Icon from "../../../components/ui/Icon.vue";
 
-const dropStateKey = Symbol('page-menu-drop-state')
+const dropStateKey = Symbol("page-menu-drop-state");
 
 defineOptions({
-    name: 'PageMenuTreeItem',
-})
+    name: "PageMenuTreeItem",
+});
 
 const props = defineProps({
     nodes: {
@@ -33,246 +34,272 @@ const props = defineProps({
         type: Object,
         required: true,
     },
-})
+});
 
-const emit = defineEmits(['move', 'dragging-change'])
+const emit = defineEmits(["move", "dragging-change"]);
 
-const inheritedDropState = inject(dropStateKey, null)
-const dropState = inheritedDropState ?? reactive({
-    activeDropKey: '',
-    activeDropLevel: 0,
-    activeInsideId: null,
-    clearTimer: null,
-})
+const inheritedDropState = inject(dropStateKey, null);
+const dropState =
+    inheritedDropState ??
+    reactive({
+        activeDropKey: "",
+        activeDropLevel: 0,
+        activeInsideId: null,
+        clearTimer: null,
+    });
 
 if (!inheritedDropState) {
-    provide(dropStateKey, dropState)
+    provide(dropStateKey, dropState);
 }
 
 function resolvePath(page) {
-    return page.public_url ?? (page.is_home ? '/' : `/${page.path || page.slug}`)
+    return (
+        page.public_url ?? (page.is_home ? "/" : `/${page.path || page.slug}`)
+    );
 }
 
 function createDragPreview(sourceElement, pointerX, pointerY) {
-    const previewElement = sourceElement.cloneNode(true)
-    const bounds = sourceElement.getBoundingClientRect()
+    const previewElement = sourceElement.cloneNode(true);
+    const bounds = sourceElement.getBoundingClientRect();
 
-    previewElement.style.position = 'fixed'
-    previewElement.style.top = '-10000px'
-    previewElement.style.left = '-10000px'
-    previewElement.style.width = `${bounds.width}px`
-    previewElement.style.pointerEvents = 'none'
-    previewElement.style.margin = '0'
-    previewElement.style.opacity = '1'
-    previewElement.style.transform = 'none'
-    previewElement.classList.remove('is-dragging-source')
+    previewElement.style.position = "fixed";
+    previewElement.style.top = "-10000px";
+    previewElement.style.left = "-10000px";
+    previewElement.style.width = `${bounds.width}px`;
+    previewElement.style.pointerEvents = "none";
+    previewElement.style.margin = "0";
+    previewElement.style.opacity = "1";
+    previewElement.style.transform = "none";
+    previewElement.classList.remove("is-dragging-source");
 
-    document.body.append(previewElement)
+    document.body.append(previewElement);
 
     return {
         previewElement,
-        offsetX: Math.max(0, Math.min(bounds.width - 1, pointerX - bounds.left)),
-        offsetY: Math.max(0, Math.min(bounds.height - 1, pointerY - bounds.top)),
-    }
+        offsetX: Math.max(
+            0,
+            Math.min(bounds.width - 1, pointerX - bounds.left),
+        ),
+        offsetY: Math.max(
+            0,
+            Math.min(bounds.height - 1, pointerY - bounds.top),
+        ),
+    };
 }
 
 function handleDragStart(event, nodeId) {
-    const sourceElement = event.currentTarget
-    const previewSource = sourceElement instanceof HTMLElement
-        ? sourceElement.closest('.page-tree-item') ?? sourceElement
-        : sourceElement
+    const sourceElement = event.currentTarget;
+    const previewSource =
+        sourceElement instanceof HTMLElement
+            ? (sourceElement.closest(".page-tree-item") ?? sourceElement)
+            : sourceElement;
 
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(nodeId))
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(nodeId));
 
-    if (previewSource instanceof HTMLElement && event.dataTransfer?.setDragImage) {
-        const { previewElement, offsetX, offsetY } = createDragPreview(previewSource, event.clientX, event.clientY)
+    if (
+        previewSource instanceof HTMLElement &&
+        event.dataTransfer?.setDragImage
+    ) {
+        const { previewElement, offsetX, offsetY } = createDragPreview(
+            previewSource,
+            event.clientX,
+            event.clientY,
+        );
 
-        event.dataTransfer.setDragImage(previewElement, offsetX, offsetY)
-        window.setTimeout(() => previewElement.remove(), 0)
+        event.dataTransfer.setDragImage(previewElement, offsetX, offsetY);
+        window.setTimeout(() => previewElement.remove(), 0);
     }
 
-    emit('dragging-change', nodeId)
+    emit("dragging-change", nodeId);
 }
 
 function cancelPendingClear() {
     if (dropState.clearTimer !== null) {
-        window.clearTimeout(dropState.clearTimer)
-        dropState.clearTimer = null
+        window.clearTimeout(dropState.clearTimer);
+        dropState.clearTimer = null;
     }
 }
 
 function resetDropIndicators() {
-    cancelPendingClear()
-    dropState.activeDropKey = ''
-    dropState.activeDropLevel = 0
-    dropState.activeInsideId = null
+    cancelPendingClear();
+    dropState.activeDropKey = "";
+    dropState.activeDropLevel = 0;
+    dropState.activeInsideId = null;
 }
 
 function scheduleDropIndicatorClear() {
-    cancelPendingClear()
+    cancelPendingClear();
     dropState.clearTimer = window.setTimeout(() => {
-        dropState.activeDropKey = ''
-        dropState.activeDropLevel = 0
-        dropState.activeInsideId = null
-        dropState.clearTimer = null
-    }, 120)
+        dropState.activeDropKey = "";
+        dropState.activeDropLevel = 0;
+        dropState.activeInsideId = null;
+        dropState.clearTimer = null;
+    }, 120);
 }
 
 function setActiveSlot(dropKey, level) {
-    cancelPendingClear()
-    dropState.activeDropKey = dropKey
-    dropState.activeDropLevel = level
-    dropState.activeInsideId = null
+    cancelPendingClear();
+    dropState.activeDropKey = dropKey;
+    dropState.activeDropLevel = level;
+    dropState.activeInsideId = null;
 }
 
 function setActiveInside(nodeId) {
-    cancelPendingClear()
-    dropState.activeDropKey = ''
-    dropState.activeDropLevel = props.level
-    dropState.activeInsideId = nodeId
+    cancelPendingClear();
+    dropState.activeDropKey = "";
+    dropState.activeDropLevel = props.level;
+    dropState.activeInsideId = nodeId;
 }
 
 function handleDragEnd() {
-    resetDropIndicators()
-    emit('dragging-change', null)
+    resetDropIndicators();
+    emit("dragging-change", null);
 }
 
 function resolveDraggedId(event) {
-    const rawValue = Number(event.dataTransfer?.getData('text/plain') ?? 0)
+    const rawValue = Number(event.dataTransfer?.getData("text/plain") ?? 0);
 
-    return Number.isNaN(rawValue) || rawValue === 0 ? null : rawValue
+    return Number.isNaN(rawValue) || rawValue === 0 ? null : rawValue;
 }
 
 function handleDrop(event, targetIndex) {
-    const draggedId = resolveDraggedId(event)
+    const draggedId = resolveDraggedId(event);
 
-    resetDropIndicators()
+    resetDropIndicators();
 
     if (draggedId === null) {
-        return
+        return;
     }
 
-    emit('move', {
+    emit("move", {
         draggedId,
         targetParentId: props.parentId,
         targetIndex,
-    })
+    });
 }
 
 function resolveNodeDropPosition(event) {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const offsetY = event.clientY - bounds.top
-    const ratio = offsetY / bounds.height
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const offsetY = event.clientY - bounds.top;
+    const ratio = offsetY / bounds.height;
 
     if (ratio < 0.28) {
-        return 'before'
+        return "before";
     }
 
     if (ratio > 0.72) {
-        return 'after'
+        return "after";
     }
 
-    return 'inside'
+    return "inside";
 }
 
 function resolveSlotKey(targetIndex) {
-    return `slot-${props.parentId ?? 'root'}-${targetIndex}`
+    return `slot-${props.parentId ?? "root"}-${targetIndex}`;
 }
 
 function handleNodeDragOver(event, node, index) {
-    event.preventDefault()
-    const position = resolveNodeDropPosition(event)
+    event.preventDefault();
+    const position = resolveNodeDropPosition(event);
 
-    if (position === 'before') {
-        setActiveSlot(resolveSlotKey(index), props.level)
-
-        if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = 'move'
-        }
-
-        return
-    }
-
-    if (position === 'inside') {
-        setActiveInside(node.id)
+    if (position === "before") {
+        setActiveSlot(resolveSlotKey(index), props.level);
 
         if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = 'move'
+            event.dataTransfer.dropEffect = "move";
         }
 
-        return
+        return;
     }
 
-    setActiveSlot(resolveSlotKey(index + 1), props.level)
+    if (position === "inside") {
+        setActiveInside(node.id);
+
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+        }
+
+        return;
+    }
+
+    setActiveSlot(resolveSlotKey(index + 1), props.level);
 
     if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move'
+        event.dataTransfer.dropEffect = "move";
     }
 }
 
 function handleSlotDragOver(event, dropKey, targetIndex) {
-    event.preventDefault()
-    setActiveSlot(dropKey, props.level)
+    event.preventDefault();
+    setActiveSlot(dropKey, props.level);
 
     if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move'
+        event.dataTransfer.dropEffect = "move";
     }
 }
 
 function handleNodeDrop(event, node, index) {
-    const draggedId = resolveDraggedId(event)
-    const position = resolveNodeDropPosition(event)
+    const draggedId = resolveDraggedId(event);
+    const position = resolveNodeDropPosition(event);
 
-    resetDropIndicators()
+    resetDropIndicators();
 
     if (draggedId === null) {
-        return
+        return;
     }
 
-    if (position === 'inside') {
-        emit('move', {
+    if (position === "inside") {
+        emit("move", {
             draggedId,
             targetParentId: node.id,
             targetIndex: node.children?.length ?? 0,
-        })
+        });
 
-        return
+        return;
     }
 
-    if (position === 'before') {
-        emit('move', {
+    if (position === "before") {
+        emit("move", {
             draggedId,
             targetParentId: props.parentId,
             targetIndex: index,
-        })
+        });
 
-        return
+        return;
     }
 
-    emit('move', {
+    emit("move", {
         draggedId,
         targetParentId: props.parentId,
         targetIndex: index + 1,
-    })
+    });
 }
 
 function handleDragLeave(event, dropKey) {
-    if (event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
-        return
+    if (
+        event.currentTarget instanceof HTMLElement &&
+        event.relatedTarget instanceof Node &&
+        event.currentTarget.contains(event.relatedTarget)
+    ) {
+        return;
     }
 
     if (dropState.activeDropKey === dropKey) {
-        scheduleDropIndicatorClear()
+        scheduleDropIndicatorClear();
     }
 }
 
 function clearNodeDrop(event) {
-    if (event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
-        return
+    if (
+        event.currentTarget instanceof HTMLElement &&
+        event.relatedTarget instanceof Node &&
+        event.currentTarget.contains(event.relatedTarget)
+    ) {
+        return;
     }
 
-    scheduleDropIndicatorClear()
+    scheduleDropIndicatorClear();
 }
 </script>
 
@@ -280,9 +307,20 @@ function clearNodeDrop(event) {
     <div class="page-tree-branch">
         <div
             class="page-tree-level-dropzone"
-            :class="{ 'is-active': dropState.activeDropKey === `slot-${parentId ?? 'root'}-0`, 'is-dragging': draggingId !== null }"
-            :style="{ '--drop-level': dropState.activeDropKey === `slot-${parentId ?? 'root'}-0` ? dropState.activeDropLevel : level }"
-            @dragover="handleSlotDragOver($event, `slot-${parentId ?? 'root'}-0`, 0)"
+            :class="{
+                'is-active':
+                    dropState.activeDropKey === `slot-${parentId ?? 'root'}-0`,
+                'is-dragging': draggingId !== null,
+            }"
+            :style="{
+                '--drop-level':
+                    dropState.activeDropKey === `slot-${parentId ?? 'root'}-0`
+                        ? dropState.activeDropLevel
+                        : level,
+            }"
+            @dragover="
+                handleSlotDragOver($event, `slot-${parentId ?? 'root'}-0`, 0)
+            "
             @dragleave="handleDragLeave($event, `slot-${parentId ?? 'root'}-0`)"
             @drop="handleDrop($event, 0)"
         ></div>
@@ -292,7 +330,7 @@ function clearNodeDrop(event) {
                 class="page-tree-item"
                 :class="{
                     'is-dragging-source': draggingId === node.id,
-                    'is-drop-inside': dropState.activeInsideId === node.id
+                    'is-drop-inside': dropState.activeInsideId === node.id,
                 }"
                 @dragover="handleNodeDragOver($event, node, index)"
                 @dragleave="clearNodeDrop($event)"
@@ -300,32 +338,48 @@ function clearNodeDrop(event) {
             >
                 <div class="page-tree-item__main">
                     <span
-                        class="page-tree-item__handle"
+                        class="page-tree-item__handle button-link"
                         draggable="true"
                         @dragstart="handleDragStart($event, node.id)"
                         @dragend="handleDragEnd"
                     >
-                        ::
+                        <Icon name="grip" width="18" height="18" />
                     </span>
 
                     <div>
                         <div class="page-tree-item__title-row">
-                            <RouterLink :to="{ name: 'page-edit', params: { id: node.id } }" class="page-title-link">
+                            <RouterLink
+                                :to="{
+                                    name: 'page-edit',
+                                    params: { id: node.id },
+                                }"
+                                class="page-title-link"
+                            >
                                 {{ node.title }}
                             </RouterLink>
-
-                            <span :class="['page-badge', `page-badge--${node.status}`]">
+                            <p class="page-tree-item__path">
+                                {{ resolvePath(node) }}
+                            </p>
+                            <span
+                                :class="[
+                                    'page-badge',
+                                    `page-badge--${node.status}`,
+                                ]"
+                            >
                                 {{ statusLabels[node.status] ?? node.status }}
                             </span>
                         </div>
-
-                        <p class="page-tree-item__path">{{ resolvePath(node) }}</p>
                     </div>
                 </div>
 
                 <div class="admin-actions-row">
-                    <a :href="resolvePath(node)" class="button-link" target="_blank" rel="noopener">
-                        Перейти
+                    <a
+                        :href="resolvePath(node)"
+                        class="button-link"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <Icon name="show" width="20" height="20" />
                     </a>
                 </div>
             </article>
@@ -345,10 +399,32 @@ function clearNodeDrop(event) {
 
             <div
                 class="page-tree-level-dropzone"
-                :class="{ 'is-active': dropState.activeDropKey === `slot-${parentId ?? 'root'}-${index + 1}`, 'is-dragging': draggingId !== null }"
-                :style="{ '--drop-level': dropState.activeDropKey === `slot-${parentId ?? 'root'}-${index + 1}` ? dropState.activeDropLevel : level }"
-                @dragover="handleSlotDragOver($event, `slot-${parentId ?? 'root'}-${index + 1}`, index + 1)"
-                @dragleave="handleDragLeave($event, `slot-${parentId ?? 'root'}-${index + 1}`)"
+                :class="{
+                    'is-active':
+                        dropState.activeDropKey ===
+                        `slot-${parentId ?? 'root'}-${index + 1}`,
+                    'is-dragging': draggingId !== null,
+                }"
+                :style="{
+                    '--drop-level':
+                        dropState.activeDropKey ===
+                        `slot-${parentId ?? 'root'}-${index + 1}`
+                            ? dropState.activeDropLevel
+                            : level,
+                }"
+                @dragover="
+                    handleSlotDragOver(
+                        $event,
+                        `slot-${parentId ?? 'root'}-${index + 1}`,
+                        index + 1,
+                    )
+                "
+                @dragleave="
+                    handleDragLeave(
+                        $event,
+                        `slot-${parentId ?? 'root'}-${index + 1}`,
+                    )
+                "
                 @drop="handleDrop($event, index + 1)"
             ></div>
         </template>

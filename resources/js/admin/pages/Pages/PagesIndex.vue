@@ -6,6 +6,7 @@ import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
 import Icon from "../../components/ui/Icon.vue";
 import AdminSelect from "../../components/ui/AdminSelect.vue";
+import AdminViewSettings from "../../components/ui/AdminViewSettings.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import {
     formatCmsDateTime,
@@ -34,6 +35,25 @@ const treeDirty = ref(false);
 const menuModalOpen = ref(false);
 const languageFilter = ref("all");
 const languageOptions = ref([]);
+const visibleFields = ref({
+    language: true,
+    author: true,
+    date: true,
+    status: true,
+    compact: false,
+});
+
+const fieldLabels = {
+    status: "Показывать шаблон",
+    language: "Показывать язык",
+    author: "Показывать автора",
+    date: "Показывать дату",
+    compact: "Компактный режим",
+};
+const searchQuery = ref("");
+const statusFilter = ref("all");
+const templateFilter = ref("all");
+const sortBy = ref("updated_at");
 const { notifyError, notifySuccess } = useAdminNotifications();
 
 function pageQueryParams() {
@@ -102,11 +122,57 @@ const orderedPages = computed(() => {
 });
 
 const visiblePages = computed(() => {
-    if (activeTab.value === "all" || activeTab.value === "trash") {
-        return orderedPages.value;
+    let result = [...pages.value];
+
+    if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase();
+        result = result.filter(
+            (p) =>
+                (p.title || "").toLowerCase().includes(q) ||
+                (p.slug || "").toLowerCase().includes(q),
+        );
     }
 
-    return orderedPages.value.filter((page) => page.status === activeTab.value);
+    if (languageFilter.value !== "all") {
+        result = result.filter((p) => p.language_id == languageFilter.value);
+    }
+
+    const statusToUse =
+        statusFilter.value !== "all"
+            ? statusFilter.value
+            : activeTab.value !== "all"
+              ? activeTab.value
+              : null;
+
+    if (statusToUse) {
+        result = result.filter((p) => p.status === statusToUse);
+    }
+
+    if (templateFilter.value !== "all") {
+        result = result.filter(
+            (p) => (p.layout || "default") === templateFilter.value,
+        );
+    }
+
+    switch (sortBy.value) {
+        case "created_at":
+            result.sort(
+                (a, b) => new Date(b.created_at) - new Date(a.created_at),
+            );
+            break;
+
+        case "updated_at":
+            result.sort(
+                (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
+            );
+            break;
+
+        case "title":
+            result.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+            break;
+    }
+
+    return result;
 });
 
 function buildTree(items) {
@@ -379,6 +445,16 @@ onMounted(async () => {
     await loadPages();
 });
 
+function langIcon(code) {
+    const map = {
+        uk: "UA",
+        ru: "RU",
+        en: "EN",
+    };
+
+    return map[(code || "").toLowerCase()] || null;
+}
+
 const allCount = computed(() => pages.value.length);
 const publishedCount = computed(
     () => pages.value.filter((p) => p.status === "published").length,
@@ -395,9 +471,22 @@ const trashCount = computed(() => trashedPages.value.length);
     >
         <template #actions>
             <div class="admin-actions-row">
-                <AdminButton type="button" @click="menuModalOpen = true">
-                    <Icon name="menu-btn" width="18" height="18" />Меню
+                <AdminButton
+                    type="button"
+                    class="button-link"
+                    @click="menuModalOpen = true"
+                >
+                    <Icon name="menu-btn" width="20" height="20" />Меню
                 </AdminButton>
+
+                <AdminViewSettings
+                    v-model="visibleFields"
+                    :labels="fieldLabels"
+                >
+                    <template #trigger>
+                        <Icon name="setting" width="20" height="20" />
+                    </template>
+                </AdminViewSettings>
 
                 <RouterLink :to="{ name: 'page-create' }" class="button-base">
                     <Icon name="new" width="18" height="18" />Новая страница
@@ -453,17 +542,67 @@ const trashCount = computed(() => trashedPages.value.length);
                             <span class="tab-count">{{ trashCount }}</span>
                         </button>
                     </div>
+                </div>
+                <div class="admin-filter-bar">
+                    <div class="admin-filter-field admin-filter-field--search">
+                        <Icon name="search" width="18" height="18" />
 
-                    <div class="admin-form-field">
-                        <div class="admin-form-label">
-                            <Icon name="language" width="20" height="20" />Язык:
-                        </div>
+                        <input
+                            v-model="searchQuery"
+                            type="text"
+                            class="admin-input"
+                            placeholder="Поиск страниц"
+                        />
+                    </div>
 
+                    <div class="admin-filter-field lang" data-label="Язык:">
                         <AdminSelect
                             v-model="languageFilter"
                             :options="[
                                 { value: 'all', label: 'Все языки' },
                                 ...languageOptions,
+                            ]"
+                        />
+                    </div>
+
+                    <div class="admin-filter-field status" data-label="Статус:">
+                        <AdminSelect
+                            v-model="statusFilter"
+                            :options="[
+                                { value: 'all', label: 'Все статусы' },
+                                { value: 'draft', label: 'Черновик' },
+                                {
+                                    value: 'pending_review',
+                                    label: 'На проверке',
+                                },
+                                { value: 'scheduled', label: 'Запланирована' },
+                                { value: 'published', label: 'Опубликована' },
+                                { value: 'archived', label: 'Архив' },
+                            ]"
+                        />
+                    </div>
+
+                    <div class="admin-filter-field shab" data-label="Шаблон:">
+                        <AdminSelect
+                            v-model="templateFilter"
+                            :options="[
+                                { value: 'all', label: 'Все' },
+                                { value: 'default', label: 'Default' },
+                                { value: 'landing', label: 'Landing' },
+                            ]"
+                        />
+                    </div>
+
+                    <div
+                        class="admin-filter-field sort"
+                        data-label="Сортировка:"
+                    >
+                        <AdminSelect
+                            v-model="sortBy"
+                            :options="[
+                                { value: 'updated_at', label: 'Обновлено' },
+                                { value: 'created_at', label: 'Создано' },
+                                { value: 'title', label: 'Название' },
                             ]"
                         />
                     </div>
@@ -487,91 +626,103 @@ const trashCount = computed(() => trashedPages.value.length);
                     Удалённых страниц пока нет.
                 </p>
 
-                <div v-else-if="activeTab !== 'trash'" class="page-record-grid">
-                    <article
+                <div v-else-if="activeTab !== 'trash'" class="admin-table">
+                    <div class="admin-table__head">
+                        <div>
+                            <Icon name="page" width="14" height="14" />Страница
+                        </div>
+                        <div v-if="visibleFields.author">
+                            <Icon name="avatar" width="14" height="14" />Автор
+                        </div>
+                        <div v-if="visibleFields.language">
+                            <Icon name="lang" width="14" height="14" />Язык
+                        </div>
+                        <div v-if="visibleFields.status">
+                            <Icon name="shab" width="14" height="14" />Шаблон
+                        </div>
+                        <div>
+                            <Icon name="status" width="14" height="14" />Статус
+                        </div>
+                        <div>
+                            <Icon
+                                name="settings"
+                                width="16"
+                                height="16"
+                            />Действия
+                        </div>
+                    </div>
+                    <div
                         v-for="page in visiblePages"
                         :key="page.id"
-                        class="page-record-card"
+                        class="admin-table__row"
                     >
-                        <header class="page-record-card__top">
-                            <div class="page-record-card__head">
-                                <RouterLink
-                                    :to="{
-                                        name: 'page-edit',
-                                        params: { id: page.id },
-                                    }"
-                                    class="page-title-link"
-                                >
-                                    {{ page.title }}
-                                </RouterLink>
-                                <p class="muted">ID {{ page.id }}</p>
-                            </div>
+                        <div class="cell-page">
+                            <RouterLink
+                                :to="{
+                                    name: 'page-edit',
+                                    params: { id: page.id },
+                                }"
+                                class="page-title-link"
+                            >
+                                {{ page.title }}
+                            </RouterLink>
 
-                            <div class="page-record-card__badges">
-                                <span
-                                    v-if="page.is_home"
-                                    class="page-badge page-badge--home"
-                                    title="Главная страница сайта"
-                                    >Главная</span
-                                >
-                                <span
-                                    v-if="page.language?.native_name"
-                                    class="page-badge page-badge--visibility"
-                                >
-                                    {{ page.language.native_name }}
-                                </span>
-                                <span
-                                    :class="[
-                                        'page-badge',
-                                        `page-badge--${page.status}`,
-                                    ]"
-                                >
-                                    {{ resolveStatusLabel(page.status) }}
-                                </span>
-                                <span class="page-badge page-badge--visibility">
-                                    {{
-                                        resolveVisibilityLabel(page.visibility)
-                                    }}
-                                </span>
+                            <div class="page-sub">
+                                <span>ID {{ page.id }}</span>
+                                <span>{{ resolvePublicUrl(page) }}</span>
+                                <span>{{ page.slug }}</span>
                             </div>
-                        </header>
-
-                        <div class="page-record-card__meta">
-                            <p>
-                                <strong>URL:</strong>
-                                {{ resolvePublicUrl(page) }}
-                            </p>
-                            <p><strong>Slug:</strong> {{ page.slug }}</p>
-                            <p>
-                                <strong>Язык:</strong>
-                                {{ page.language?.native_name || "—" }}
-                            </p>
-                            <p>
-                                <strong>Создал:</strong>
-                                {{ resolveCreatorLabel(page) }}
-                            </p>
-                            <p>
-                                <strong>Дата:</strong>
-                                {{ formatDateTime(page.published_at) }}
-                            </p>
-                            <p>
-                                <strong>Шаблон:</strong>
-                                {{ page.template || "default" }}
-                            </p>
                         </div>
 
-                        <p class="page-record-card__excerpt">
-                            {{ page.excerpt || "Описание пока не добавлено." }}
-                        </p>
+                        <div
+                            v-if="visibleFields.author"
+                            class="admin-table__inner"
+                        >
+                            {{ resolveCreatorLabel(page) }}
+                        </div>
 
-                        <div class="admin-actions-row">
+                        <div
+                            v-if="visibleFields.language"
+                            class="admin-table__language"
+                        >
+                            <span
+                                ><Icon
+                                    v-if="page.language?.code"
+                                    :name="langIcon(page.language.code)"
+                                    width="36"
+                                    height="38"
+                            /></span>
+                            {{ page.language?.native_name || "—" }}
+                        </div>
+
+                        <div
+                            v-if="visibleFields.status"
+                            class="admin-table__inner"
+                        >
+                            {{ page.template || "default" }}
+                        </div>
+
+                        <div class="cell-status">
+                            <div class="cell-status__date">
+                                {{ formatDateTime(page.published_at) }}
+                            </div>
+                            <div
+                                :class="[
+                                    'page-badge',
+                                    `page-badge--${page.status}`,
+                                ]"
+                            >
+                                {{ resolveStatusLabel(page.status) }}
+                            </div>
+                        </div>
+
+                        <div class="cell-actions">
                             <a
                                 :href="resolvePublicUrl(page)"
-                                class="button-link"
                                 target="_blank"
-                                rel="noopener"
+                                class="button-base"
                             >
-                                Перейти
+                                <Icon name="show" width="20" height="20" />
                             </a>
 
                             <RouterLink
@@ -581,7 +732,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                 }"
                                 class="button-link"
                             >
-                                Открыть
+                                <Icon name="pencil" width="20" height="20" />
                             </RouterLink>
 
                             <AdminButton
@@ -590,10 +741,10 @@ const trashCount = computed(() => trashedPages.value.length);
                                 :disabled="!page.can?.delete"
                                 @click="removePage(page)"
                             >
-                                В корзину
+                                <Icon name="trash" width="20" height="20" />
                             </AdminButton>
                         </div>
-                    </article>
+                    </div>
                 </div>
 
                 <div v-else class="page-trash-grid">
