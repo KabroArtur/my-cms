@@ -43,6 +43,7 @@ import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
 import AdminSelect from "../../components/ui/AdminSelect.vue";
+import AdminCheckbox from "../../components/ui/AdminCheckbox.vue";
 import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import { fetchApplicableAdditionalFields } from "../../api/additionalFields";
@@ -710,36 +711,69 @@ onBeforeUnmount(() => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2>Основное</h2>
-                                <p class="muted">
-                                    Название, адрес страницы и краткое описание
-                                    для списков и предпросмотра.
-                                </p>
+                                <h2 class="title-tooltip">
+                                    Основное
+                                    <Icon name="info" width="16" height="16" />
+                                    <span>
+                                        Название, адрес страницы и краткое
+                                        описание для списков и
+                                        предпросмотра.</span
+                                    >
+                                </h2>
                             </div>
                         </div>
 
                         <div class="page-editor">
-                            <label class="page-editor__label-lang">
-                                <span>Язык</span>
-                                <AdminSelect
-                                    v-model="form.language_id"
-                                    :options="
-                                        languageOptions.map((l) => ({
-                                            value: l.value,
-                                            label: `${l.label} (${l.code})`,
-                                        }))
-                                    "
-                                />
-                                <small
-                                    v-if="validationErrors.language_id"
-                                    class="error-text"
+                            <div class="page-editor__row">
+                                <div
+                                    class="page-editor__label lang"
+                                    data-label="Язык:"
                                 >
-                                    {{ validationErrors.language_id[0] }}
-                                </small>
-                            </label>
+                                    <AdminSelect
+                                        v-model="form.language_id"
+                                        :options="
+                                            languageOptions.map((l) => ({
+                                                value: l.value,
+                                                label: `${l.label} (${l.code})`,
+                                            }))
+                                        "
+                                    />
+                                    <small
+                                        v-if="validationErrors.language_id"
+                                        class="error-text"
+                                    >
+                                        {{ validationErrors.language_id[0] }}
+                                    </small>
+                                </div>
 
-                            <label class="page-editor__label">
-                                <span>Название страницы</span>
+                                <div
+                                    class="page-editor__label group"
+                                    data-label="Группа переводов:"
+                                >
+                                    <input
+                                        v-model="form.translation_group_id"
+                                        class="admin-input"
+                                        type="text"
+                                        placeholder="UUID группы переводов"
+                                    />
+                                    <small
+                                        v-if="
+                                            validationErrors.translation_group_id
+                                        "
+                                        class="error-text"
+                                    >
+                                        {{
+                                            validationErrors
+                                                .translation_group_id[0]
+                                        }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div
+                                class="page-editor__label name"
+                                data-label="Название страницы:"
+                            >
                                 <input
                                     v-model="form.title"
                                     class="admin-input"
@@ -753,10 +787,12 @@ onBeforeUnmount(() => {
                                 >
                                     {{ validationErrors.title[0] }}
                                 </small>
-                            </label>
+                            </div>
 
-                            <label class="page-editor__label">
-                                <span>URL</span>
+                            <div
+                                class="page-editor__label url"
+                                data-label="URL:"
+                            >
                                 <input
                                     v-model="form.slug"
                                     class="admin-input"
@@ -770,43 +806,26 @@ onBeforeUnmount(() => {
                                 >
                                     {{ validationErrors.slug[0] }}
                                 </small>
-                                <small class="muted"
+                                <small class="page-editor__full-url"
                                     >Полный адрес: {{ publicUrl }}</small
                                 >
-                            </label>
+                            </div>
+
+                            <div class="page-editor__label">
+                                <textarea
+                                    v-model="form.excerpt"
+                                    class="admin-textarea"
+                                    rows="4"
+                                    placeholder="Краткое описание страницы"
+                                ></textarea>
+                                <small
+                                    v-if="validationErrors.excerpt"
+                                    class="error-text"
+                                >
+                                    {{ validationErrors.excerpt[0] }}
+                                </small>
+                            </div>
                         </div>
-
-                        <label class="page-editor__label">
-                            <span>Группа переводов</span>
-                            <input
-                                v-model="form.translation_group_id"
-                                class="admin-input"
-                                type="text"
-                                placeholder="UUID группы переводов"
-                            />
-                            <small
-                                v-if="validationErrors.translation_group_id"
-                                class="error-text"
-                            >
-                                {{ validationErrors.translation_group_id[0] }}
-                            </small>
-                        </label>
-
-                        <label class="page-editor__label">
-                            <span>Описание</span>
-                            <textarea
-                                v-model="form.excerpt"
-                                class="admin-textarea"
-                                rows="4"
-                                placeholder="Краткое описание страницы"
-                            ></textarea>
-                            <small
-                                v-if="validationErrors.excerpt"
-                                class="error-text"
-                            >
-                                {{ validationErrors.excerpt[0] }}
-                            </small>
-                        </label>
                     </section>
                 </AdminCard>
 
@@ -814,97 +833,104 @@ onBeforeUnmount(() => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2>Контент</h2>
-                                <p class="muted">
-                                    Основное содержимое страницы. Панель
-                                    инструментов остаётся рядом с редактором.
-                                </p>
+                                <h2 class="title-tooltip">
+                                    Контент
+                                    <Icon name="info" width="16" height="16" />
+                                    <span>
+                                        Основное содержимое страницы. Панель
+                                        инструментов остаётся рядом с
+                                        редактором.</span
+                                    >
+                                </h2>
                             </div>
 
                             <button
                                 type="button"
-                                class="button-link"
+                                class="button-link content-toggle"
                                 @click="contentVisible = !contentVisible"
                             >
-                                {{
-                                    contentVisible
-                                        ? "Скрыть контент"
-                                        : "Показать контент"
-                                }}
+                                <Icon
+                                    name="arrow-down"
+                                    width="20"
+                                    height="20"
+                                    class="content-toggle__icon"
+                                    :class="{ 'is-open': contentVisible }"
+                                />
                             </button>
                         </div>
+                        <transition name="content">
+                            <label
+                                v-show="contentVisible"
+                                class="page-editor__label page-editor-content-field"
+                            >
+                                <div class="page-editor-content-field__head">
+                                    <span>Содержимое страницы</span>
 
-                        <label
-                            v-show="contentVisible"
-                            class="page-editor__label page-editor-content-field"
-                        >
-                            <div class="page-editor-content-field__head">
-                                <span>Содержимое страницы</span>
-
-                                <div class="page-editor-content-mode">
-                                    <button
-                                        type="button"
-                                        class="button-base button-secondary"
-                                        :class="{
-                                            'is-active':
-                                                contentMode === 'visual',
-                                        }"
-                                        @click="setContentMode('visual')"
-                                    >
-                                        Визуально
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="button-base button-secondary"
-                                        :class="{
-                                            'is-active':
-                                                contentMode === 'source',
-                                        }"
-                                        @click="setContentMode('source')"
-                                    >
-                                        Код
-                                    </button>
+                                    <div class="page-editor-content-mode">
+                                        <button
+                                            type="button"
+                                            class="button-base button-secondary"
+                                            :class="{
+                                                'is-active':
+                                                    contentMode === 'visual',
+                                            }"
+                                            @click="setContentMode('visual')"
+                                        >
+                                            Визуально
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="button-base button-secondary"
+                                            :class="{
+                                                'is-active':
+                                                    contentMode === 'source',
+                                            }"
+                                            @click="setContentMode('source')"
+                                        >
+                                            Код
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <template v-if="contentMode === 'visual'">
-                                <PageContentToolbar
-                                    :editor="contentEditor"
-                                    :heading-levels="headingLevels"
-                                    @open-media="openContentMediaModal"
-                                />
-                                <EditorContent
-                                    :editor="contentEditor"
-                                    class="admin-editor tiptap-editor"
-                                />
+                                <template v-if="contentMode === 'visual'">
+                                    <PageContentToolbar
+                                        :editor="contentEditor"
+                                        :heading-levels="headingLevels"
+                                        @open-media="openContentMediaModal"
+                                    />
+                                    <EditorContent
+                                        :editor="contentEditor"
+                                        class="admin-editor tiptap-editor"
+                                    />
 
-                                <MediaLibraryModal
-                                    :open="contentMediaModalOpen"
-                                    title="Вставить медиа в контент"
-                                    :multiple="true"
-                                    :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
-                                    :allow-upload="true"
-                                    @close="contentMediaModalOpen = false"
-                                    @select="handleContentMediaInsert"
-                                />
-                            </template>
+                                    <MediaLibraryModal
+                                        :open="contentMediaModalOpen"
+                                        title="Вставить медиа в контент"
+                                        :multiple="true"
+                                        :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
+                                        :allow-upload="true"
+                                        @close="contentMediaModalOpen = false"
+                                        @select="handleContentMediaInsert"
+                                    />
+                                </template>
 
-                            <template v-else>
-                                <textarea
-                                    v-model="form.content"
-                                    class="admin-textarea page-editor-source"
-                                    rows="16"
-                                    spellcheck="false"
-                                    placeholder="<p>HTML, inline script и любая разметка страницы...</p>"
-                                ></textarea>
-                                <small class="muted">
-                                    Режим исходного кода редактирует содержимое
-                                    напрямую как HTML-разметку.
-                                </small>
-                            </template>
-                        </label>
+                                <template v-else>
+                                    <textarea
+                                        v-model="form.content"
+                                        class="admin-textarea page-editor-source"
+                                        rows="16"
+                                        spellcheck="false"
+                                        placeholder="<p>HTML, inline script и любая разметка страницы.</p>"
+                                    ></textarea>
+                                    <small class="muted">
+                                        Режим исходного кода редактирует
+                                        содержимое напрямую как HTML-разметку.
+                                    </small>
+                                </template>
+                            </label>
+                        </transition>
 
-                        <p v-if="!contentVisible" class="muted">
+                        <p v-if="!contentVisible" class="page-editor__info">
                             Блок контента скрыт. Его можно снова открыть кнопкой
                             в заголовке секции.
                         </p>
@@ -917,12 +943,16 @@ onBeforeUnmount(() => {
                     >
                         <div class="additional-fields-block__header">
                             <div>
-                                <h2>Дополнительные поля</h2>
-                                <p class="muted">
-                                    Поля текущего шаблона и структуры контента.
-                                    Сгруппированы отдельно от основного текста,
-                                    чтобы не мешать редактированию.
-                                </p>
+                                <h2 class="title-tooltip">
+                                    Дополнительные поля
+                                    <Icon name="info" width="16" height="16" />
+                                    <span
+                                        >Поля текущего шаблона и структуры
+                                        контента. Сгруппированы отдельно от
+                                        основного текста, чтобы не мешать
+                                        редактированию.</span
+                                    >
+                                </h2>
                             </div>
 
                             <RouterLink
@@ -1005,203 +1035,218 @@ onBeforeUnmount(() => {
 
             <div class="page-editor-layout__aside">
                 <AdminCard>
-                    <section
-                        class="page-editor-section page-editor-aside-section"
-                    >
+                    <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2>Публикация</h2>
-                                <p class="muted">
-                                    Статус, видимость, дата и место страницы в
-                                    структуре.
-                                </p>
+                                <h2 class="title-tooltip">
+                                    Публикация
+                                    <Icon name="info" width="16" height="16" />
+                                    <span
+                                        >Статус, видимость, дата и место
+                                        страницы в структуре.</span
+                                    >
+                                </h2>
                             </div>
                         </div>
+                        <div class="page-editor">
+                            <div class="page-preview-box page-editor-aside-box">
+                                <p class="eyebrow">Страница</p>
+                                <p class="page-preview-box__value">
+                                    {{ form.title || "Без названия" }}
+                                </p>
+                                <p class="eyebrow text-muted">
+                                    Создал:{{ creatorLabel }}
+                                </p>
+                            </div>
 
-                        <div class="page-preview-box page-editor-aside-box">
-                            <p class="eyebrow">Страница</p>
-                            <p class="page-preview-box__value">
-                                {{ form.title || "Без названия" }}
-                            </p>
-                            <p class="muted">Создал: {{ creatorLabel }}</p>
+                            <label
+                                class="page-editor__label status"
+                                data-label="Статус:"
+                            >
+                                <AdminSelect
+                                    v-model="form.status"
+                                    :options="[
+                                        { value: 'draft', label: 'Черновик' },
+                                        {
+                                            value: 'pending_review',
+                                            label: 'На проверке',
+                                        },
+                                        {
+                                            value: 'scheduled',
+                                            label: 'Запланирована',
+                                        },
+                                        {
+                                            value: 'published',
+                                            label: 'Опубликована',
+                                        },
+                                        { value: 'archived', label: 'Архив' },
+                                    ]"
+                                />
+                                <small
+                                    v-if="validationErrors.status"
+                                    class="error-text"
+                                >
+                                    {{ validationErrors.status[0] }}
+                                </small>
+                            </label>
+
+                            <label
+                                class="page-editor__label visibility"
+                                data-label="Видимость:"
+                            >
+                                <AdminSelect
+                                    v-model="form.visibility"
+                                    :options="[
+                                        { value: 'public', label: 'Публичная' },
+                                        { value: 'private', label: 'Скрытая' },
+                                    ]"
+                                />
+                                <small
+                                    v-if="validationErrors.visibility"
+                                    class="error-text"
+                                >
+                                    {{ validationErrors.visibility[0] }}
+                                </small>
+                            </label>
+
+                            <label
+                                class="page-editor__label date"
+                                data-label="Дата публикации:"
+                            >
+                                <div class="admin-input-wrapper">
+                                    <input
+                                        v-model="form.published_at"
+                                        class="admin-input"
+                                        type="datetime-local"
+                                    />
+
+                                    <Icon
+                                        name="calendar"
+                                        width="18"
+                                        height="18"
+                                    />
+                                </div>
+                                <small
+                                    v-if="validationErrors.published_at"
+                                    class="error-text"
+                                >
+                                    {{ validationErrors.published_at[0] }}
+                                </small>
+                            </label>
+
+                            <label
+                                class="page-editor__label parent"
+                                data-label="Родительская страница:"
+                            >
+                                <AdminSelect
+                                    v-model="form.parent_id"
+                                    :options="[
+                                        { value: '', label: 'Без родителя' },
+                                        ...availableParents.map((page) => ({
+                                            value: page.id,
+                                            label: `${page.title} (${page.is_home ? '/' : `/${page.path || page.slug}`})`,
+                                        })),
+                                    ]"
+                                />
+                                <small
+                                    v-if="validationErrors.parent_id"
+                                    class="error-text"
+                                >
+                                    {{ validationErrors.parent_id[0] }}
+                                </small>
+                            </label>
+
+                            <label
+                                class="page-editor__label shab"
+                                data-label="Шаблон:"
+                            >
+                                <AdminSelect
+                                    v-model="form.template"
+                                    :options="
+                                        templateOptions.map((option) => ({
+                                            value: option.value,
+                                            label: option.label,
+                                        }))
+                                    "
+                                />
+                                <small
+                                    v-if="validationErrors.template"
+                                    class="error-text"
+                                >
+                                    {{ validationErrors.template[0] }}
+                                </small>
+                            </label>
                         </div>
-
-                        <label class="page-editor__label">
-                            <span>Статус публикации</span>
-                            <AdminSelect
-                                v-model="form.status"
-                                :options="[
-                                    { value: 'draft', label: 'Черновик' },
-                                    {
-                                        value: 'pending_review',
-                                        label: 'На проверке',
-                                    },
-                                    {
-                                        value: 'scheduled',
-                                        label: 'Запланирована',
-                                    },
-                                    {
-                                        value: 'published',
-                                        label: 'Опубликована',
-                                    },
-                                    { value: 'archived', label: 'Архив' },
-                                ]"
-                            />
-                            <small
-                                v-if="validationErrors.status"
-                                class="error-text"
-                            >
-                                {{ validationErrors.status[0] }}
-                            </small>
-                        </label>
-
-                        <label class="page-editor__label">
-                            <span>Видимость</span>
-                            <AdminSelect
-                                v-model="form.visibility"
-                                :options="[
-                                    { value: 'public', label: 'Публичная' },
-                                    { value: 'private', label: 'Скрытая' },
-                                ]"
-                            />
-                            <small
-                                v-if="validationErrors.visibility"
-                                class="error-text"
-                            >
-                                {{ validationErrors.visibility[0] }}
-                            </small>
-                        </label>
-
-                        <label class="page-editor__label">
-                            <span>Дата публикации</span>
-                            <input
-                                v-model="form.published_at"
-                                class="admin-input"
-                                type="datetime-local"
-                            />
-                            <small
-                                v-if="validationErrors.published_at"
-                                class="error-text"
-                            >
-                                {{ validationErrors.published_at[0] }}
-                            </small>
-                        </label>
-
-                        <label class="page-editor__label">
-                            <span>Родительская страница</span>
-                            <AdminSelect
-                                v-model="form.parent_id"
-                                :options="[
-                                    { value: '', label: 'Без родителя' },
-                                    ...availableParents.map((page) => ({
-                                        value: page.id,
-                                        label: `${page.title} (${page.is_home ? '/' : `/${page.path || page.slug}`})`,
-                                    })),
-                                ]"
-                            />
-                            <small
-                                v-if="validationErrors.parent_id"
-                                class="error-text"
-                            >
-                                {{ validationErrors.parent_id[0] }}
-                            </small>
-                        </label>
-
-                        <label class="page-editor__label">
-                            <span>Шаблон</span>
-                            <AdminSelect
-                                v-model="form.template"
-                                :options="
-                                    templateOptions.map((option) => ({
-                                        value: option.value,
-                                        label: option.label,
-                                    }))
-                                "
-                            />
-                            <small
-                                v-if="validationErrors.template"
-                                class="error-text"
-                            >
-                                {{ validationErrors.template[0] }}
-                            </small>
-                        </label>
                     </section>
                 </AdminCard>
 
                 <AdminCard>
-                    <section
-                        class="page-editor-section page-editor-aside-section"
-                    >
+                    <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2>SEO и обложка</h2>
-                                <p class="muted">
-                                    Поисковый сниппет и визуальная обложка
-                                    собраны в одном боковом блоке.
-                                </p>
+                                <h2 class="title-tooltip">
+                                    SEO и обложка
+                                    <Icon name="info" width="16" height="16" />
+                                    <span
+                                        >Поисковый сниппет и визуальная обложка
+                                        собраны в одном боковом блоке.</span
+                                    >
+                                </h2>
                             </div>
                         </div>
-
-                        <label class="page-editor__label">
-                            <span>SEO заголовок</span>
-                            <input
-                                v-model="form.meta_title"
-                                class="admin-input"
-                                type="text"
-                                placeholder="SEO заголовок страницы"
-                            />
-                        </label>
-
-                        <label class="page-editor__label">
-                            <span>SEO описание</span>
-                            <textarea
-                                v-model="form.meta_description"
-                                class="admin-textarea"
-                                rows="4"
-                                placeholder="SEO описание страницы"
-                            ></textarea>
-                        </label>
-
-                        <label
-                            class="page-editor__label page-editor-checkbox-label"
-                        >
-                            <span class="page-editor-checkbox-text">
+                        <div class="page-editor">
+                            <label class="page-editor__label">
                                 <input
-                                    v-model="form.seo_noindex"
-                                    type="checkbox"
+                                    v-model="form.meta_title"
+                                    class="admin-input"
+                                    type="text"
+                                    placeholder="SEO заголовок страницы"
                                 />
-                                Не индексировать страницу
-                            </span>
-                            <small class="muted">
-                                Страница получит meta robots noindex и
-                                автоматически выпадет из sitemap.
-                            </small>
-                        </label>
+                            </label>
 
-                        <label
-                            class="page-editor__label page-editor-checkbox-label"
-                        >
-                            <span class="page-editor-checkbox-text">
-                                <input
-                                    v-model="form.seo_nofollow"
-                                    type="checkbox"
+                            <label class="page-editor__label">
+                                <textarea
+                                    v-model="form.meta_description"
+                                    class="admin-textarea mt-0"
+                                    rows="4"
+                                    placeholder="SEO описание страницы"
+                                ></textarea>
+                            </label>
+
+                            <AdminCheckbox v-model="form.seo_noindex">
+                                <p class="title-tooltip-down">
+                                    Не индексировать страницу
+
+                                    <Icon name="info" width="16" height="16" />
+
+                                    <strong>
+                                        Страница получит meta robots noindex и
+                                        автоматически выпадет из sitemap.
+                                    </strong>
+                                </p>
+                            </AdminCheckbox>
+                            <AdminCheckbox v-model="form.seo_nofollow">
+                                <p class="title-tooltip-down">
+                                    Не передавать follow по ссылкам страницы
+
+                                    <Icon name="info" width="16" height="16" />
+
+                                    <strong>
+                                        Переопределяет только follow-часть
+                                        robots для текущей страницы.
+                                    </strong>
+                                </p>
+                            </AdminCheckbox>
+
+                            <div class="page-featured-media">
+                                <p class="eyebrow">Обложка страницы</p>
+                                <MediaPickerField
+                                    v-model="form.featured_media_id"
+                                    title="Выбрать обложку страницы"
+                                    return-type="id"
+                                    :allow-upload="true"
                                 />
-                                Не передавать follow по ссылкам страницы
-                            </span>
-                            <small class="muted">
-                                Переопределяет только follow-часть robots для
-                                текущей страницы.
-                            </small>
-                        </label>
-
-                        <div class="page-featured-media">
-                            <span>Обложка страницы</span>
-                            <MediaPickerField
-                                v-model="form.featured_media_id"
-                                title="Выбрать обложку страницы"
-                                return-type="id"
-                                :allow-upload="true"
-                            />
+                            </div>
                         </div>
                     </section>
                 </AdminCard>

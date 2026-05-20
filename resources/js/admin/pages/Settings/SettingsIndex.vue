@@ -625,77 +625,83 @@ onMounted(loadSettings);
                     class="admin-form-stack"
                     @submit.prevent="submitForm"
                 >
-                    <div
-                        class="admin-tabs"
-                        role="tablist"
-                        aria-label="Разделы настроек"
-                    >
-                        <button
-                            v-if="canManageGeneral"
-                            type="button"
-                            class="admin-tab"
-                            :class="{
-                                'is-active': activeSettingsTab === 'general',
-                            }"
-                            @click="activeSettingsTab = 'general'"
+                    <div class="admin-page-head">
+                        <div
+                            class="admin-tabs"
+                            role="tablist"
+                            aria-label="Разделы настроек"
                         >
-                            Общие
-                        </button>
-                        <button
-                            v-if="canManageAppearance"
-                            type="button"
-                            class="admin-tab"
-                            :class="{
-                                'is-active': activeSettingsTab === 'appearance',
-                            }"
-                            @click="activeSettingsTab = 'appearance'"
-                        >
-                            Внешний вид
-                        </button>
-                        <button
-                            v-if="canManageGeneral"
-                            type="button"
-                            class="admin-tab"
-                            :class="{
-                                'is-active': activeSettingsTab === 'languages',
-                            }"
-                            @click="activeSettingsTab = 'languages'"
-                        >
-                            Языки
-                        </button>
-                        <button
-                            v-if="canManageSeo"
-                            type="button"
-                            class="admin-tab"
-                            :class="{
-                                'is-active': activeSettingsTab === 'seo',
-                            }"
-                            @click="activeSettingsTab = 'seo'"
-                        >
-                            SEO
-                        </button>
-                        <button
-                            v-if="canManageCache"
-                            type="button"
-                            class="admin-tab"
-                            :class="{
-                                'is-active': activeSettingsTab === 'cache',
-                            }"
-                            @click="activeSettingsTab = 'cache'"
-                        >
-                            Кэш
-                        </button>
-                        <button
-                            v-if="canManageSecurity"
-                            type="button"
-                            class="admin-tab"
-                            :class="{
-                                'is-active': activeSettingsTab === 'security',
-                            }"
-                            @click="activeSettingsTab = 'security'"
-                        >
-                            Безопасность
-                        </button>
+                            <button
+                                v-if="canManageGeneral"
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        activeSettingsTab === 'general',
+                                }"
+                                @click="activeSettingsTab = 'general'"
+                            >
+                                Общие
+                            </button>
+                            <button
+                                v-if="canManageAppearance"
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        activeSettingsTab === 'appearance',
+                                }"
+                                @click="activeSettingsTab = 'appearance'"
+                            >
+                                Внешний вид
+                            </button>
+                            <button
+                                v-if="canManageGeneral"
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        activeSettingsTab === 'languages',
+                                }"
+                                @click="activeSettingsTab = 'languages'"
+                            >
+                                Языки
+                            </button>
+                            <button
+                                v-if="canManageSeo"
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active': activeSettingsTab === 'seo',
+                                }"
+                                @click="activeSettingsTab = 'seo'"
+                            >
+                                SEO
+                            </button>
+                            <button
+                                v-if="canManageCache"
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active': activeSettingsTab === 'cache',
+                                }"
+                                @click="activeSettingsTab = 'cache'"
+                            >
+                                Кэш
+                            </button>
+                            <button
+                                v-if="canManageSecurity"
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        activeSettingsTab === 'security',
+                                }"
+                                @click="activeSettingsTab = 'security'"
+                            >
+                                Безопасность
+                            </button>
+                        </div>
                     </div>
 
                     <section
@@ -801,7 +807,8 @@ onMounted(loadSettings);
                                     />
                                     <small class="muted"
                                         >Используется как основной favicon и
-                                        база для touch icons и других размеров.</small
+                                        база для touch icons и других
+                                        размеров.</small
                                     >
                                 </label>
 
@@ -816,17 +823,20 @@ onMounted(loadSettings);
                                         :allow-upload="true"
                                     />
                                     <small class="muted"
-                                        >Используется как fallback для страницы без
-                                        своей обложки. Если у страницы задано
-                                        собственное изображение, оно имеет приоритет
-                                        и в шаблоне, и в Open Graph.</small
+                                        >Используется как fallback для страницы
+                                        без своей обложки. Если у страницы
+                                        задано собственное изображение, оно
+                                        имеет приоритет и в шаблоне, и в Open
+                                        Graph.</small
                                     >
                                 </label>
 
                                 <label class="admin-form-label">
                                     <span>Размер обложки на сайте</span>
                                     <select
-                                        v-model="form.site_featured_media_variant"
+                                        v-model="
+                                            form.site_featured_media_variant
+                                        "
                                         class="admin-select"
                                     >
                                         <option
@@ -845,7 +855,9 @@ onMounted(loadSettings);
                                         контент</span
                                     >
                                     <select
-                                        v-model="form.media_default_insert_variant"
+                                        v-model="
+                                            form.media_default_insert_variant
+                                        "
                                         class="admin-select"
                                     >
                                         <option
@@ -1274,7 +1286,8 @@ onMounted(loadSettings);
                                         <span
                                             >{{ language.native_name }}
                                             <small class="muted"
-                                                >({{ language.code }}{{
+                                                >({{ language.code
+                                                }}{{
                                                     language.is_default
                                                         ? ", основной язык"
                                                         : ""
@@ -1282,7 +1295,9 @@ onMounted(loadSettings);
                                             ></span
                                         >
                                         <select
-                                            v-model="form.home_page_ids[language.id]"
+                                            v-model="
+                                                form.home_page_ids[language.id]
+                                            "
                                             class="admin-select"
                                         >
                                             <option value="">Автовыбор</option>
@@ -1293,7 +1308,8 @@ onMounted(loadSettings);
                                                 :key="page.value"
                                                 :value="page.value"
                                             >
-                                                {{ page.label }}{{
+                                                {{ page.label
+                                                }}{{
                                                     page.path
                                                         ? ` (/${page.path})`
                                                         : language.is_default

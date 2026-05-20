@@ -268,7 +268,7 @@ function clearSelection() {
             </article>
         </div>
 
-        <p v-else class="muted">Файл пока не выбран.</p>
+        <p v-else class="text-center">Файл пока не выбран.</p>
 
         <MediaLibraryModal
             :open="modalOpen"

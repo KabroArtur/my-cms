@@ -124,12 +124,7 @@
     height: fit-content;
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-sm);
-    background: color-mix(
-        in srgb,
-        var(--admin-color-surface) 96%,
-        var(--admin-color-text)
-    );
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    background: var(--admin-color-surface);
 
     &__item {
         display: flex;
@@ -284,16 +279,11 @@
 }
 
 .admin-topbar {
-    // position: sticky;
-    top: 0;
-    z-index: 20;
     display: grid;
     align-items: center;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 14px;
-    padding: 14px 24px 10px;
-    // border-bottom: 1px solid var(--admin-color-border);
-    // background: var(--admin-color-bg);
+    padding: 14px 28px 0;
 
     h1 {
         font-size: 28px;
@@ -337,7 +327,7 @@
             width: 100%;
             height: 1.5px;
             border-radius: var(--admin-radius-sm);
-            background-color: var(--is-enabled-text);
+            background-color: var(--badge-published-text);
             transform: translate(-50%) scaleX(0);
             transform-origin: center;
             transition: transform 0.3s ease;
@@ -345,7 +335,7 @@
 
         &:hover,
         &:focus-visible {
-            color: var(--is-enabled-text);
+            color: var(--badge-published-text);
 
             &:after {
                 transform: translate(-50%) scaleX(1);
@@ -390,6 +380,7 @@
     gap: 16px;
     padding: 14px 24px;
     align-content: start;
+    overflow-x: hidden;
 }
 
 .admin-sidebar-backdrop {
@@ -574,7 +565,8 @@
     flex-wrap: wrap;
     padding-inline: 20px;
 
-    button {
+    button,
+    a {
         height: 40px;
         width: 44px;
     }

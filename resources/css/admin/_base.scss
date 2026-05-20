@@ -77,12 +77,17 @@ select:-webkit-autofill:focus {
 }
 
 .eyebrow {
-    margin: 0;
-    color: var(--admin-color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 550;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--admin-color-text-muted);
+    margin: 0;
+}
+
+.text-muted {
+    color: var(--admin-color-text-muted);
+    opacity: 0.7;
 }
 
 .muted {
@@ -91,8 +96,8 @@ select:-webkit-autofill:focus {
 }
 
 .panel-card .muted {
-    margin-block: 10px;
     text-align: center;
+    margin-block: 10px;
 }
 
 .text-center {
@@ -199,13 +204,14 @@ select:-webkit-autofill:focus {
 .admin-input,
 .admin-select,
 .admin-textarea {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--admin-color-border-strong);
-    border-radius: var(--admin-radius-sm);
     font: inherit;
     color: var(--admin-color-text);
+    min-height: 42px;
+    width: 100%;
+    padding: 8px 10px;
     background: var(--admin-color-surface);
+    border: 1px solid var(--admin-color-border-strong);
+    border-radius: var(--admin-radius-sm);
 }
 
 .admin-input::placeholder,
@@ -231,4 +237,123 @@ select:-webkit-autofill:focus {
     justify-content: center;
     gap: var(--admin-space-2);
     flex-wrap: wrap;
+}
+
+.title-tooltip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 550;
+    line-height: 1;
+    color: var(--admin-color-text);
+    width: fit-content;
+    height: 100%;
+    margin: 0;
+
+    svg {
+        fill: var(--admin-color-text-accent);
+        background-color: var(--admin-color-primary);
+        border-radius: var(--admin-radius-full);
+        cursor: pointer;
+    }
+
+    span {
+        position: absolute;
+        top: 50%;
+        left: 100%;
+        z-index: 99;
+        transform: translateY(-50%) translateX(0);
+        font-size: 12px;
+        line-height: 1.3;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--admin-color-text-accent);
+        text-shadow: 0.3px 0.3px 0.3px var(--admin-color-text-shadow);
+        opacity: 0;
+        padding: 8px 10px;
+        width: 280px;
+        pointer-events: none;
+        border-radius: var(--admin-radius-sm);
+        background-color: var(--admin-color-primary);
+        box-shadow: 0 4px 8px var(--admin-color-shadow);
+        transition:
+            opacity 0.3s ease,
+            transform 0.3s ease;
+
+        &:after {
+            position: absolute;
+            content: "";
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-right-color: var(--admin-color-primary);
+        }
+    }
+
+    svg:hover + span,
+    svg:focus-visible + span {
+        opacity: 1;
+        transform: translateY(-50%) translateX(12px);
+    }
+}
+
+.title-tooltip-down {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 550;
+    line-height: 1;
+    color: var(--admin-color-text);
+    width: fit-content;
+    margin: 0;
+
+    svg {
+        fill: var(--admin-color-text-accent);
+        background-color: var(--admin-color-primary);
+        border-radius: var(--admin-radius-full);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    strong {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: -76px;
+        z-index: 99;
+        transform: translateY(6px);
+        width: 180px;
+        padding: 8px 10px;
+        font-size: 14px;
+        line-height: 1.4;
+        font-weight: 500;
+        color: var(--admin-color-text-accent);
+        background-color: var(--admin-color-primary);
+        border-radius: var(--admin-radius-sm);
+        opacity: 0;
+        pointer-events: none;
+        box-shadow: 0 8px 10px var(--admin-color-shadow);
+        transition:
+            opacity 0.3s ease,
+            transform 0.3s ease;
+
+        &:after {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            border: 6px solid transparent;
+            border-bottom-color: var(--admin-color-primary);
+        }
+    }
+
+    svg:hover + strong,
+    svg:focus-visible + strong {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

@@ -606,7 +606,9 @@ function isUploadPlaceholder(file) {
 }
 
 function resolveUploadFolderName(folderId) {
-    const option = moveFolderOptions.value.find((entry) => entry.id === folderId);
+    const option = moveFolderOptions.value.find(
+        (entry) => entry.id === folderId,
+    );
 
     return option?.name || currentFolder.value?.name || "Корень";
 }
@@ -1713,7 +1715,9 @@ onBeforeUnmount(() => {
                             :show-facts="true"
                             :cropped-dimensions="transformSourceDimensions"
                             :output-dimensions="transformOutputDimensions"
-                            :show-transform-facts="activeTab === 'edit' && canTransformSelectedFile"
+                            :show-transform-facts="
+                                activeTab === 'edit' && canTransformSelectedFile
+                            "
                             @close="activeFileId = null"
                             @edit="openEditorTab"
                             @save="saveFileMeta"

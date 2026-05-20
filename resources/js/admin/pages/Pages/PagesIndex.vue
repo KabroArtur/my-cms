@@ -721,6 +721,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                 :href="resolvePublicUrl(page)"
                                 target="_blank"
                                 class="button-base"
+                                title="Просмотреть страницу на сайте"
                             >
                                 <Icon name="show" width="20" height="20" />
                             </a>
@@ -731,6 +732,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                     params: { id: page.id },
                                 }"
                                 class="button-link"
+                                title="Редактировать страницу"
                             >
                                 <Icon name="pencil" width="20" height="20" />
                             </RouterLink>
@@ -738,6 +740,7 @@ const trashCount = computed(() => trashedPages.value.length);
                             <AdminButton
                                 type="button"
                                 variant="danger"
+                                title="Удалить страницу"
                                 :disabled="!page.can?.delete"
                                 @click="removePage(page)"
                             >
