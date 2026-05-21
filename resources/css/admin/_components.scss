@@ -576,11 +576,12 @@
 
 .custom-field-renderer {
     display: grid;
-    gap: 0.75rem;
-    padding: 0.9rem;
-    border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(255, 255, 255, 0.78);
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: var(--admin-radius-md);
+    border: 1px solid var(--admin-color-border);
+    background-color: var(--admin-color-surface);
+    margin-top: 10px;
 }
 
 .custom-field-renderer__label-row {
@@ -2222,6 +2223,16 @@
     gap: 12px;
     padding: 0 16px 14px;
 
+    &__header-end {
+        display: flex;
+        align-items: center;
+        justify-content: end;
+    }
+
+    &__info {
+        margin-bottom: 12px;
+    }
+
     &__row {
         display: flex;
         align-items: center;
@@ -2290,13 +2301,17 @@
 .content-toggle {
     width: 30px;
     height: 30px;
+
+    &__icon {
+        transition: transform 0.3s ease;
+
+        &.is-open {
+            transform: rotate(-180deg);
+        }
+    }
 }
 
-.content-toggle__icon {
-    transition: transform 0.3s ease;
-}
-
-.content-toggle__icon.is-open {
+.additional-fields-group[open] .content-toggle__icon {
     transform: rotate(-180deg);
 }
 
@@ -2329,4 +2344,27 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     transform: translateY(-50%);
     pointer-events: none;
     fill: var(--admin-color-text);
+}
+
+.additional-fields-group__body {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+        grid-template-rows 0.3s ease,
+        opacity 0.3s ease;
+    opacity: 1;
+}
+
+.additional-fields-group[open] .additional-fields-group__body {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.additional-fields-group:not([open]) .additional-fields-group__body {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.additional-fields-group__body > * {
+    overflow: hidden;
 }

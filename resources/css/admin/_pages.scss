@@ -1551,7 +1551,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 8px;
+    padding: 12px 14px;
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-md);
     background-color: color-mix(
@@ -1560,6 +1560,10 @@
         var(--admin-color-bg)
     );
     margin-block: 10px;
+
+    button {
+        background-color: var(--admin-color-primary);
+    }
 }
 
 .tiptap-toolbar-group {
@@ -1743,33 +1747,12 @@
     border-radius: var(--admin-radius-sm);
 }
 
-.additional-fields-block {
-    display: grid;
-    gap: 14px;
-    padding: 14px;
-    border: 1px solid var(--admin-color-border);
-    border-radius: var(--admin-radius-md);
-    background-color: color-mix(
-        in srgb,
-        var(--admin-color-primary) 12%,
-        var(--admin-color-bg)
-    );
-}
-
-.additional-fields-block__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
 .additional-fields-group {
     display: grid;
-    gap: 10px;
     padding: 12px;
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-sm);
-    background: var(--admin-color-surface);
+    background-color: var(--admin-color-bg);
 }
 
 .additional-fields-group h3 {
@@ -1778,24 +1761,6 @@
 
 .additional-fields-group + .additional-fields-group {
     margin-top: 0.9rem;
-}
-
-.additional-fields-group__summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.1rem;
-    cursor: pointer;
-    list-style: none;
-}
-
-.additional-fields-group__summary::-webkit-details-marker {
-    display: none;
-}
-
-.additional-fields-group__body {
-    padding: 0 1.1rem 1.1rem;
 }
 
 .additional-fields-nested {
@@ -3070,18 +3035,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.1rem;
+    gap: 16px;
     cursor: pointer;
     list-style: none;
 }
 
 .additional-fields-group__summary::-webkit-details-marker {
     display: none;
-}
-
-.additional-fields-group__body {
-    padding: 0 1.1rem 1.1rem;
 }
 
 @media (max-width: 1080px) {

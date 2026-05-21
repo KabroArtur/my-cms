@@ -82,6 +82,7 @@ const trailingSlashEnabled = ref(false);
 const contentVisible = ref(true);
 const contentMode = ref("visual");
 const contentMediaModalOpen = ref(false);
+const additionalFieldsVisible = ref(true);
 const headingLevels = [1, 2, 3, 4, 5, 6];
 const { notifyError, notifySuccess } = useAdminNotifications();
 
@@ -693,7 +694,7 @@ onBeforeUnmount(() => {
                 </a>
 
                 <RouterLink :to="{ name: 'pages' }" class="button-base">
-                    <Icon name="return" width="18" height="18" />
+                    <Icon name="return" width="20" height="20" />
                 </RouterLink>
             </div>
         </template>
@@ -740,7 +741,7 @@ onBeforeUnmount(() => {
                                     />
                                     <small
                                         v-if="validationErrors.language_id"
-                                        class="error-text"
+                                        class="error-text absolute"
                                     >
                                         {{ validationErrors.language_id[0] }}
                                     </small>
@@ -760,7 +761,7 @@ onBeforeUnmount(() => {
                                         v-if="
                                             validationErrors.translation_group_id
                                         "
-                                        class="error-text"
+                                        class="error-text absolute"
                                     >
                                         {{
                                             validationErrors
@@ -783,7 +784,7 @@ onBeforeUnmount(() => {
                                 />
                                 <small
                                     v-if="validationErrors.title"
-                                    class="error-text"
+                                    class="error-text absolute"
                                 >
                                     {{ validationErrors.title[0] }}
                                 </small>
@@ -802,7 +803,7 @@ onBeforeUnmount(() => {
                                 />
                                 <small
                                     v-if="validationErrors.slug"
-                                    class="error-text"
+                                    class="error-text absolute"
                                 >
                                     {{ validationErrors.slug[0] }}
                                 </small>
@@ -820,7 +821,7 @@ onBeforeUnmount(() => {
                                 ></textarea>
                                 <small
                                     v-if="validationErrors.excerpt"
-                                    class="error-text"
+                                    class="error-text absolute"
                                 >
                                     {{ validationErrors.excerpt[0] }}
                                 </small>
@@ -864,20 +865,26 @@ onBeforeUnmount(() => {
                                 class="page-editor__label page-editor-content-field"
                             >
                                 <div class="page-editor-content-field__head">
-                                    <span>Содержимое страницы</span>
+                                    <div
+                                        class="page-editor-content-field__title"
+                                    >
+                                        <p class="title-tooltip">
+                                            Содержимое страницы
+                                            <Icon
+                                                v-if="contentMode === 'source'"
+                                                name="info"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            <span>
+                                                Режим исходного кода редактирует
+                                                содержимое напрямую как
+                                                HTML-разметку.</span
+                                            >
+                                        </p>
+                                    </div>
 
                                     <div class="page-editor-content-mode">
-                                        <button
-                                            type="button"
-                                            class="button-base button-secondary"
-                                            :class="{
-                                                'is-active':
-                                                    contentMode === 'visual',
-                                            }"
-                                            @click="setContentMode('visual')"
-                                        >
-                                            Визуально
-                                        </button>
                                         <button
                                             type="button"
                                             class="button-base button-secondary"
@@ -887,7 +894,28 @@ onBeforeUnmount(() => {
                                             }"
                                             @click="setContentMode('source')"
                                         >
+                                            <Icon
+                                                name="code"
+                                                width="20"
+                                                height="20"
+                                            />
                                             Код
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="button-base"
+                                            :class="{
+                                                'is-active':
+                                                    contentMode === 'visual',
+                                            }"
+                                            @click="setContentMode('visual')"
+                                        >
+                                            <Icon
+                                                name="return"
+                                                width="20"
+                                                height="20"
+                                            />
                                         </button>
                                     </div>
                                 </div>
@@ -922,15 +950,11 @@ onBeforeUnmount(() => {
                                         spellcheck="false"
                                         placeholder="<p>HTML, inline script и любая разметка страницы.</p>"
                                     ></textarea>
-                                    <small class="muted">
-                                        Режим исходного кода редактирует
-                                        содержимое напрямую как HTML-разметку.
-                                    </small>
                                 </template>
                             </label>
                         </transition>
 
-                        <p v-if="!contentVisible" class="page-editor__info">
+                        <p v-show="!contentVisible" class="page-editor__info">
                             Блок контента скрыт. Его можно снова открыть кнопкой
                             в заголовке секции.
                         </p>
@@ -938,12 +962,10 @@ onBeforeUnmount(() => {
                 </AdminCard>
 
                 <AdminCard>
-                    <section
-                        class="page-editor-section additional-fields-block"
-                    >
-                        <div class="additional-fields-block__header">
+                    <section class="page-editor-section">
+                        <div class="page-editor-section__header">
                             <div>
-                                <h2 class="title-tooltip">
+                                <p class="title-tooltip">
                                     Дополнительные поля
                                     <Icon name="info" width="16" height="16" />
                                     <span
@@ -952,70 +974,125 @@ onBeforeUnmount(() => {
                                         основного текста, чтобы не мешать
                                         редактированию.</span
                                     >
-                                </h2>
+                                </p>
                             </div>
-
-                            <RouterLink
-                                v-if="canManageAdditionalFields"
-                                :to="{ name: 'content-structure' }"
-                                class="button-link"
+                            <button
+                                type="button"
+                                class="button-link content-toggle"
+                                @click="
+                                    additionalFieldsVisible =
+                                        !additionalFieldsVisible
+                                "
                             >
-                                Настроить структуру
-                            </RouterLink>
-                        </div>
-
-                        <p
-                            v-if="additionalFieldGroups.length === 0"
-                            class="muted"
-                        >
-                            Для текущего шаблона нет подключенных наборов полей.
-                        </p>
-
-                        <details
-                            v-for="group in additionalFieldGroups"
-                            :key="group.id"
-                            class="additional-fields-group"
-                            open
-                        >
-                            <summary class="additional-fields-group__summary">
-                                <div>
-                                    <h3>{{ group.name }}</h3>
-                                    <p v-if="group.description" class="muted">
-                                        {{ group.description }}
-                                    </p>
-                                </div>
-                                <small class="muted">
-                                    {{
-                                        Array.isArray(group.fields)
-                                            ? group.fields.length
-                                            : 0
-                                    }}
-                                    полей
-                                </small>
-                            </summary>
-
-                            <div
-                                class="admin-stack additional-fields-group__body"
-                            >
-                                <CustomFieldRenderer
-                                    v-for="field in group.fields"
-                                    :key="field.key"
-                                    :field="field"
-                                    :model-value="
-                                        additionalFieldValues[field.key]
-                                    "
-                                    :errors="validationErrors"
-                                    :path="`additional_fields.${field.key}`"
-                                    @update:model-value="
-                                        (value) =>
-                                            updateAdditionalFieldValue(
-                                                field.key,
-                                                value,
-                                            )
-                                    "
+                                <Icon
+                                    name="arrow-down"
+                                    width="20"
+                                    height="20"
+                                    class="content-toggle__icon"
+                                    :class="{
+                                        'is-open': additionalFieldsVisible,
+                                    }"
                                 />
-                            </div>
-                        </details>
+                            </button>
+                        </div>
+                        <transition name="content">
+                            <div
+                                v-show="additionalFieldsVisible"
+                                class="page-editor"
+                            >
+                                <div class="page-editor__header-end">
+                                    <RouterLink
+                                        v-if="canManageAdditionalFields"
+                                        :to="{ name: 'content-structure' }"
+                                        class="button-base"
+                                    >
+                                        Настроить структуру
+                                    </RouterLink>
+                                </div>
+
+                                <p
+                                    v-if="additionalFieldGroups.length === 0"
+                                    class="muted"
+                                >
+                                    Для текущего шаблона нет подключенных
+                                    наборов полей.
+                                </p>
+
+                                <details
+                                    v-for="group in additionalFieldGroups"
+                                    :key="group.id"
+                                    class="additional-fields-group"
+                                    open
+                                >
+                                    <summary
+                                        class="additional-fields-group__summary"
+                                    >
+                                        <div>
+                                            <h3>
+                                                {{ group.name }}
+                                                <small class="muted">
+                                                    (
+                                                    {{
+                                                        Array.isArray(
+                                                            group.fields,
+                                                        )
+                                                            ? group.fields
+                                                                  .length
+                                                            : 0
+                                                    }}
+                                                    полей )
+                                                </small>
+                                            </h3>
+                                            <p
+                                                v-if="group.description"
+                                                class="muted"
+                                            >
+                                                {{ group.description }}
+                                            </p>
+                                        </div>
+                                        <span
+                                            aria-hidden="true"
+                                            title="Свернуть/развернуть"
+                                            class="button-link content-toggle"
+                                        >
+                                            <Icon
+                                                name="arrow-down"
+                                                width="20"
+                                                height="20"
+                                                class="content-toggle__icon"
+                                            />
+                                        </span>
+                                    </summary>
+
+                                    <div
+                                        class="admin-stack additional-fields-group__body"
+                                    >
+                                        <CustomFieldRenderer
+                                            v-for="field in group.fields"
+                                            :key="field.key"
+                                            :field="field"
+                                            :model-value="
+                                                additionalFieldValues[field.key]
+                                            "
+                                            :errors="validationErrors"
+                                            :path="`additional_fields.${field.key}`"
+                                            @update:model-value="
+                                                (value) =>
+                                                    updateAdditionalFieldValue(
+                                                        field.key,
+                                                        value,
+                                                    )
+                                            "
+                                        />
+                                    </div>
+                                </details></div
+                        ></transition>
+                        <p
+                            v-show="!additionalFieldsVisible"
+                            class="page-editor__info"
+                        >
+                            Дополнительные поля скрыты.
+                        </p>
                     </section>
                 </AdminCard>
 
@@ -1128,7 +1205,7 @@ onBeforeUnmount(() => {
                                 </div>
                                 <small
                                     v-if="validationErrors.published_at"
-                                    class="error-text"
+                                    class="error-text absolute"
                                 >
                                     {{ validationErrors.published_at[0] }}
                                 </small>
