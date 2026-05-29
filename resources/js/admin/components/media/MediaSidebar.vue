@@ -3,6 +3,8 @@ import { reactive, watch } from "vue";
 import AdminButton from "../ui/AdminButton.vue";
 import MediaFactsPanel from "./MediaFactsPanel.vue";
 import { stripExtension } from "./mediaHelpers";
+import Icon from "../ui/Icon.vue";
+import AdminSelect from "../../components/ui/AdminSelect.vue";
 
 const props = defineProps({
     file: {
@@ -82,15 +84,14 @@ function submit() {
     });
 }
 
-function moveFile(event) {
+function handleMoveFile(value) {
     if (!props.file) {
         return;
     }
 
-    const value = event.target.value === "" ? null : Number(event.target.value);
     emit("move-file", {
         file: props.file,
-        folder_id: value,
+        folder_id: value === "" ? null : Number(value),
     });
 }
 </script>
@@ -98,13 +99,16 @@ function moveFile(event) {
 <template>
     <aside v-if="file" class="media-sidebar">
         <div class="media-sidebar__header">
-            <div>
-                <p class="eyebrow">Файл</p>
-                <h3>{{ file.original_name }}</h3>
-            </div>
+            <p>
+                <strong>{{ file.original_name }}</strong>
+            </p>
 
-            <button type="button" class="button-link" @click="emit('close')">
-                Закрыть
+            <button
+                type="button"
+                class="button-base button-close"
+                @click="emit('close')"
+            >
+                <Icon name="close" width="22" height="22" />
             </button>
         </div>
 
@@ -125,43 +129,66 @@ function moveFile(event) {
 
         <form class="admin-form-stack" @submit.prevent="submit">
             <label class="admin-form-label">
-                <span>Название файла</span>
+                <span>Название:</span>
                 <input
                     v-model="form.original_name"
-                    class="admin-input"
+                    class="admin-input name"
                     type="text"
+                    placeholder="Название"
                 />
             </label>
 
             <label class="admin-form-label">
-                <span>Alt текст</span>
+                <span>Alt текст:</span>
                 <input
                     v-model="form.alt_text"
-                    class="admin-input"
+                    class="admin-input alt"
                     type="text"
                 />
             </label>
 
-            <label class="admin-form-label">
-                <span>Переместить в папку</span>
-                <select
-                    class="admin-select"
-                    :value="form.folder_id"
-                    @change="moveFile"
-                >
-                    <option
-                        v-for="folderOption in moveFolderOptions"
-                        :key="folderOption.id ?? 'root'"
-                        :value="folderOption.id ?? ''"
-                    >
-                        {{ folderOption.path || folderOption.name }}
-                    </option>
-                </select>
-            </label>
+            <div
+                class="admin-select-custom folder"
+                data-label="Выберите папку:"
+            >
+                <AdminSelect
+                    v-model="form.folder_id"
+                    :options="
+                        moveFolderOptions.map((folder) => ({
+                            value: folder.id ?? '',
+                            label: folder.path || folder.name,
+                        }))
+                    "
+                    @update:modelValue="handleMoveFile"
+                />
+            </div>
 
             <div class="admin-actions-row media-sidebar__actions">
-                <AdminButton type="submit" variant="primary" :disabled="saving">
-                    {{ saving ? "Сохранение..." : "Сохранить" }}
+                <button
+                    type="button"
+                    class="button-base button-danger"
+                    @click="emit('delete', file)"
+                    title="Удалить"
+                >
+                    <Icon name="trash" width="20" height="20" />
+                </button>
+
+                <button
+                    type="button"
+                    class="button-base button-copy"
+                    @click="emit('copy-url', file)"
+                    title="Скопировать URL"
+                >
+                    <Icon name="copy" width="22" height="22" />
+                </button>
+
+                <AdminButton
+                    type="submit"
+                    variant="primary"
+                    :disabled="saving"
+                    title="Сохранить изменения"
+                >
+                    <Icon name="save" width="18" height="18" />
                 </AdminButton>
 
                 <button
@@ -169,8 +196,9 @@ function moveFile(event) {
                     type="button"
                     class="button-link"
                     @click="emit('edit', file)"
+                    title="Редактировать"
                 >
-                    Редактировать
+                    <Icon name="pencil" width="20" height="20" />
                 </button>
 
                 <button
@@ -178,24 +206,9 @@ function moveFile(event) {
                     class="button-base button-secondary"
                     :disabled="selecting"
                     @click="emit('select', file)"
+                    title="Выбрать обложкой"
                 >
-                    Выбрать
-                </button>
-
-                <button
-                    type="button"
-                    class="button-link"
-                    @click="emit('copy-url', file)"
-                >
-                    Скопировать URL
-                </button>
-
-                <button
-                    type="button"
-                    class="button-link media-sidebar__danger"
-                    @click="emit('delete', file)"
-                >
-                    Удалить
+                    <Icon name="check" width="24" height="24" />
                 </button>
             </div>
         </form>

@@ -1,6 +1,9 @@
 <script setup>
 import { computed, reactive, ref } from "vue";
 import AdminButton from "../ui/AdminButton.vue";
+import Icon from "../ui/Icon.vue";
+import AdminModal from "../ui/AdminModal.vue";
+import AdminSelect from "../ui/AdminSelect.vue";
 
 const props = defineProps({
     breadcrumbs: {
@@ -48,11 +51,23 @@ const rootOption = computed(() => [
     ...props.folderOptions,
 ]);
 
+const parentOptions = computed(() => [
+    {
+        value: null,
+        label: "Корень",
+    },
+
+    ...props.folderOptions.map((option) => ({
+        value: option.id,
+        label: option.path || option.name,
+    })),
+]);
+
 function startEdit(folder) {
     editingId.value = folder.id;
     activeMenuId.value = null;
     renameForm.name = folder.name;
-    renameForm.parent_id = folder.parent_id ?? "";
+    renameForm.parent_id = folder.parent_id ?? null;
 }
 
 function cancelRename() {
@@ -61,19 +76,21 @@ function cancelRename() {
     renameForm.parent_id = "";
 }
 
-function submitRename(folder) {
+async function submitRename(folder) {
     const name = renameForm.name.trim();
 
     if (name === "") {
         return;
     }
 
-    emit("rename-folder", {
+    await emit("rename-folder", {
         folder,
         name,
         parent_id:
-            renameForm.parent_id === "" ? null : Number(renameForm.parent_id),
+            renameForm.parent_id === null ? null : Number(renameForm.parent_id),
     });
+
+    cancelRename();
 }
 
 function toggleMenu(folderId) {
@@ -86,7 +103,7 @@ function toggleMenu(folderId) {
         <div class="media-breadcrumbs media-folders__breadcrumbs">
             <button
                 type="button"
-                class="button-link"
+                class="button-base"
                 @click="emit('open-root')"
             >
                 Корень
@@ -115,8 +132,8 @@ function toggleMenu(folderId) {
                         class="media-folders__rename"
                         @submit.prevent="submitRename(folder)"
                     >
-                        <label class="admin-form-label">
-                            <span>Название</span>
+                        <label class="admin-form-label name">
+                            <span>Название:</span>
                             <input
                                 v-model="renameForm.name"
                                 class="admin-input"
@@ -124,21 +141,15 @@ function toggleMenu(folderId) {
                             />
                         </label>
 
-                        <label class="admin-form-label">
-                            <span>Родитель</span>
-                            <select
+                        <div
+                            class="admin-select-custom parent"
+                            data-label="Родитель:"
+                        >
+                            <AdminSelect
                                 v-model="renameForm.parent_id"
-                                class="admin-select"
-                            >
-                                <option
-                                    v-for="option in rootOption"
-                                    :key="option.id ?? 'root'"
-                                    :value="option.id ?? ''"
-                                >
-                                    {{ option.path || option.name }}
-                                </option>
-                            </select>
-                        </label>
+                                :options="parentOptions"
+                            />
+                        </div>
 
                         <div class="admin-actions-row">
                             <AdminButton
@@ -146,13 +157,15 @@ function toggleMenu(folderId) {
                                 variant="primary"
                                 :disabled="busy"
                             >
+                                <Icon name="save" width="18" height="18" />
                                 Сохранить
                             </AdminButton>
                             <button
                                 type="button"
-                                class="button-link"
+                                class="button-base button-danger"
                                 @click="cancelRename"
                             >
+                                <Icon name="cancel" width="18" height="18" />
                                 Отмена
                             </button>
                         </div>
@@ -166,67 +179,73 @@ function toggleMenu(folderId) {
                         @click="emit('open-folder', folder)"
                     >
                         <span class="media-folders__icon" aria-hidden="true">
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M2 7c0-1.4 0-2.1.272-2.635a2.5 2.5 0 0 1 1.093-1.093C3.9 3 4.6 3 6 3h1.431c.94 0 1.409 0 1.835.13a3 3 0 0 1 1.033.552c.345.283.605.674 1.126 1.455L12 6h6c1.4 0 2.1 0 2.635.272a2.5 2.5 0 0 1 1.092 1.093C22 7.9 22 8.6 22 10v5c0 1.4 0 2.1-.273 2.635a2.5 2.5 0 0 1-1.092 1.092C20.1 19 19.4 19 18 19H6c-1.4 0-2.1 0-2.635-.273a2.5 2.5 0 0 1-1.093-1.092C2 17.1 2 16.4 2 15V7z"
-                                    fill="currentColor"
-                                />
-                            </svg>
+                            <Icon name="folder" width="24" height="24" />
                         </span>
 
                         <span class="media-folders__copy">
-                            <strong>{{ folder.name }}</strong>
-                            <small>{{ folder.path }}</small>
-                            <span
-                                >{{ folder.files_count || 0 }} файлов ·
-                                {{ folder.children_count || 0 }} вложенных
-                                папок</span
+                            <strong
+                                >{{ folder.name }}
+                                <small>{{ folder.path }}</small></strong
                             >
+
+                            <span
+                                >{{ folder.files_count || 0 }} файлов
+                                <span
+                                    >{{ folder.children_count || 0 }} вложенных
+                                    папок</span
+                                >
+                            </span>
                         </span>
                     </button>
 
                     <div class="media-folders__menu-wrap">
                         <button
                             type="button"
-                            class="media-folders__menu-button"
+                            class="button-link media-folders__menu-button"
                             @click.stop="toggleMenu(folder.id)"
                         >
-                            ...
+                            <Icon name="points" width="22" height="22" />
                         </button>
 
-                        <div
-                            v-if="activeMenuId === folder.id"
-                            class="media-folders__menu"
+                        <transition name="fade"
+                            ><div
+                                v-if="activeMenuId === folder.id"
+                                class="media-folders__menu"
+                            >
+                                <button
+                                    type="button"
+                                    @click="emit('open-folder', folder)"
+                                >
+                                    Открыть
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="startEdit(folder)"
+                                >
+                                    Переименовать
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="startEdit(folder)"
+                                >
+                                    Переместить
+                                </button>
+                                <button
+                                    type="button"
+                                    class="media-folders__danger"
+                                    @click="emit('delete-folder', folder)"
+                                >
+                                    Удалить
+                                </button>
+                            </div></transition
                         >
-                            <button
-                                type="button"
-                                @click="emit('open-folder', folder)"
-                            >
-                                Открыть
-                            </button>
-                            <button type="button" @click="startEdit(folder)">
-                                Переименовать
-                            </button>
-                            <button type="button" @click="startEdit(folder)">
-                                Переместить
-                            </button>
-                            <button
-                                type="button"
-                                class="media-folders__danger"
-                                @click="emit('delete-folder', folder)"
-                            >
-                                Удалить
-                            </button>
-                        </div>
                     </div>
                 </template>
             </article>
         </div>
 
-        <p v-else class="muted">В текущем разделе пока нет вложенных папок.</p>
+        <p v-else class="text-center">
+            В текущем разделе пока нет вложенных папок.
+        </p>
     </section>
 </template>

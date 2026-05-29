@@ -12,6 +12,9 @@ import { fetchPageTree } from "../../api/pages";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import AdminCheckbox from "../../components/ui/AdminCheckbox.vue";
+import AdminSelect from "../../components/ui/AdminSelect.vue";
+import AdminMultiSelect from "../../components/ui/AdminMultiSelect.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import {
     createFieldGroup,
@@ -19,6 +22,7 @@ import {
     fetchFieldGroups,
     updateFieldGroup,
 } from "../../api/additionalFields";
+import Icon from "../../components/ui/Icon.vue";
 
 const router = useRouter();
 
@@ -31,7 +35,6 @@ const groups = ref([]);
 const activeGroupId = ref(null);
 const accessChecked = ref(false);
 const pageOptions = ref([]);
-const pageSearch = reactive({});
 const templateOptions = ref([
     {
         value: "default",
@@ -75,10 +78,12 @@ const ruleFieldOptions = [
 ];
 
 const emptyRule = () => ({
+    id: crypto.randomUUID(),
     field: "template",
     operator: "=",
     value: "default",
 });
+
 const emptyField = () => emptyFieldDefinition();
 
 const form = reactive({
@@ -126,9 +131,16 @@ function hydrateForm(group) {
         : [];
 
     form.location_rules = rules.map((rule) => ({
+        id: crypto.randomUUID(),
         field: rule.field || "template",
         operator: rule.operator || "=",
-        value: String(rule.value || ""),
+        value:
+            rule.field === "page_id"
+                ? String(rule.value || "")
+                      .split(",")
+                      .map((v) => v.trim())
+                      .filter(Boolean)
+                : String(rule.value || ""),
     }));
 
     const sourceFields =
@@ -233,13 +245,6 @@ function applyPreset(preset) {
     }
 }
 
-function selectedRuleValues(rule) {
-    return String(rule.value || "")
-        .split(",")
-        .map((part) => part.trim())
-        .filter(Boolean);
-}
-
 function syncRuleOperator(rule) {
     const supported = operatorOptions(rule.field).map((option) => option.value);
 
@@ -250,31 +255,6 @@ function syncRuleOperator(rule) {
     if (rule.field === "template" && rule.value === "") {
         rule.value = "default";
     }
-}
-
-function updatePageRule(rule, event) {
-    rule.value = Array.from(event.target.selectedOptions)
-        .map((option) => option.value)
-        .filter(Boolean)
-        .join(",");
-}
-
-function filteredPageOptions(index) {
-    const query = String(pageSearch[index] || "")
-        .trim()
-        .toLowerCase();
-
-    if (query === "") {
-        return pageOptions.value;
-    }
-
-    return pageOptions.value.filter((page) => {
-        const haystack = [page.title, page.slug, page.path, page.template]
-            .map((value) => String(value || "").toLowerCase())
-            .join(" ");
-
-        return haystack.includes(query);
-    });
 }
 
 function removeRule(index) {
@@ -320,7 +300,9 @@ function normalizePayload() {
                     .map((rule) => ({
                         field: String(rule.field || "template"),
                         operator: String(rule.operator || "="),
-                        value: String(rule.value || "").trim(),
+                        value: Array.isArray(rule.value)
+                            ? rule.value.join(",")
+                            : String(rule.value || "").trim(),
                     }))
                     .filter((rule) => rule.value !== ""),
             ),
@@ -471,263 +453,326 @@ onMounted(async () => {
 
         <div class="admin-grid">
             <AdminCard>
-                <h2>Наборы дополнительных полей</h2>
-                <p class="muted">
-                    Для массового использования создавайте наборы полей и
-                    назначайте их по правилам.
-                </p>
+                <div class="section-wrapper">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="title-tooltip">
+                                Наборы дополнительных полей
+                                <Icon name="info" width="16" height="16" />
+                                <span>
+                                    Для массового использования создавайте
+                                    наборы полей и назначайте их по
+                                    правилам.</span
+                                >
+                            </h2>
+                        </div>
+                    </div>
 
-                <p v-if="loading" class="muted">Загрузка...</p>
+                    <p v-if="loading" class="muted">Загрузка...</p>
 
-                <div v-else class="admin-stack">
-                    <button
-                        v-for="group in groups"
-                        :key="group.id"
-                        type="button"
-                        class="page-media-picker__folder"
-                        @click="hydrateForm(group)"
-                    >
-                        <strong>{{ group.name }}</strong>
-                        <span class="muted"
-                            >{{ group.key }} |
-                            {{ group.is_active ? "Активен" : "Выключен" }}</span
+                    <div v-else class="admin-stack">
+                        <button
+                            v-for="group in groups"
+                            :key="group.id"
+                            type="button"
+                            class="page-media-picker__folder"
+                            @click="hydrateForm(group)"
                         >
-                    </button>
+                            <strong>{{ group.name }}</strong>
+                            <p class="plugin-status">
+                                <small> {{ group.key }} |</small>
+                                <span
+                                    class="plugin-status-badge"
+                                    :class="
+                                        group.is_active
+                                            ? 'is-enabled'
+                                            : 'is-disabled'
+                                    "
+                                >
+                                    {{
+                                        group.is_active ? "Активен" : "Выключен"
+                                    }}
+                                </span>
+                            </p>
+                        </button>
 
-                    <p v-if="groups.length === 0" class="muted">
-                        Наборы пока не созданы.
-                    </p>
+                        <p v-if="groups.length === 0" class="text-center">
+                            Наборы пока не созданы.
+                        </p>
+                    </div>
                 </div>
             </AdminCard>
 
             <AdminCard>
                 <form class="admin-form-stack" @submit.prevent="saveGroup">
-                    <label class="admin-form-label">
-                        <span>Название набора</span>
-                        <input
-                            v-model="form.name"
-                            class="admin-input"
-                            type="text"
-                            placeholder="Hero"
-                        />
-                        <small
-                            v-if="validationErrors.name"
-                            class="error-text"
-                            >{{ validationErrors.name[0] }}</small
+                    <div class="admin-label-block">
+                        <label
+                            class="admin-form-label name"
+                            data-label="Название набора:"
                         >
-                    </label>
-
-                    <label class="admin-form-label">
-                        <span>Ключ набора</span>
-                        <input
-                            v-model="form.key"
-                            class="admin-input"
-                            type="text"
-                            placeholder="hero_fields"
-                        />
-                        <small v-if="validationErrors.key" class="error-text">{{
-                            validationErrors.key[0]
-                        }}</small>
-                    </label>
-
-                    <label class="admin-form-label">
-                        <span>Описание</span>
-                        <textarea
-                            v-model="form.description"
-                            class="admin-textarea"
-                            rows="2"
-                            placeholder="Короткое описание набора"
-                        ></textarea>
-                    </label>
-
-                    <div class="page-meta-grid">
-                        <label class="admin-form-label">
-                            <span>Активен</span>
-                            <input v-model="form.is_active" type="checkbox" />
-                        </label>
-
-                        <label class="admin-form-label">
-                            <span>Порядок</span>
                             <input
-                                v-model.number="form.sort_order"
+                                v-model="form.name"
                                 class="admin-input"
-                                type="number"
-                                min="0"
+                                type="text"
+                                placeholder="Hero"
                             />
+                            <small
+                                v-if="validationErrors.name"
+                                class="error-text"
+                                >{{ validationErrors.name[0] }}</small
+                            >
                         </label>
+
+                        <label
+                            class="admin-form-label key"
+                            data-label="Ключ набора:"
+                        >
+                            <input
+                                v-model="form.key"
+                                class="admin-input"
+                                type="text"
+                                placeholder="hero_fields"
+                            />
+                            <small
+                                v-if="validationErrors.key"
+                                class="error-text"
+                                >{{ validationErrors.key[0] }}</small
+                            >
+                        </label>
+
+                        <label class="admin-form-label">
+                            <textarea
+                                v-model="form.description"
+                                class="admin-textarea"
+                                rows="2"
+                                placeholder="Короткое описание набора"
+                            ></textarea>
+                        </label>
+
+                        <div class="page-meta-grid">
+                            <label
+                                class="admin-form-label order"
+                                data-label="Порядок:"
+                            >
+                                <input
+                                    v-model.number="form.sort_order"
+                                    class="admin-input"
+                                    type="number"
+                                    min="0"
+                                />
+                            </label>
+
+                            <AdminCheckbox v-model="form.is_active">
+                                Активен
+                            </AdminCheckbox>
+                        </div>
                     </div>
 
                     <section class="admin-stack">
-                        <div class="admin-actions-row">
+                        <div class="admin-stack__head">
                             <h3>Правила назначения</h3>
-                            <AdminButton type="button" @click="addRule"
-                                >+ Добавить правило</AdminButton
+                            <AdminButton type="button" @click="addRule">
+                                <Icon
+                                    name="new"
+                                    width="18"
+                                    height="18"
+                                />Добавить правило</AdminButton
                             >
                         </div>
 
-                        <div class="admin-actions-row">
+                        <div class="admin-tabs">
                             <AdminButton
                                 type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        form.location_rules.length === 0,
+                                }"
                                 @click="applyPreset('all-pages')"
-                                >Все страницы</AdminButton
                             >
-                            <AdminButton
-                                type="button"
-                                @click="applyPreset('template-only')"
-                                >Только шаблон</AdminButton
-                            >
-                            <AdminButton
-                                type="button"
-                                @click="applyPreset('selected-pages')"
-                                >Выбранные страницы</AdminButton
-                            >
-                            <AdminButton
-                                type="button"
-                                @click="applyPreset('home-only')"
-                                >Только главная</AdminButton
-                            >
-                        </div>
+                                Все страницы
+                            </AdminButton>
 
-                        <label class="admin-form-label">
-                            <span>Как применять правила</span>
-                            <select
-                                v-model="form.location_rules_mode"
-                                class="admin-select"
+                            <AdminButton
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        form.location_rules.length === 1 &&
+                                        form.location_rules[0]?.field ===
+                                            'template',
+                                }"
+                                @click="applyPreset('template-only')"
                             >
-                                <option value="all">
-                                    Все условия одновременно (AND)
-                                </option>
-                                <option value="any">
-                                    Хотя бы одно условие (OR)
-                                </option>
-                            </select>
-                            <small class="muted"
-                                >AND для строгого назначения, OR если набор
+                                Только шаблон
+                            </AdminButton>
+
+                            <AdminButton
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        form.location_rules.length === 1 &&
+                                        form.location_rules[0]?.field ===
+                                            'page_id',
+                                }"
+                                @click="applyPreset('selected-pages')"
+                            >
+                                Выбранные страницы
+                            </AdminButton>
+
+                            <AdminButton
+                                type="button"
+                                class="admin-tab"
+                                :class="{
+                                    'is-active':
+                                        form.location_rules.length === 1 &&
+                                        form.location_rules[0]?.field ===
+                                            'is_home',
+                                }"
+                                @click="applyPreset('home-only')"
+                            >
+                                Только главная
+                            </AdminButton>
+                        </div>
+                        <p class="title-tooltip">
+                            Как применять правила
+                            <Icon name="info" width="16" height="16" /><span>
+                                AND для строгого назначения, OR если набор
                                 должен появляться на одной из нескольких групп
-                                страниц.</small
+                                страниц.</span
                             >
+                        </p>
+                        <label class="admin-form-label">
+                            <AdminSelect
+                                v-model="form.location_rules_mode"
+                                :options="[
+                                    {
+                                        value: 'all',
+                                        label: 'Все условия одновременно (AND)',
+                                    },
+                                    {
+                                        value: 'any',
+                                        label: 'Хотя бы одно условие (OR)',
+                                    },
+                                ]"
+                            />
                         </label>
 
                         <div
                             v-for="(rule, index) in form.location_rules"
-                            :key="`rule-${index}`"
+                            :key="rule.id"
                             class="page-meta-grid"
                         >
-                            <label class="admin-form-label">
-                                <span>Поле</span>
-                                <select
+                            <label class="admin-form-label" data-label="Поле:">
+                                <AdminSelect
                                     v-model="rule.field"
-                                    class="admin-select"
-                                    @change="syncRuleOperator(rule)"
-                                >
-                                    <option
-                                        v-for="option in ruleFieldOptions"
-                                        :key="option.value"
-                                        :value="option.value"
-                                    >
-                                        {{ option.label }}
-                                    </option>
-                                </select>
+                                    :options="ruleFieldOptions"
+                                    @update:modelValue="syncRuleOperator(rule)"
+                                    class="field"
+                                />
                             </label>
 
-                            <label class="admin-form-label">
-                                <span>Оператор</span>
-                                <select
+                            <label
+                                class="admin-form-label"
+                                data-label="Оператор:"
+                            >
+                                <AdminSelect
                                     v-model="rule.operator"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="option in operatorOptions(
-                                            rule.field,
-                                        )"
-                                        :key="option.value"
-                                        :value="option.value"
-                                    >
-                                        {{ option.label }}
-                                    </option>
-                                </select>
+                                    :options="operatorOptions(rule.field)"
+                                    class="operator"
+                                />
                             </label>
 
                             <label
                                 v-if="rule.field === 'template'"
                                 class="admin-form-label"
+                                data-label="Значение:"
                             >
-                                <span>Значение</span>
-                                <select
+                                <AdminSelect
                                     v-model="rule.value"
-                                    class="admin-select"
-                                >
-                                    <option
-                                        v-for="option in templateOptions"
-                                        :key="option.value"
-                                        :value="option.value"
+                                    :options="templateOptions"
+                                    class="value"
+                                />
+
+                                <p class="title-tooltip">
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span>
+                                        {{ ruleMeta(rule.field).hint }}</span
                                     >
-                                        {{ option.label }}
-                                    </option>
-                                </select>
-                                <small class="muted">{{
-                                    ruleMeta(rule.field).hint
-                                }}</small>
+                                </p>
                             </label>
 
                             <label
                                 v-else-if="rule.field === 'is_home'"
                                 class="admin-form-label"
+                                data-label="Значение:"
                             >
-                                <span>Значение</span>
-                                <select
+                                <AdminSelect
                                     v-model="rule.value"
-                                    class="admin-select"
-                                >
-                                    <option value="1">Только главная</option>
-                                    <option value="0">Все кроме главной</option>
-                                </select>
-                                <small class="muted">{{
-                                    ruleMeta(rule.field).hint
-                                }}</small>
+                                    class="value"
+                                    :options="[
+                                        {
+                                            value: '1',
+                                            label: 'Только главная',
+                                        },
+                                        {
+                                            value: '0',
+                                            label: 'Все кроме главной',
+                                        },
+                                    ]"
+                                />
+
+                                <p class="title-tooltip">
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span>
+                                        {{ ruleMeta(rule.field).hint }}</span
+                                    >
+                                </p>
                             </label>
 
-                            <label
+                            <div
                                 v-else-if="rule.field === 'page_id'"
                                 class="admin-form-label"
+                                data-label="Страницы:"
                             >
-                                <span>Страницы</span>
-                                <input
-                                    v-model="pageSearch[index]"
-                                    class="admin-input"
-                                    type="search"
-                                    placeholder="Поиск по названию, slug, пути или шаблону"
+                                <AdminMultiSelect
+                                    :model-value="rule.value"
+                                    :options="
+                                        pageOptions.map((page) => ({
+                                            value: String(page.id),
+                                            label: formatPageLabel(page),
+                                        }))
+                                    "
+                                    placeholder="Выберите страницы"
+                                    @update:modelValue="
+                                        (values) => {
+                                            rule.value = values;
+                                        }
+                                    "
                                 />
-                                <select
-                                    class="admin-select"
-                                    multiple
-                                    size="6"
-                                    @change="updatePageRule(rule, $event)"
-                                >
-                                    <option
-                                        v-for="page in filteredPageOptions(
-                                            index,
-                                        )"
-                                        :key="`rule-page-${index}-${page.id}`"
-                                        :value="page.id"
-                                        :selected="
-                                            selectedRuleValues(rule).includes(
-                                                String(page.id),
-                                            )
-                                        "
+                                <p class="title-tooltip">
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span
+                                        >Можно выбрать несколько страниц.
+                                        Значения ID скрыты, в правиле
+                                        сохраняется привязка к выбранным
+                                        страницам.</span
                                     >
-                                        {{ formatPageLabel(page) }}
-                                    </option>
-                                </select>
-                                <small class="muted"
-                                    >Можно выбрать несколько страниц. Значения
-                                    ID скрыты, в правиле сохраняется привязка к
-                                    выбранным страницам.</small
-                                >
-                            </label>
+                                </p>
+                            </div>
 
                             <label v-else class="admin-form-label">
-                                <span>Значение</span>
+                                <span>Значение:</span>
                                 <input
                                     v-model="rule.value"
                                     class="admin-input"
@@ -737,17 +782,28 @@ onMounted(async () => {
                                         'Введите значение'
                                     "
                                 />
-                                <small class="muted">{{
-                                    ruleMeta(rule.field).hint
-                                }}</small>
+                                <p class="title-tooltip">
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span>
+                                        {{ ruleMeta(rule.field).hint }}</span
+                                    >
+                                </p>
                             </label>
-
-                            <div class="admin-form-label">
+                            <div class="admin-form-label flex-end">
                                 <span>&nbsp;</span>
                                 <AdminButton
                                     type="button"
                                     @click="removeRule(index)"
-                                    >Удалить правило</AdminButton
+                                    class="button-danger"
+                                >
+                                    <Icon
+                                        name="trash"
+                                        width="18"
+                                        height="18"
+                                    />Удалить правило</AdminButton
                                 >
                             </div>
                         </div>
@@ -759,7 +815,7 @@ onMounted(async () => {
                         </p>
                     </section>
 
-                    <section class="admin-stack">
+                    <section class="admin-stack admin-stack-p0">
                         <FieldDefinitionEditor
                             v-model="form.fields"
                             :errors="validationErrors"
@@ -773,18 +829,19 @@ onMounted(async () => {
                         {{ errorMessage }}
                     </p>
 
-                    <div class="admin-actions-row">
+                    <div class="admin-buttons">
                         <AdminButton
                             type="submit"
                             variant="primary"
                             :disabled="saving"
+                            class="button-secondary"
                         >
-                            {{
+                            <Icon name="save" width="18" height="18" />{{
                                 saving
                                     ? "Сохранение..."
                                     : isEditing
                                       ? "Обновить набор"
-                                      : "Создать набор"
+                                      : "Cохранить набор"
                             }}
                         </AdminButton>
 
@@ -792,16 +849,20 @@ onMounted(async () => {
                             type="button"
                             :disabled="deleting || !isEditing"
                             @click="removeGroup"
+                            class="button-danger"
                         >
-                            {{ deleting ? "Удаление..." : "Удалить набор" }}
+                            <Icon name="trash" width="18" height="18" />{{
+                                deleting ? "Удаление..." : "Удалить набор"
+                            }}
                         </AdminButton>
 
                         <button
                             type="button"
-                            class="button-link"
+                            class="button-base"
                             @click="resetForm"
                         >
-                            Новый набор
+                            <Icon name="new" width="18" height="18" />Новый
+                            набор
                         </button>
                     </div>
                 </form>

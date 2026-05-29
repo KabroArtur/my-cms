@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import Icon from "../ui/Icon.vue";
 
 const props = defineProps({
     files: {
@@ -50,6 +51,14 @@ function canRemoveUpload(file) {
             }"
             @click="!isUploadPlaceholder(file) && emit('select', file)"
         >
+            <div class="title-tooltip-down">
+                <Icon name="info" width="22" height="22" />
+                <strong>
+                    Кликните по изображению, чтобы открыть редактирование и
+                    установить его как обложку.
+                </strong>
+            </div>
+
             <div class="media-grid__preview">
                 <img
                     v-if="file.preview_url || file.url"
@@ -58,11 +67,14 @@ function canRemoveUpload(file) {
                 />
 
                 <div v-else class="media-grid__preview-fallback">
-                    {{ file.extension || file.mime_type || 'FILE' }}
+                    {{ file.extension || file.mime_type || "FILE" }}
                 </div>
 
                 <div
-                    v-if="isUploadPlaceholder(file) && file.upload_status === 'uploading'"
+                    v-if="
+                        isUploadPlaceholder(file) &&
+                        file.upload_status === 'uploading'
+                    "
                     class="media-grid__upload-overlay"
                 >
                     <span class="media-grid__spinner"></span>
@@ -71,23 +83,28 @@ function canRemoveUpload(file) {
 
             <div
                 class="media-grid__meta"
-                :class="{ 'media-grid__meta--upload': isUploadPlaceholder(file) }"
+                :class="{
+                    'media-grid__meta--upload': isUploadPlaceholder(file),
+                }"
             >
                 <strong>{{ file.original_name }}</strong>
-                <span
-                    >{{ file.size_human
-                    }}<template v-if="file.width && file.height">
-                        | {{ file.width }} x {{ file.height }}</template
-                    ></span
-                >
+                <p class="text-center">
+                    <span>{{ file.size_human }}</span>
+                    <span
+                        ><template v-if="file.width && file.height">
+                            {{ file.width }} x {{ file.height }}</template
+                        ></span
+                    >
+                </p>
 
                 <span v-if="isUploadPlaceholder(file)">
                     {{
-                        file.upload_status === 'uploading'
+                        file.upload_status === "uploading"
                             ? `Загрузка ${file.upload_progress}%`
-                            : file.upload_status === 'error'
-                              ? file.upload_error || 'Не удалось загрузить файл.'
-                              : 'Ожидает загрузки'
+                            : file.upload_status === "error"
+                              ? file.upload_error ||
+                                "Не удалось загрузить файл."
+                              : "Ожидает загрузки"
                     }}
                 </span>
 

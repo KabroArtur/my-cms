@@ -14,6 +14,9 @@ import {
     supportsPlaceholder,
     supportsRows,
 } from "./customFields";
+import Icon from "../../components/ui/Icon.vue";
+import AdminSelect from "../ui/AdminSelect.vue";
+import AdminCheckbox from "../ui/AdminCheckbox.vue";
 
 const props = defineProps({
     modelValue: {
@@ -162,14 +165,21 @@ function updateLabel(index, value) {
 function updateKey(index, value) {
     updateField(index, { key: sanitizeFieldKey(value) });
 }
+
+function showDefaultValueLabel(type) {
+    return !["textarea", "editor", "checkbox", "switch", "toggle"].includes(
+        type,
+    );
+}
 </script>
 
 <template>
     <section class="field-definition-editor">
-        <div class="admin-actions-row field-definition-editor__header">
+        <div class="admin-stack__head field-definition-editor__header">
             <h3>{{ title }}</h3>
-            <AdminButton type="button" @click="addField()"
-                >Добавить поле</AdminButton
+            <AdminButton type="button" @click="addField()">
+                <Icon name="new" width="18" height="18" />Добавить
+                поле</AdminButton
             >
         </div>
 
@@ -187,23 +197,31 @@ function updateKey(index, value) {
                         type="button"
                         :disabled="index === 0"
                         @click="moveField(index, -1)"
-                        >Выше</AdminButton
-                    >
+                        class="button-editor"
+                        ><Icon name="arrow-top" width="16" height="16"
+                    /></AdminButton>
                     <AdminButton
                         type="button"
                         :disabled="index === fields().length - 1"
                         @click="moveField(index, 1)"
-                        >Ниже</AdminButton
-                    >
-                    <AdminButton type="button" @click="removeField(index)"
-                        >Удалить</AdminButton
-                    >
+                        class="button-editor"
+                        ><Icon
+                            name="arrow-top"
+                            width="16"
+                            height="16"
+                            class="icon-rotated"
+                    /></AdminButton>
+                    <AdminButton
+                        type="button"
+                        @click="removeField(index)"
+                        class="button-danger"
+                        ><Icon name="trash" width="18" height="18"
+                    /></AdminButton>
                 </div>
             </div>
 
             <div class="page-meta-grid">
-                <label class="admin-form-label">
-                    <span>Label</span>
+                <label class="admin-form-label label" data-label="Label:">
                     <input
                         :value="field.label"
                         class="admin-input"
@@ -220,8 +238,7 @@ function updateKey(index, value) {
                     >
                 </label>
 
-                <label class="admin-form-label">
-                    <span>Key</span>
+                <label class="admin-form-label key" data-label="Key:">
                     <input
                         :value="field.key"
                         class="admin-input"
@@ -238,52 +255,42 @@ function updateKey(index, value) {
                     >
                 </label>
 
-                <label class="admin-form-label">
-                    <span>Type</span>
-                    <select
-                        :value="field.type"
-                        class="admin-select"
-                        @change="
-                            updateField(index, { type: $event.target.value })
+                <label class="admin-form-label type" data-label="Type:">
+                    <AdminSelect
+                        :model-value="field.type"
+                        :options="FIELD_TYPE_OPTIONS"
+                        @update:modelValue="
+                            (value) => updateField(index, { type: value })
                         "
-                    >
-                        <option
-                            v-for="option in FIELD_TYPE_OPTIONS"
-                            :key="option.value"
-                            :value="option.value"
-                        >
-                            {{ option.label }}
-                        </option>
-                    </select>
+                    />
+
                     <small
                         v-if="getFirstError(errors, fieldPath(index, 'type'))"
                         class="error-text"
-                        >{{
-                            getFirstError(errors, fieldPath(index, "type"))
-                        }}</small
                     >
+                        {{ getFirstError(errors, fieldPath(index, "type")) }}
+                    </small>
                 </label>
 
                 <label class="admin-form-label">
-                    <span>Обязательное</span>
-                    <input
-                        :checked="field.is_required"
-                        type="checkbox"
-                        @change="
-                            updateField(index, {
-                                is_required: $event.target.checked,
-                            })
+                    <AdminCheckbox
+                        :model-value="field.is_required"
+                        @update:modelValue="
+                            (value) =>
+                                updateField(index, { is_required: value })
                         "
-                    />
+                    >
+                        Обязательное
+                    </AdminCheckbox>
                 </label>
             </div>
 
             <div class="page-meta-grid">
                 <label
                     v-if="supportsPlaceholder(field.type)"
-                    class="admin-form-label"
+                    class="admin-form-label placeholder"
+                    data-label="Placeholder:"
                 >
-                    <span>Placeholder</span>
                     <input
                         :value="field.settings?.placeholder || ''"
                         class="admin-input"
@@ -299,8 +306,11 @@ function updateKey(index, value) {
                     />
                 </label>
 
-                <label v-if="supportsRows(field.type)" class="admin-form-label">
-                    <span>Rows</span>
+                <label
+                    v-if="supportsRows(field.type)"
+                    class="admin-form-label rows"
+                    data-label="Rows:"
+                >
                     <input
                         :value="field.settings?.rows || 4"
                         class="admin-input"
@@ -316,8 +326,7 @@ function updateKey(index, value) {
                     />
                 </label>
 
-                <label class="admin-form-label">
-                    <span>Help text</span>
+                <label class="admin-form-label help" data-label="Help text:">
                     <input
                         :value="field.settings?.help_text || ''"
                         class="admin-input"
@@ -332,111 +341,144 @@ function updateKey(index, value) {
                         "
                     />
                 </label>
-            </div>
-
-            <label
-                v-if="supportsDefaultValue(field.type)"
-                class="admin-form-label"
-            >
-                <span>Default value</span>
-
-                <input
-                    v-if="
-                        ['text', 'url', 'email', 'date', 'number'].includes(
-                            field.type,
-                        )
-                    "
-                    :value="field.default_value"
-                    class="admin-input"
-                    :type="field.type === 'number' ? 'number' : field.type"
-                    @input="updateDefaultValue(index, $event.target.value)"
-                />
-
-                <textarea
-                    v-else-if="['textarea', 'editor'].includes(field.type)"
-                    :value="field.default_value"
-                    class="admin-textarea"
-                    rows="3"
-                    @input="updateDefaultValue(index, $event.target.value)"
-                ></textarea>
 
                 <label
-                    v-else-if="
-                        ['checkbox', 'switch', 'toggle'].includes(field.type)
+                    v-if="supportsDefaultValue(field.type)"
+                    class="admin-form-label default"
+                    :class="{
+                        'is-full': ['textarea', 'editor'].includes(field.type),
+                    }"
+                    :data-label="
+                        showDefaultValueLabel(field.type)
+                            ? 'Default value:'
+                            : null
                     "
-                    class="field-definition-editor__checkbox-line"
                 >
                     <input
-                        :checked="Boolean(field.default_value)"
-                        type="checkbox"
-                        @change="
-                            updateDefaultValue(index, $event.target.checked)
+                        v-if="
+                            ['text', 'url', 'email', 'number'].includes(
+                                field.type,
+                            )
                         "
-                    />
-                    <span>Включено по умолчанию</span>
-                </label>
-
-                <select
-                    v-else-if="['select', 'radio'].includes(field.type)"
-                    :value="field.default_value || ''"
-                    class="admin-select"
-                    @change="updateDefaultValue(index, $event.target.value)"
-                >
-                    <option value="">Без значения</option>
-                    <option
-                        v-for="option in field.settings?.options || []"
-                        :key="option.value"
-                        :value="option.value"
-                    >
-                        {{ option.label || option.value }}
-                    </option>
-                </select>
-
-                <div
-                    v-else-if="field.type === 'color'"
-                    class="field-definition-editor__color-row"
-                >
-                    <input
-                        :value="field.default_value || '#000000'"
-                        type="color"
+                        :value="field.default_value"
+                        class="admin-input"
+                        :type="field.type === 'number' ? 'number' : field.type"
                         @input="updateDefaultValue(index, $event.target.value)"
                     />
+
+                    <div
+                        v-else-if="field.type === 'date'"
+                        class="admin-input-wrapper"
+                    >
+                        <input
+                            :value="field.default_value"
+                            class="admin-input"
+                            type="date"
+                            @input="
+                                updateDefaultValue(index, $event.target.value)
+                            "
+                        />
+
+                        <Icon name="calendar" width="18" height="18" />
+                    </div>
+
+                    <textarea
+                        v-else-if="['textarea', 'editor'].includes(field.type)"
+                        :value="field.default_value"
+                        class="admin-textarea"
+                        rows="3"
+                        placeholder="Текст по умолчанию (если оставить пустым — будет пусто)"
+                        @input="updateDefaultValue(index, $event.target.value)"
+                    ></textarea>
+
+                    <AdminCheckbox
+                        v-else-if="
+                            ['checkbox', 'switch', 'toggle'].includes(
+                                field.type,
+                            )
+                        "
+                        :model-value="Boolean(field.default_value)"
+                        @update:modelValue="
+                            (value) => updateDefaultValue(index, value)
+                        "
+                    >
+                        Включено по умолчанию
+                    </AdminCheckbox>
+
+                    <AdminSelect
+                        v-else-if="['select', 'radio'].includes(field.type)"
+                        :model-value="field.default_value || ''"
+                        :options="[
+                            { label: 'Без значения', value: '' },
+                            ...(field.settings?.options || []).map((o) => ({
+                                label: o.label || o.value,
+                                value: o.value,
+                            })),
+                        ]"
+                        @update:modelValue="
+                            updateDefaultValue(index, $event, field.type)
+                        "
+                    />
+
+                    <div
+                        v-else-if="field.type === 'color'"
+                        class="field-definition-editor__color"
+                    >
+                        <input
+                            :value="field.default_value || ''"
+                            class="admin-input"
+                            type="text"
+                            placeholder="#ffffff"
+                            @input="
+                                updateDefaultValue(index, $event.target.value)
+                            "
+                        />
+
+                        <input
+                            type="color"
+                            class="field-definition-editor__color-picker"
+                            :value="field.default_value || '#000000'"
+                            @input="
+                                updateDefaultValue(index, $event.target.value)
+                            "
+                        />
+                    </div>
+
                     <input
+                        v-else
                         :value="field.default_value"
                         class="admin-input"
                         type="text"
-                        placeholder="#ffffff"
                         @input="updateDefaultValue(index, $event.target.value)"
                     />
-                </div>
 
-                <input
-                    v-else
-                    :value="field.default_value"
-                    class="admin-input"
-                    type="text"
-                    @input="updateDefaultValue(index, $event.target.value)"
-                />
-
-                <small
-                    v-if="
-                        getFirstError(errors, fieldPath(index, 'default_value'))
-                    "
-                    class="error-text"
-                    >{{
-                        getFirstError(errors, fieldPath(index, "default_value"))
-                    }}</small
-                >
-            </label>
+                    <small
+                        v-if="
+                            getFirstError(
+                                errors,
+                                fieldPath(index, 'default_value'),
+                            )
+                        "
+                        class="error-text"
+                        >{{
+                            getFirstError(
+                                errors,
+                                fieldPath(index, "default_value"),
+                            )
+                        }}</small
+                    >
+                </label>
+            </div>
 
             <section
                 v-if="supportsOptions(field.type)"
                 class="field-definition-editor__section"
             >
-                <div class="admin-actions-row">
-                    <h4>Варианты</h4>
+                <div class="admin-stack__head">
+                    <h3>Варианты</h3>
                     <AdminButton type="button" @click="addOption(index)"
-                        >Добавить вариант</AdminButton
+                        ><Icon name="new" width="18" height="18" />Добавить
+                        вариант</AdminButton
                     >
                 </div>
 
@@ -453,8 +495,7 @@ function updateKey(index, value) {
                     :key="`${field.key}-option-${optionIndex}`"
                     class="field-definition-editor__option-row"
                 >
-                    <label class="admin-form-label">
-                        <span>Label</span>
+                    <label class="admin-form-label label">
                         <input
                             :value="option.label"
                             class="admin-input"
@@ -485,8 +526,7 @@ function updateKey(index, value) {
                         >
                     </label>
 
-                    <label class="admin-form-label">
-                        <span>Value</span>
+                    <label class="admin-form-label value">
                         <input
                             :value="option.value"
                             class="admin-input"
@@ -522,8 +562,9 @@ function updateKey(index, value) {
                             type="button"
                             :disabled="optionIndex === 0"
                             @click="moveOption(index, optionIndex, -1)"
-                            >Выше</AdminButton
-                        >
+                            class="button-editor"
+                            ><Icon name="arrow-top" width="16" height="16"
+                        /></AdminButton>
                         <AdminButton
                             type="button"
                             :disabled="
@@ -531,13 +572,19 @@ function updateKey(index, value) {
                                 field.settings.options.length - 1
                             "
                             @click="moveOption(index, optionIndex, 1)"
-                            >Ниже</AdminButton
-                        >
+                            class="button-editor"
+                            ><Icon
+                                name="arrow-top"
+                                width="16"
+                                height="16"
+                                class="icon-rotated"
+                        /></AdminButton>
                         <AdminButton
                             type="button"
                             @click="removeOption(index, optionIndex)"
-                            >Удалить</AdminButton
-                        >
+                            class="button-editor"
+                            ><Icon name="trash" width="18" height="18"
+                        /></AdminButton>
                     </div>
                 </div>
 

@@ -205,7 +205,7 @@ function clearSelection() {
 <template>
     <div class="media-picker-field">
         <div class="media-picker-field__toolbar">
-            <div class="admin-actions-row">
+            <div class="media-picker-field__row">
                 <AdminButton
                     type="button"
                     variant="primary"
@@ -263,7 +263,7 @@ function clearSelection() {
                 </div>
                 <div>
                     <strong>{{ item.original_name }}</strong>
-                    <p class="muted">{{ item.url }}</p>
+                    <p>{{ item.url }}</p>
                 </div>
             </article>
         </div>

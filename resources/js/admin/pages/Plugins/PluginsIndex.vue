@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { fetchCurrentUser } from "../../api/auth";
+import { fetchCurrentUser } from "../../api/auth.js";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
@@ -11,8 +11,8 @@ import {
     enablePlugin,
     fetchPlugins,
     installPlugin,
-} from "../../api/plugins";
-import { useAdminNotifications } from "../../composables/useAdminNotifications";
+} from "../../api/plugins.js";
+import { useAdminNotifications } from "../../composables/useAdminNotifications.js";
 
 const { notify } = useAdminNotifications();
 

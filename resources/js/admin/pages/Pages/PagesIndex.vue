@@ -5,6 +5,7 @@ import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
 import Icon from "../../components/ui/Icon.vue";
+import AdminModal from "../../components/ui/AdminModal.vue";
 import AdminSelect from "../../components/ui/AdminSelect.vue";
 import AdminViewSettings from "../../components/ui/AdminViewSettings.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
@@ -13,6 +14,7 @@ import {
     loadCmsSettings,
 } from "../../composables/useCmsSettings";
 import PageMenuTreeItem from "./components/PageMenuTreeItem.vue";
+
 import {
     deletePage,
     fetchPages,
@@ -42,7 +44,8 @@ const visibleFields = ref({
     status: true,
     compact: false,
 });
-
+const deleteModalOpen = ref(false);
+const pageToDelete = ref(null);
 const fieldLabels = {
     status: "Показывать шаблон",
     language: "Показывать язык",
@@ -370,31 +373,47 @@ async function loadPages() {
     }
 }
 
-async function removePage(page) {
-    const confirmed = window.confirm(
-        `Переместить страницу "${page.title}" в корзину?`,
-    );
+function removePage(page) {
+    pageToDelete.value = page;
+    deleteModalOpen.value = true;
+}
 
-    if (!confirmed) {
+async function confirmRemovePage() {
+    if (!pageToDelete.value) {
         return;
     }
 
     errorMessage.value = "";
 
     try {
+        const page = pageToDelete.value;
+
         await deletePage(page.id);
+
         pages.value = pages.value.filter((item) => item.id !== page.id);
+
         treePages.value = treePages.value.filter((item) => item.id !== page.id);
+
         trashedPages.value.unshift({
             ...page,
             deleted_at: new Date().toISOString(),
         });
+
         notifySuccess("Страница перемещена в корзину.");
+
+        closeDeleteModal();
     } catch (error) {
         errorMessage.value = "Не удалось переместить страницу в корзину.";
+
         notifyError(errorMessage.value);
+
         console.error(error);
     }
+}
+
+function closeDeleteModal() {
+    deleteModalOpen.value = false;
+    pageToDelete.value = null;
 }
 
 async function restoreTrashedPage(page) {
@@ -756,23 +775,33 @@ const trashCount = computed(() => trashedPages.value.length);
                         :key="page.id"
                         class="page-trash-card"
                     >
-                        <div>
+                        <div class="page-trash-card__title-block">
                             <h3>{{ page.title }}</h3>
-                            <p class="muted">
-                                Создал: {{ resolveCreatorLabel(page) }}
-                            </p>
-                            <p class="muted">
-                                ID {{ page.id }} | {{ page.slug }} | Удалена:
-                                {{ formatDateTime(page.deleted_at) }}
+
+                            <p class="">
+                                ID{{ page.id }}<span></span>{{ page.slug }}
+                                <span></span>Удалена:
+                                <strong>
+                                    {{
+                                        formatDateTime(page.deleted_at)
+                                    }}</strong
+                                >
                             </p>
                         </div>
-
+                        <p class="mt-20">
+                            Создал:
+                            <strong>{{ resolveCreatorLabel(page) }}</strong>
+                        </p>
                         <div class="admin-actions-row">
                             <AdminButton
                                 type="button"
                                 @click="restoreTrashedPage(page)"
                             >
-                                Восстановить
+                                <Icon
+                                    name="return"
+                                    width="18"
+                                    height="18"
+                                />Восстановить
                             </AdminButton>
 
                             <AdminButton
@@ -781,6 +810,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                 :disabled="!page.can?.delete"
                                 @click="forceRemovePage(page)"
                             >
+                                <Icon name="trash" width="20" height="20" />
                                 Удалить навсегда
                             </AdminButton>
                         </div>
@@ -847,4 +877,35 @@ const trashCount = computed(() => trashedPages.value.length);
             </div>
         </Transition>
     </AdminPage>
+    <AdminModal
+        :open="deleteModalOpen"
+        title="Удаление страницы"
+        @close="closeDeleteModal"
+    >
+        <p>
+            Переместить страницу
+            <strong> "{{ pageToDelete?.title }}" </strong>
+            в корзину?
+        </p>
+
+        <template #footer>
+            <div class="admin-actions-row">
+                <AdminButton
+                    type="button"
+                    variant="secondary"
+                    @click="closeDeleteModal"
+                >
+                    Отмена
+                </AdminButton>
+
+                <AdminButton
+                    type="button"
+                    variant="danger"
+                    @click="confirmRemovePage"
+                >
+                    Удалить
+                </AdminButton>
+            </div>
+        </template>
+    </AdminModal>
 </template>

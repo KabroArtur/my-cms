@@ -132,6 +132,51 @@ select:-webkit-autofill:focus {
 .admin-form-stack {
     display: grid;
     gap: 14px;
+
+    .admin-buttons {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: var(--admin-space-2);
+        padding-right: 16px;
+    }
+
+    .admin-form-label {
+        &::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 550;
+            color: var(--admin-color-text-muted);
+            pointer-events: none;
+            z-index: 9;
+            transition: opacity 0.2s ease;
+        }
+
+        &:focus-within::before {
+            opacity: 0.8;
+        }
+
+        small {
+            position: absolute;
+            bottom: -2px;
+            right: 14px;
+        }
+    }
+
+    .admin-form-label.name .admin-input {
+        padding-left: 164px;
+    }
+
+    .admin-form-label.key .admin-input {
+        padding-left: 131px;
+    }
+
+    .admin-form-label.order .admin-input {
+        padding-left: 92px;
+    }
 }
 
 .admin-modal .admin-checkbox {
@@ -225,6 +270,12 @@ select:-webkit-autofill:focus {
     background: var(--admin-color-surface);
     border: 1px solid var(--admin-color-border-strong);
     border-radius: var(--admin-radius-sm);
+    transition: border-color 0.3s ease;
+
+    &:focus-within,
+    &:hover {
+        border-color: var(--admin-color-primary);
+    }
 }
 
 .admin-input::placeholder,
@@ -349,6 +400,7 @@ p.title-tooltip {
         font-size: 14px;
         line-height: 1.4;
         font-weight: 500;
+        text-transform: none;
         color: var(--admin-color-text-accent);
         background-color: var(--admin-color-primary);
         border-radius: var(--admin-radius-sm);

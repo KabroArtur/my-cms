@@ -38,6 +38,7 @@ import {
     toNumericId,
     withMediaCacheBust,
 } from "./mediaHelpers";
+import Icon from "../ui/Icon.vue";
 
 const props = defineProps({
     open: {
@@ -93,6 +94,15 @@ const mainPanelRef = ref(null);
 const uploadInput = ref(null);
 const recentUploadIds = ref([]);
 const folderModalOpen = ref(false);
+const confirmModal = reactive({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Подтвердить",
+    confirmVariant: "danger",
+    loading: false,
+    onConfirm: null,
+});
 const activeTab = ref("library");
 const transformTool = ref("");
 const transforming = ref(false);
@@ -122,6 +132,51 @@ const transformForm = reactive({
     quality: "",
     format: "original",
 });
+
+function openConfirmModal({
+    title,
+    message,
+    confirmText = "Подтвердить",
+    confirmVariant = "danger",
+    onConfirm,
+}) {
+    confirmModal.title = title;
+    confirmModal.message = message;
+    confirmModal.confirmText = confirmText;
+    confirmModal.confirmVariant = confirmVariant;
+    confirmModal.onConfirm = onConfirm;
+    confirmModal.open = true;
+}
+
+function closeConfirmModal() {
+    if (confirmModal.loading) {
+        return;
+    }
+
+    confirmModal.open = false;
+    confirmModal.loading = false;
+    confirmModal.onConfirm = null;
+}
+
+async function confirmModalAction() {
+    if (!confirmModal.onConfirm) return;
+
+    confirmModal.loading = true;
+
+    try {
+        await confirmModal.onConfirm();
+
+        confirmModal.open = false;
+    } catch (error) {
+        console.error(error);
+
+        errorMessage.value =
+            error.response?.data?.message || "Произошла ошибка.";
+    } finally {
+        confirmModal.loading = false;
+        confirmModal.onConfirm = null;
+    }
+}
 
 const displayedUploadItems = computed(() =>
     uploadQueue.value.map((item) => ({
@@ -291,6 +346,8 @@ watch(
 watch(
     () => props.open,
     async (isOpen) => {
+        document.body.classList.toggle("modal-open", isOpen);
+
         if (!isOpen) {
             activeTab.value = "library";
             transformTool.value = "";
@@ -301,6 +358,10 @@ watch(
         await initializeModal();
     },
 );
+
+onBeforeUnmount(() => {
+    document.body.classList.remove("modal-open");
+});
 
 watch(
     selectedFile,
@@ -527,24 +588,31 @@ async function renameFolder({ folder, name, parent_id }) {
     }
 }
 
-async function removeFolder(folder) {
-    const confirmed = window.confirm(
-        `Удалить папку "${folder.name}"? Только если она пуста.`,
-    );
+function removeFolder(folder) {
+    openConfirmModal({
+        title: "Удаление папки",
+        message: `Удалить папку "${folder.name}"? Только если она пуста.`,
+        confirmText: "Удалить",
+        onConfirm: async () => {
+            try {
+                await deleteMediaFolder(folder.id);
 
-    if (!confirmed) {
-        return;
-    }
+                showNotice("Папка удалена.", "success");
 
-    try {
-        await deleteMediaFolder(folder.id);
-        showNotice("Папка удалена.");
-        await loadLibrary(currentFolderId.value);
-    } catch (error) {
-        errorMessage.value =
-            error.response?.data?.message ?? "Не удалось удалить папку.";
-        console.error(error);
-    }
+                await loadLibrary(currentFolderId.value);
+            } catch (error) {
+                console.error(error);
+
+                const message =
+                    error.response?.data?.message ||
+                    "Нельзя удалить непустую папку.";
+
+                showNotice(message, "error");
+
+                throw error;
+            }
+        },
+    });
 }
 
 function handleFileClick(file) {
@@ -657,29 +725,27 @@ async function moveSelectedFile({ file, folder_id }) {
     }
 }
 
-async function deleteSelectedFile(file) {
-    const confirmed = window.confirm(`Удалить файл "${file.original_name}"?`);
+function deleteSelectedFile(file) {
+    openConfirmModal({
+        title: "Удаление файла",
+        message: `Удалить файл "${file.original_name}"?`,
+        confirmText: "Удалить",
+        onConfirm: async () => {
+            await deleteMediaFile(file.id);
 
-    if (!confirmed) {
-        return;
-    }
+            selectedIdsState.value = selectedIdsState.value.filter(
+                (id) => id !== file.id,
+            );
 
-    try {
-        await deleteMediaFile(file.id);
+            activeFileId.value = null;
 
-        selectedIdsState.value = selectedIdsState.value.filter(
-            (id) => id !== file.id,
-        );
-        activeFileId.value = null;
-        delete selectedItemsById.value[file.id];
+            delete selectedItemsById.value[file.id];
 
-        showNotice("Файл удален.");
-        await loadLibrary(currentFolderId.value);
-    } catch (error) {
-        errorMessage.value =
-            error.response?.data?.message ?? "Не удалось удалить файл.";
-        console.error(error);
-    }
+            showNotice("Файл удален.");
+
+            await loadLibrary(currentFolderId.value);
+        },
+    });
 }
 
 async function copyUrl(file) {
@@ -1178,557 +1244,675 @@ onBeforeUnmount(() => {
     window.removeEventListener("pointermove", handleTransformPointerMove);
     window.removeEventListener("pointerup", stopTransformDrag);
 });
+
+const hasAnyFilesInFolder = computed(() => files.value.length > 0);
+
+const hasFilteredFiles = computed(() => filteredFiles.value.length > 0);
+
+const isSearching = computed(() => normalizedSearch.value !== "");
 </script>
 
 <template>
     <Teleport to="body">
-        <div v-if="open" class="admin-modal" @click.self="closeModal">
-            <input
-                ref="uploadInput"
-                type="file"
-                hidden
-                multiple
-                :accept="accept"
-                @change="handleUploadInput"
-            />
+        <transition name="modal">
+            <div v-if="open" class="admin-modal" @click.self="closeModal">
+                <input
+                    ref="uploadInput"
+                    type="file"
+                    hidden
+                    multiple
+                    :accept="accept"
+                    @change="handleUploadInput"
+                />
 
-            <div
-                class="admin-modal__dialog admin-modal__dialog--wide media-library-modal"
-                @click.stop
-            >
-                <div class="admin-modal__header media-library-modal__header">
-                    <div>
-                        <p class="eyebrow">Media</p>
-                        <h2>{{ title }}</h2>
-                        <p class="muted">
-                            Универсальная медиатека для выбора, загрузки и
-                            управления изображениями.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        class="button-link"
-                        @click.stop="closeModal"
+                <div
+                    class="admin-modal__dialog admin-modal__dialog--wide media-library-modal"
+                    @click.stop
+                >
+                    <div
+                        class="admin-modal__header media-library-modal__header"
                     >
-                        Закрыть
-                    </button>
-                </div>
+                        <div>
+                            <h2 class="title-tooltip-down">
+                                {{ title }}
+                                <Icon name="info" width="18" height="18" />
+                                <strong>
+                                    Универсальная медиатека для выбора, загрузки
+                                    и управления изображениями.
+                                </strong>
+                            </h2>
+                        </div>
 
-                <div class="admin-modal__body media-library-modal__body">
-                    <div class="media-library-modal__tabs">
                         <button
                             type="button"
-                            class="media-library-modal__tab"
-                            :class="{ 'is-active': activeTab === 'library' }"
-                            @click="setActiveTab('library')"
+                            class="button-base button-close"
+                            @click.stop="closeModal"
                         >
-                            Все изображения
-                        </button>
-                        <button
-                            type="button"
-                            class="media-library-modal__tab"
-                            :class="{ 'is-active': activeTab === 'edit' }"
-                            :disabled="!canTransformSelectedFile"
-                            @click="setActiveTab('edit')"
-                        >
-                            Редактирование
+                            <Icon name="close" width="22" height="22" />
                         </button>
                     </div>
 
-                    <div class="media-library-modal__content">
-                        <div
-                            v-if="activeTab === 'library'"
-                            ref="mainPanelRef"
-                            class="media-library-modal__main"
-                            @dragenter="handleMainDragEnter"
-                            @dragover="handleMainDragOver"
-                            @dragleave="handleMainDragLeave"
-                            @drop="handleMainDrop"
-                        >
-                            <section class="media-library-modal__toolbar">
-                                <label
-                                    class="admin-form-label media-library-modal__search"
-                                >
-                                    <span>Поиск</span>
-                                    <input
-                                        v-model="searchQuery"
-                                        class="admin-input"
-                                        type="search"
-                                        placeholder="Название файла, alt, mime-type, папка"
-                                    />
-                                </label>
-
-                                <div class="media-library-modal__actions">
-                                    <div class="media-library-modal__stat">
-                                        <strong>{{
-                                            filteredFiles.length
-                                        }}</strong>
-                                        <span>файлов в текущем списке</span>
-                                    </div>
-
-                                    <AdminButton
-                                        v-if="allowUpload"
-                                        type="button"
-                                        @click="openUploadDialog"
-                                    >
-                                        Загрузить файлы
-                                    </AdminButton>
-                                </div>
-                            </section>
-
-                            <section
-                                class="media-library-modal__section media-library-modal__section--folders"
+                    <div class="admin-modal__body media-library-modal__body">
+                        <div class="media-library-modal__tabs">
+                            <button
+                                type="button"
+                                class="button-base media-library-modal__tab"
+                                :class="{
+                                    'is-active': activeTab === 'library',
+                                }"
+                                @click="setActiveTab('library')"
                             >
-                                <div class="media-library-modal__section-head">
-                                    <div>
-                                        <strong>Папки</strong>
-                                        <span
-                                            >Сначала структура: выберите нужную
-                                            папку, затем переходите к
-                                            файлам.</span
-                                        >
-                                    </div>
+                                <Icon name="media" width="18" height="18" /> Все
+                                изображения
+                            </button>
+                            <button
+                                type="button"
+                                class="button-base media-library-modal__tab"
+                                :class="{ 'is-active': activeTab === 'edit' }"
+                                :disabled="!canTransformSelectedFile"
+                                @click="setActiveTab('edit')"
+                            >
+                                <Icon name="edit" width="18" height="18" />
+                                Редактирование
+                            </button>
+                        </div>
 
-                                    <button
-                                        type="button"
-                                        class="button-link media-library-modal__section-button"
-                                        @click="openCreateFolderModal"
-                                    >
-                                        Создать папку
-                                    </button>
-                                </div>
-
-                                <div
-                                    v-if="folderModalOpen"
-                                    class="media-library-modal__folder-panel"
+                        <div
+                            class="media-library-modal__content"
+                            :class="{ 'has-sidebar': selectedFile }"
+                        >
+                            <div
+                                v-if="activeTab === 'library'"
+                                ref="mainPanelRef"
+                                class="media-library-modal__main"
+                                @dragenter="handleMainDragEnter"
+                                @dragover="handleMainDragOver"
+                                @dragleave="handleMainDragLeave"
+                                @drop="handleMainDrop"
+                            >
+                                <section
+                                    class="media-library-modal__section media-library-modal__section--folders"
                                 >
-                                    <div
-                                        class="media-library-modal__folder-panel-head"
-                                    >
-                                        <div>
-                                            <p class="eyebrow">Folder</p>
-                                            <strong>Создать папку</strong>
-                                        </div>
+                                    <div class="page-editor-section__header">
+                                        <h3 class="title-tooltip">
+                                            Папки
 
+                                            <Icon
+                                                name="info"
+                                                width="16"
+                                                height="16"
+                                            /><span>
+                                                Сначала структура: выберите
+                                                нужную папку, затем переходите к
+                                                файлам.
+                                            </span>
+                                        </h3>
                                         <button
                                             type="button"
-                                            class="button-link"
-                                            :disabled="saving"
-                                            @click="closeCreateFolderModal"
+                                            class="button-base media-library-modal__section-button"
+                                            @click="openCreateFolderModal"
                                         >
-                                            Отмена
+                                            <Icon
+                                                name="new"
+                                                width="18"
+                                                height="18"
+                                            />
+                                            Создать папку
                                         </button>
                                     </div>
 
-                                    <form
-                                        class="admin-form-stack"
-                                        @submit.prevent="
-                                            submitCreateFolderModal
-                                        "
+                                    <div
+                                        v-if="folderModalOpen"
+                                        class="media-library-modal__folder-panel"
                                     >
-                                        <label class="admin-form-label">
-                                            <span>Название папки</span>
-                                            <input
-                                                v-model="folderForm.name"
-                                                class="admin-input"
-                                                type="text"
-                                                placeholder="Например, Баннеры"
-                                            />
-                                            <small
-                                                v-if="createErrors.name"
-                                                class="error-text"
-                                                >{{
-                                                    createErrors.name[0]
-                                                }}</small
-                                            >
-                                        </label>
-
-                                        <label class="admin-form-label">
-                                            <span>Slug</span>
-                                            <input
-                                                v-model="folderForm.slug"
-                                                class="admin-input"
-                                                type="text"
-                                                placeholder="bannery"
-                                                @input="markFolderSlugTouched"
-                                            />
-                                            <small
-                                                v-if="createErrors.slug"
-                                                class="error-text"
-                                                >{{
-                                                    createErrors.slug[0]
-                                                }}</small
-                                            >
-                                        </label>
-
-                                        <p
-                                            class="muted media-library-modal__folder-hint"
+                                        <div
+                                            class="media-library-modal__folder-panel-head"
                                         >
-                                            Родительская папка:
-                                            {{ currentFolder?.path || "media" }}
-                                        </p>
+                                            <p>
+                                                <strong>Создать папку</strong>
+                                            </p>
 
-                                        <div class="admin-actions-row">
-                                            <AdminButton
-                                                type="submit"
-                                                variant="primary"
-                                                :disabled="saving"
-                                            >
-                                                {{
-                                                    saving
-                                                        ? "Создание..."
-                                                        : "Создать"
-                                                }}
-                                            </AdminButton>
                                             <button
                                                 type="button"
-                                                class="button-link"
+                                                class="button-base button-close"
                                                 :disabled="saving"
                                                 @click="closeCreateFolderModal"
                                             >
-                                                Отмена
+                                                <Icon
+                                                    name="close"
+                                                    width="22"
+                                                    height="22"
+                                                />
                                             </button>
                                         </div>
-                                    </form>
-                                </div>
 
-                                <MediaFolders
-                                    :breadcrumbs="breadcrumbs"
-                                    :folders="folders"
-                                    :folder-options="folderOptions"
-                                    :current-folder="currentFolder"
-                                    :create-errors="createErrors"
-                                    :busy="saving"
-                                    :show-create="false"
-                                    @open-root="openRoot"
-                                    @open-folder="openFolder"
-                                    @rename-folder="renameFolder"
-                                    @delete-folder="removeFolder"
-                                />
-                            </section>
-
-                            <p v-if="loading" class="muted">
-                                Загрузка медиатеки...
-                            </p>
-                            <p v-else-if="errorMessage" class="error-text">
-                                {{ errorMessage }}
-                            </p>
-                            <p v-else-if="noticeMessage" class="muted">
-                                {{ noticeMessage }}
-                            </p>
-
-                            <MediaGrid
-                                v-if="hasFiles"
-                                :files="filteredFiles"
-                                :selected-ids="selectedIdsState"
-                                :accent-ids="recentUploadIds"
-                                @select="handleFileClick"
-                                @remove-upload="removeUploadItem"
-                            />
-
-                            <div
-                                v-if="hasFiles"
-                                class="media-library-modal__selection-actions"
-                            >
-                                <button
-                                    type="button"
-                                    class="button-base button-primary"
-                                    :disabled="!selectedFile && !multiple"
-                                    @click="submitSelection"
-                                >
-                                    {{
-                                        multiple
-                                            ? `Выбрать (${selectedIdsState.length})`
-                                            : "Выбрать"
-                                    }}
-                                </button>
-                            </div>
-
-                            <p v-else-if="!loading" class="muted">
-                                В текущей папке пока нет изображений.
-                            </p>
-
-                            <transition name="media-drag-overlay">
-                                <div
-                                    v-if="dragOverlayVisible"
-                                    class="media-library-modal__drag-overlay"
-                                >
-                                    <div class="media-library-modal__drag-card">
-                                        <strong
-                                            >Отпустите файлы, чтобы добавить в
-                                            медиатеку</strong
+                                        <form
+                                            class="admin-form-stack"
+                                            @submit.prevent="
+                                                submitCreateFolderModal
+                                            "
                                         >
-                                        <span
-                                            >Файлы сразу появятся в текущей
-                                            сетке и начнут загружаться.</span
-                                        >
+                                            <label
+                                                class="admin-form-label name-folder"
+                                                data-label="Название папки:"
+                                            >
+                                                <input
+                                                    v-model="folderForm.name"
+                                                    class="admin-input"
+                                                    type="text"
+                                                    placeholder="Например, Баннеры"
+                                                />
+                                                <small
+                                                    v-if="createErrors.name"
+                                                    class="error-text"
+                                                    >{{
+                                                        createErrors.name[0]
+                                                    }}</small
+                                                >
+                                            </label>
+
+                                            <label
+                                                class="admin-form-label slug"
+                                                data-label="Slug:"
+                                            >
+                                                <input
+                                                    v-model="folderForm.slug"
+                                                    class="admin-input"
+                                                    type="text"
+                                                    placeholder="bannery"
+                                                    @input="
+                                                        markFolderSlugTouched
+                                                    "
+                                                />
+                                                <small
+                                                    v-if="createErrors.slug"
+                                                    class="error-text"
+                                                    >{{
+                                                        createErrors.slug[0]
+                                                    }}</small
+                                                >
+                                            </label>
+
+                                            <p
+                                                class="muted media-library-modal__folder-hint"
+                                            >
+                                                Родительская папка:
+                                                {{
+                                                    currentFolder?.path ||
+                                                    "media"
+                                                }}
+                                            </p>
+
+                                            <div class="button-block">
+                                                <AdminButton
+                                                    type="submit"
+                                                    variant="primary"
+                                                    :disabled="saving"
+                                                >
+                                                    <Icon
+                                                        name="create"
+                                                        width="22"
+                                                        height="22"
+                                                    />
+                                                    {{
+                                                        saving
+                                                            ? "Создание..."
+                                                            : "Создать"
+                                                    }}
+                                                </AdminButton>
+                                            </div>
+                                        </form>
                                     </div>
-                                </div>
-                            </transition>
-                        </div>
 
-                        <div v-else class="media-library-modal__editor">
-                            <div
-                                class="media-library-modal__editor-stage-shell"
-                            >
-                                <div
-                                    ref="transformStageRef"
-                                    class="media-library-modal__editor-stage"
-                                >
-                                    <img
-                                        :src="selectedFile.url"
-                                        :alt="
-                                            selectedFile.alt_text ||
-                                            selectedFile.original_name
-                                        "
-                                        draggable="false"
+                                    <MediaFolders
+                                        :breadcrumbs="breadcrumbs"
+                                        :folders="folders"
+                                        :folder-options="folderOptions"
+                                        :current-folder="currentFolder"
+                                        :create-errors="createErrors"
+                                        :busy="saving"
+                                        :show-create="false"
+                                        @open-root="openRoot"
+                                        @open-folder="openFolder"
+                                        @rename-folder="renameFolder"
+                                        @delete-folder="removeFolder"
                                     />
+                                </section>
 
-                                    <div
-                                        v-if="
-                                            transformTool === 'crop' &&
-                                            transformForm.crop_enabled &&
-                                            canTransformSelectedFile
-                                        "
-                                        class="media-library-modal__crop-box"
-                                        :style="transformCropStyle"
-                                        @pointerdown.prevent="
-                                            startTransformDrag('move', $event)
-                                        "
-                                    >
-                                        <button
+                                <section class="media-library-modal__toolbar">
+                                    <label class="media-library-modal__search">
+                                        <Icon
+                                            name="search"
+                                            width="18"
+                                            height="18"
+                                        />
+                                        <input
+                                            v-model="searchQuery"
+                                            class="admin-input"
+                                            type="search"
+                                            placeholder="Название файла, alt, mime-type, папка"
+                                        />
+                                    </label>
+
+                                    <div class="media-library-modal__actions">
+                                        <div class="media-library-modal__stat">
+                                            <strong>{{
+                                                filteredFiles.length
+                                            }}</strong>
+                                            <span>файлов в текущем списке</span>
+                                        </div>
+
+                                        <AdminButton
+                                            v-if="allowUpload"
                                             type="button"
-                                            class="media-library-modal__crop-handle is-nw"
-                                            @pointerdown.stop.prevent="
-                                                startTransformDrag('nw', $event)
-                                            "
-                                        ></button>
-                                        <button
-                                            type="button"
-                                            class="media-library-modal__crop-handle is-ne"
-                                            @pointerdown.stop.prevent="
-                                                startTransformDrag('ne', $event)
-                                            "
-                                        ></button>
-                                        <button
-                                            type="button"
-                                            class="media-library-modal__crop-handle is-se"
-                                            @pointerdown.stop.prevent="
-                                                startTransformDrag('se', $event)
-                                            "
-                                        ></button>
-                                        <button
-                                            type="button"
-                                            class="media-library-modal__crop-handle is-sw"
-                                            @pointerdown.stop.prevent="
-                                                startTransformDrag('sw', $event)
-                                            "
-                                        ></button>
+                                            @click="openUploadDialog"
+                                        >
+                                            <Icon
+                                                name="download"
+                                                width="18"
+                                                height="18"
+                                            />Загрузить файлы
+                                        </AdminButton>
                                     </div>
-                                </div>
-                            </div>
+                                </section>
 
-                            <div class="media-library-modal__tool-switcher">
-                                <button
-                                    type="button"
-                                    class="media-library-modal__tool-button"
-                                    :class="{
-                                        'is-active': transformTool === 'crop',
-                                    }"
-                                    @click="toggleTransformTool('crop')"
-                                >
-                                    Кадрировать
-                                </button>
-                                <button
-                                    type="button"
-                                    class="media-library-modal__tool-button"
-                                    :class="{
-                                        'is-active': transformTool === 'resize',
-                                    }"
-                                    @click="toggleTransformTool('resize')"
-                                >
-                                    Размер
-                                </button>
-                                <button
-                                    type="button"
-                                    class="media-library-modal__tool-button"
-                                    :class="{
-                                        'is-active': transformTool === 'format',
-                                    }"
-                                    @click="toggleTransformTool('format')"
-                                >
-                                    Формат
-                                </button>
-                                <button
-                                    type="button"
-                                    class="media-library-modal__tool-button"
-                                    :class="{
-                                        'is-active':
-                                            transformTool === 'quality',
-                                    }"
-                                    @click="toggleTransformTool('quality')"
-                                >
-                                    Качество
-                                </button>
-                            </div>
-
-                            <div
-                                v-if="transformTool"
-                                class="admin-form-stack media-library-modal__tool-panel"
-                            >
-                                <p
-                                    v-if="transformTool === 'crop'"
-                                    class="muted"
-                                >
-                                    Тяните рамку мышкой за область или уголки,
-                                    чтобы обрезать изображение прямо в этой
-                                    модалке.
+                                <p v-if="loading" class="muted">
+                                    Загрузка медиатеки...
+                                </p>
+                                <p v-else-if="errorMessage" class="error-text">
+                                    {{ errorMessage }}
+                                </p>
+                                <p v-else-if="noticeMessage" class="muted">
+                                    {{ noticeMessage }}
                                 </p>
 
-                                <label
-                                    v-if="transformTool === 'crop'"
-                                    class="admin-form-label"
-                                >
-                                    <span
-                                        ><input
-                                            v-model="transformForm.crop_enabled"
-                                            type="checkbox"
-                                        />
-                                        Включить кадрирование</span
-                                    >
-                                </label>
+                                <MediaGrid
+                                    v-if="hasFilteredFiles"
+                                    :files="filteredFiles"
+                                    :selected-ids="selectedIdsState"
+                                    :accent-ids="recentUploadIds"
+                                    @select="handleFileClick"
+                                    @remove-upload="removeUploadItem"
+                                />
 
-                                <template v-if="transformTool === 'resize'">
-                                    <label class="admin-form-label">
+                                <p
+                                    v-else-if="
+                                        isSearching && hasAnyFilesInFolder
+                                    "
+                                    class="text-center"
+                                >
+                                    Ничего не найдено по запросу "{{
+                                        searchQuery
+                                    }}"
+                                </p>
+
+                                <p
+                                    v-else-if="!hasAnyFilesInFolder && !loading"
+                                    class="text-center"
+                                >
+                                    В текущей папке пока нет изображений.
+                                </p>
+
+                                <transition name="media-drag-overlay">
+                                    <div
+                                        v-if="dragOverlayVisible"
+                                        class="media-library-modal__drag-overlay"
+                                    >
+                                        <div
+                                            class="media-library-modal__drag-card"
+                                        >
+                                            <strong
+                                                >Отпустите файлы, чтобы добавить
+                                                в медиатеку</strong
+                                            >
+                                            <span
+                                                >Файлы сразу появятся в текущей
+                                                сетке и начнут
+                                                загружаться.</span
+                                            >
+                                        </div>
+                                    </div>
+                                </transition>
+                            </div>
+
+                            <div v-else class="media-library-modal__editor">
+                                <div
+                                    class="media-library-modal__editor-stage-shell"
+                                >
+                                    <div
+                                        ref="transformStageRef"
+                                        class="media-library-modal__editor-stage"
+                                    >
+                                        <img
+                                            :src="selectedFile.url"
+                                            :alt="
+                                                selectedFile.alt_text ||
+                                                selectedFile.original_name
+                                            "
+                                            draggable="false"
+                                        />
+
+                                        <div
+                                            v-if="
+                                                transformTool === 'crop' &&
+                                                transformForm.crop_enabled &&
+                                                canTransformSelectedFile
+                                            "
+                                            class="media-library-modal__crop-box"
+                                            :style="transformCropStyle"
+                                            @pointerdown.prevent="
+                                                startTransformDrag(
+                                                    'move',
+                                                    $event,
+                                                )
+                                            "
+                                        >
+                                            <button
+                                                type="button"
+                                                class="media-library-modal__crop-handle is-nw"
+                                                @pointerdown.stop.prevent="
+                                                    startTransformDrag(
+                                                        'nw',
+                                                        $event,
+                                                    )
+                                                "
+                                            ></button>
+                                            <button
+                                                type="button"
+                                                class="media-library-modal__crop-handle is-ne"
+                                                @pointerdown.stop.prevent="
+                                                    startTransformDrag(
+                                                        'ne',
+                                                        $event,
+                                                    )
+                                                "
+                                            ></button>
+                                            <button
+                                                type="button"
+                                                class="media-library-modal__crop-handle is-se"
+                                                @pointerdown.stop.prevent="
+                                                    startTransformDrag(
+                                                        'se',
+                                                        $event,
+                                                    )
+                                                "
+                                            ></button>
+                                            <button
+                                                type="button"
+                                                class="media-library-modal__crop-handle is-sw"
+                                                @pointerdown.stop.prevent="
+                                                    startTransformDrag(
+                                                        'sw',
+                                                        $event,
+                                                    )
+                                                "
+                                            ></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="media-library-modal__tool-switcher">
+                                    <button
+                                        type="button"
+                                        class="media-library-modal__tool-button"
+                                        :class="{
+                                            'is-active':
+                                                transformTool === 'crop',
+                                        }"
+                                        @click="toggleTransformTool('crop')"
+                                    >
+                                        Кадрировать
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="media-library-modal__tool-button"
+                                        :class="{
+                                            'is-active':
+                                                transformTool === 'resize',
+                                        }"
+                                        @click="toggleTransformTool('resize')"
+                                    >
+                                        Размер
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="media-library-modal__tool-button"
+                                        :class="{
+                                            'is-active':
+                                                transformTool === 'format',
+                                        }"
+                                        @click="toggleTransformTool('format')"
+                                    >
+                                        Формат
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="media-library-modal__tool-button"
+                                        :class="{
+                                            'is-active':
+                                                transformTool === 'quality',
+                                        }"
+                                        @click="toggleTransformTool('quality')"
+                                    >
+                                        Качество
+                                    </button>
+                                </div>
+
+                                <div
+                                    v-if="transformTool"
+                                    class="admin-form-stack media-library-modal__tool-panel"
+                                >
+                                    <p
+                                        v-if="transformTool === 'crop'"
+                                        class="muted"
+                                    >
+                                        Тяните рамку мышкой за область или
+                                        уголки, чтобы обрезать изображение прямо
+                                        в этой модалке.
+                                    </p>
+
+                                    <label
+                                        v-if="transformTool === 'crop'"
+                                        class="admin-form-label"
+                                    >
                                         <span
                                             ><input
                                                 v-model="
-                                                    transformForm.maintain_aspect_ratio
+                                                    transformForm.crop_enabled
                                                 "
                                                 type="checkbox"
                                             />
-                                            Сохранять пропорции</span
+                                            Включить кадрирование</span
                                         >
                                     </label>
 
-                                    <div
-                                        class="media-library-modal__editor-grid"
-                                    >
+                                    <template v-if="transformTool === 'resize'">
                                         <label class="admin-form-label">
-                                            <span>Ширина</span>
-                                            <input
-                                                v-model.number="
-                                                    transformForm.resize_width
-                                                "
-                                                class="admin-input"
-                                                type="number"
-                                                min="1"
-                                                step="1"
-                                                @input="handleResizeWidthInput"
-                                            />
+                                            <span
+                                                ><input
+                                                    v-model="
+                                                        transformForm.maintain_aspect_ratio
+                                                    "
+                                                    type="checkbox"
+                                                />
+                                                Сохранять пропорции</span
+                                            >
                                         </label>
 
-                                        <label class="admin-form-label">
-                                            <span>Высота</span>
-                                            <input
-                                                v-model.number="
-                                                    transformForm.resize_height
-                                                "
-                                                class="admin-input"
-                                                type="number"
-                                                min="1"
-                                                step="1"
-                                                @input="handleResizeHeightInput"
-                                            />
-                                        </label>
-                                    </div>
-                                </template>
-
-                                <label
-                                    v-if="transformTool === 'format'"
-                                    class="admin-form-label"
-                                >
-                                    <span>Формат</span>
-                                    <select
-                                        v-model="transformForm.format"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="option in transformFormatOptions"
-                                            :key="option.value"
-                                            :value="option.value"
+                                        <div
+                                            class="media-library-modal__editor-grid"
                                         >
-                                            {{ option.label }}
-                                        </option>
-                                    </select>
-                                </label>
+                                            <label class="admin-form-label">
+                                                <span>Ширина</span>
+                                                <input
+                                                    v-model.number="
+                                                        transformForm.resize_width
+                                                    "
+                                                    class="admin-input"
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    @input="
+                                                        handleResizeWidthInput
+                                                    "
+                                                />
+                                            </label>
 
-                                <label
-                                    v-if="transformTool === 'quality'"
-                                    class="admin-form-label"
-                                >
-                                    <span>Качество</span>
-                                    <input
-                                        v-model.number="transformForm.quality"
-                                        class="admin-input"
-                                        type="number"
-                                        min="30"
-                                        max="100"
-                                        step="1"
-                                        placeholder="По умолчанию из настроек"
-                                    />
-                                </label>
+                                            <label class="admin-form-label">
+                                                <span>Высота</span>
+                                                <input
+                                                    v-model.number="
+                                                        transformForm.resize_height
+                                                    "
+                                                    class="admin-input"
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    @input="
+                                                        handleResizeHeightInput
+                                                    "
+                                                />
+                                            </label>
+                                        </div>
+                                    </template>
 
-                                <div
-                                    class="admin-actions-row media-library-modal__editor-actions"
-                                >
-                                    <AdminButton
-                                        type="button"
-                                        variant="primary"
-                                        :disabled="transforming"
-                                        @click="applyTransform"
+                                    <label
+                                        v-if="transformTool === 'format'"
+                                        class="admin-form-label"
                                     >
-                                        {{
-                                            transforming
-                                                ? "Обработка..."
-                                                : "Применить изменения"
-                                        }}
-                                    </AdminButton>
-                                    <button
-                                        type="button"
-                                        class="button-link"
-                                        :disabled="transforming"
-                                        @click="setActiveTab('library')"
+                                        <span>Формат</span>
+                                        <select
+                                            v-model="transformForm.format"
+                                            class="admin-select"
+                                        >
+                                            <option
+                                                v-for="option in transformFormatOptions"
+                                                :key="option.value"
+                                                :value="option.value"
+                                            >
+                                                {{ option.label }}
+                                            </option>
+                                        </select>
+                                    </label>
+
+                                    <label
+                                        v-if="transformTool === 'quality'"
+                                        class="admin-form-label"
                                     >
-                                        К библиотеке
-                                    </button>
+                                        <span>Качество</span>
+                                        <input
+                                            v-model.number="
+                                                transformForm.quality
+                                            "
+                                            class="admin-input"
+                                            type="number"
+                                            min="30"
+                                            max="100"
+                                            step="1"
+                                            placeholder="По умолчанию из настроек"
+                                        />
+                                    </label>
+
+                                    <div
+                                        class="admin-actions-row media-library-modal__editor-actions"
+                                    >
+                                        <AdminButton
+                                            type="button"
+                                            variant="primary"
+                                            :disabled="transforming"
+                                            @click="applyTransform"
+                                        >
+                                            {{
+                                                transforming
+                                                    ? "Обработка..."
+                                                    : "Применить изменения"
+                                            }}
+                                        </AdminButton>
+                                        <button
+                                            type="button"
+                                            class="button-link"
+                                            :disabled="transforming"
+                                            @click="setActiveTab('library')"
+                                        >
+                                            К библиотеке
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <MediaSidebar
-                            :file="selectedFile"
-                            :move-folder-options="moveFolderOptions"
-                            :saving="saving"
-                            :editable="canTransformSelectedFile"
-                            :show-facts="true"
-                            :cropped-dimensions="transformSourceDimensions"
-                            :output-dimensions="transformOutputDimensions"
-                            :show-transform-facts="
-                                activeTab === 'edit' && canTransformSelectedFile
-                            "
-                            @close="activeFileId = null"
-                            @edit="openEditorTab"
-                            @save="saveFileMeta"
-                            @select="submitSelection"
-                            @copy-url="copyUrl"
-                            @delete="deleteSelectedFile"
-                            @move-file="moveSelectedFile"
-                        />
+                            <MediaSidebar
+                                :file="selectedFile"
+                                :move-folder-options="moveFolderOptions"
+                                :saving="saving"
+                                :editable="canTransformSelectedFile"
+                                :show-facts="true"
+                                :cropped-dimensions="transformSourceDimensions"
+                                :output-dimensions="transformOutputDimensions"
+                                :show-transform-facts="
+                                    activeTab === 'edit' &&
+                                    canTransformSelectedFile
+                                "
+                                @close="activeFileId = null"
+                                @edit="openEditorTab"
+                                @save="saveFileMeta"
+                                @select="submitSelection"
+                                @copy-url="copyUrl"
+                                @delete="deleteSelectedFile"
+                                @move-file="moveSelectedFile"
+                            />
+                        </div>
+                    </div>
+                </div></div
+        ></transition>
+    </Teleport>
+    <Teleport to="body">
+        <transition name="modal">
+            <div
+                v-if="confirmModal.open"
+                class="admin-modal"
+                @click.self="closeConfirmModal"
+            >
+                <div class="admin-modal__dialog admin-modal__dialog--sm">
+                    <div class="admin-modal__header">
+                        <h2>{{ confirmModal.title }}</h2>
+
+                        <button
+                            type="button"
+                            class="button-base button-close"
+                            @click="closeConfirmModal"
+                        >
+                            <Icon name="close" width="22" height="22" />
+                        </button>
+                    </div>
+
+                    <div class="admin-modal__body">
+                        <p class="text-center">{{ confirmModal.message }}</p>
+
+                        <div class="admin-actions-row admin-modal__footer">
+                            <button
+                                type="button"
+                                class="button-base button-secondary"
+                                @click="closeConfirmModal"
+                            >
+                                Отмена
+                            </button>
+
+                            <AdminButton
+                                type="button"
+                                :variant="confirmModal.confirmVariant"
+                                :disabled="confirmModal.loading"
+                                @click="confirmModalAction"
+                            >
+                                {{
+                                    confirmModal.loading
+                                        ? "Удаление..."
+                                        : confirmModal.confirmText
+                                }}
+                            </AdminButton>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </transition>
     </Teleport>
 </template>
