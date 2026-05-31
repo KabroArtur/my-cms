@@ -15,6 +15,10 @@ p {
     margin-top: 0;
 }
 
+h3 {
+    padding-left: 4px;
+}
+
 button {
     cursor: pointer;
     outline: none;
@@ -109,6 +113,10 @@ select:-webkit-autofill:focus {
     text-align: center;
 }
 
+.text-end {
+    text-align: end;
+}
+
 .description {
     margin-left: 6px;
 }
@@ -179,6 +187,10 @@ select:-webkit-autofill:focus {
     }
 }
 
+.admin-form-stack.pb {
+    padding-bottom: 14px;
+}
+
 .admin-modal .admin-checkbox {
     margin-left: 65px;
 }
@@ -204,6 +216,7 @@ select:-webkit-autofill:focus {
     span {
         position: relative;
         padding-left: 28px;
+        margin-left: 2px;
 
         &::before {
             content: "";
@@ -426,4 +439,8 @@ p.title-tooltip {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.mt-16 {
+    margin-top: 16px;
 }

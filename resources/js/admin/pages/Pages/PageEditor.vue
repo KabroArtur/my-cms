@@ -808,7 +808,8 @@ onBeforeUnmount(() => {
                                     {{ validationErrors.slug[0] }}
                                 </small>
                                 <small class="page-editor__full-url"
-                                    >Полный адрес: {{ publicUrl }}</small
+                                    >Полный адрес:
+                                    <strong>{{ publicUrl }}</strong></small
                                 >
                             </div>
 

@@ -62,7 +62,9 @@ onBeforeUnmount(() => {
                 {{ selectedOption?.label || placeholder }}
             </span>
 
-            <Icon name="arrow-down" width="20" height="20" />
+            <span class="arrow" :class="{ open }">
+                <Icon name="arrow-down" width="20" height="20" />
+            </span>
         </button>
 
         <transition name="select">

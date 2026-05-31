@@ -169,7 +169,7 @@ onMounted(loadPlugins);
         <AdminCard>
             <p v-if="loading" class="muted">Загрузка...</p>
 
-            <table v-else class="table">
+            <table v-else class="table plugins">
                 <thead>
                     <tr>
                         <th>

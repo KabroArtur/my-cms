@@ -6,6 +6,10 @@ import MediaPickerField from "../../components/media/MediaPickerField.vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import AdminSelect from "../../components/ui/AdminSelect.vue";
+import AdminCheckbox from "../../components/ui/AdminCheckbox.vue";
+import Icon from "../../components/ui/Icon.vue";
+import AdminModal from "../../components/ui/AdminModal.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import {
     clearCmsCache,
@@ -31,6 +35,8 @@ const canManageSecurity = ref(false);
 const canManageSeo = computed(() => canManageGeneral.value);
 const languages = ref([]);
 const editingLanguageId = ref(null);
+const deleteLanguageModal = ref(false);
+const languageToDelete = ref(null);
 const defaultLanguage = computed(
     () => languages.value.find((language) => language.is_default) ?? null,
 );
@@ -576,30 +582,71 @@ async function submitLanguageForm() {
     }
 }
 
-async function removeLanguage(language) {
-    const confirmed = window.confirm(`Удалить язык "${language.native_name}"?`);
-
-    if (!confirmed) {
+function askRemoveLanguage(language) {
+    if (language.is_default) {
+        notifyError("Нельзя удалить основной язык.");
         return;
     }
+
+    languageToDelete.value = language;
+    deleteLanguageModal.value = true;
+}
+
+async function confirmRemoveLanguage() {
+    if (!languageToDelete.value) return;
 
     errorMessage.value = "";
 
     try {
-        const payload = await deleteLanguage(language.id);
-        notifySuccess(payload.message ?? "Язык удален.");
+        await deleteLanguage(languageToDelete.value.id);
+
+        notifySuccess("Язык успешно удалён.");
+
+        deleteLanguageModal.value = false;
+        languageToDelete.value = null;
+
         await loadSettings();
     } catch (error) {
-        errorMessage.value =
+        const msg =
             error.response?.data?.message ??
             Object.values(error.response?.data?.errors ?? {})?.flat?.()[0] ??
             "Не удалось удалить язык.";
-        notifyError(errorMessage.value);
-        console.error(error);
+
+        errorMessage.value = msg;
+        notifyError(msg);
+
+        console.error(error.response ?? error);
     }
 }
 
 onMounted(loadSettings);
+
+function languageLabel(language) {
+    return `${language.native_name} (${language.code}${
+        language.is_default ? ", основной язык" : ""
+    })`;
+}
+
+function measureText(text) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const style = getComputedStyle(document.body);
+
+    ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+
+    return ctx.measureText(text).width;
+}
+
+function measureLanguageWidth(language) {
+    let width = measureText(languageLabel(language));
+
+    if (language.is_default) {
+        width += 10;
+    }
+
+    return Math.ceil(width);
+}
 </script>
 
 <template>
@@ -610,19 +657,22 @@ onMounted(loadSettings);
             <RouterLink
                 v-if="canManageAdditionalFields"
                 :to="{ name: 'content-structure' }"
-                class="button-link"
+                class="button-base"
             >
-                Структура контента
+                <Icon name="structure" width="18" height="18" />Структура
+                контента
             </RouterLink>
         </template>
 
         <section class="admin-page-grid">
             <AdminCard>
-                <p v-if="loading" class="muted">Загрузка настроек...</p>
+                <p v-if="loading" class="muted text-center">
+                    Загрузка настроек...
+                </p>
 
                 <form
                     v-else
-                    class="admin-form-stack"
+                    class="admin-form-stack pb"
                     @submit.prevent="submitForm"
                 >
                     <div class="admin-page-head">
@@ -706,15 +756,17 @@ onMounted(loadSettings);
 
                     <section
                         v-show="activeSettingsTab === 'general'"
-                        class="settings-tab-panel"
+                        class="admin-label-block"
                     >
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Основные параметры сайта
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Основные параметры сайта</h3>
+                            </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label settings-span-2">
-                                    <span>Название сайта</span>
+                                <label
+                                    class="admin-form-label name-site"
+                                    data-label="Название сайта:"
+                                >
                                     <input
                                         v-model="form.site_name"
                                         class="admin-input"
@@ -723,66 +775,65 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Формат даты</span>
-                                    <select
-                                        v-model="form.date_format"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="format in options.date_formats"
-                                            :key="format.value"
-                                            :value="format.value"
-                                        >
-                                            {{ format.label }}
-                                        </option>
-                                    </select>
+                                <label
+                                    class="admin-form-label data"
+                                    data-label="Формат даты:"
+                                >
+                                    <AdminSelect
+                                        :model-value="form.date_format"
+                                        :options="options.date_formats"
+                                        @update:modelValue="
+                                            form.date_format = $event
+                                        "
+                                    />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Формат времени</span>
-                                    <select
-                                        v-model="form.time_format"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="format in options.time_formats"
-                                            :key="format.value"
-                                            :value="format.value"
-                                        >
-                                            {{ format.label }}
-                                        </option>
-                                    </select>
+                                <label
+                                    class="admin-form-label time"
+                                    data-label="Формат времени:"
+                                >
+                                    <AdminSelect
+                                        :model-value="form.time_format"
+                                        :options="options.time_formats"
+                                        @update:modelValue="
+                                            form.time_format = $event
+                                        "
+                                    />
                                 </label>
                             </div>
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Тема и оформление сайта
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Тема и оформление сайта</h3>
+                            </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label settings-span-2">
-                                    <span>Тема сайта</span>
-                                    <select
-                                        v-model="form.site_theme"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="theme in options.themes"
-                                            :key="theme.value"
-                                            :value="theme.value"
-                                        >
-                                            {{ theme.label }}
-                                        </option>
-                                    </select>
-                                    <small class="muted">{{
-                                        options.themes.find(
-                                            (theme) =>
-                                                theme.value === form.site_theme,
-                                        )?.description ||
-                                        "Выбирает blade-тему публичного сайта."
-                                    }}</small>
+                                <label
+                                    class="admin-form-label topic"
+                                    data-label="Тема сайта:"
+                                >
+                                    <AdminSelect
+                                        :model-value="form.site_theme"
+                                        :options="options.themes"
+                                        @update:modelValue="
+                                            form.site_theme = $event
+                                        "
+                                    />
+
+                                    <p class="title-tooltip">
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        /><span>{{
+                                            options.themes.find(
+                                                (theme) =>
+                                                    theme.value ===
+                                                    form.site_theme,
+                                            )?.description ||
+                                            "Выбирает blade-тему публичного сайта."
+                                        }}</span>
+                                    </p>
                                 </label>
                             </div>
                         </div>
@@ -790,14 +841,14 @@ onMounted(loadSettings);
 
                     <section
                         v-show="activeSettingsTab === 'appearance'"
-                        class="settings-tab-panel"
+                        class="settings-tab-panel admin-label-block"
                     >
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Медиа и визуальная идентика
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Медиа и визуальная идентика</h3>
+                            </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label settings-span-2">
+                                <label class="admin-form-label">
                                     <span>Favicon сайта</span>
                                     <MediaPickerField
                                         v-model="form.favicon_media_id"
@@ -812,7 +863,7 @@ onMounted(loadSettings);
                                     >
                                 </label>
 
-                                <label class="admin-form-label settings-span-2">
+                                <label class="admin-form-label">
                                     <span>Общая обложка сайта</span>
                                     <MediaPickerField
                                         v-model="
@@ -873,9 +924,9 @@ onMounted(loadSettings);
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Оформление админки
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Оформление админки</h3>
+                            </div>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span>Режим темы админки</span>
@@ -928,9 +979,9 @@ onMounted(loadSettings);
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Обработка изображений
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Обработка изображений</h3>
+                            </div>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span
@@ -1052,9 +1103,9 @@ onMounted(loadSettings);
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Ассеты темы (CSS/JS)
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Ассеты темы (CSS/JS)</h3>
+                            </div>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span
@@ -1164,15 +1215,17 @@ onMounted(loadSettings);
 
                     <section
                         v-show="activeSettingsTab === 'languages'"
-                        class="settings-tab-panel"
+                        class="settings-tab-panel admin-label-block"
                     >
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Языки сайта
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Языки сайта</h3>
+                            </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span>Название</span>
+                                <label
+                                    class="admin-form-label language"
+                                    data-label="Название:"
+                                >
                                     <input
                                         v-model="languageForm.name"
                                         class="admin-input"
@@ -1181,8 +1234,10 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Нативное название</span>
+                                <label
+                                    class="admin-form-label native"
+                                    data-label="Нативное название:"
+                                >
                                     <input
                                         v-model="languageForm.native_name"
                                         class="admin-input"
@@ -1191,8 +1246,10 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Код языка</span>
+                                <label
+                                    class="admin-form-label code"
+                                    data-label="Код языка:"
+                                >
                                     <input
                                         v-model="languageForm.code"
                                         class="admin-input"
@@ -1201,8 +1258,10 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Locale</span>
+                                <label
+                                    class="admin-form-label locale"
+                                    data-label="Locale:"
+                                >
                                     <input
                                         v-model="languageForm.locale"
                                         class="admin-input"
@@ -1211,25 +1270,25 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Направление текста</span>
-                                    <select
-                                        v-model="languageForm.direction"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="direction in options.language_directions ||
-                                            []"
-                                            :key="direction.value"
-                                            :value="direction.value"
-                                        >
-                                            {{ direction.label }}
-                                        </option>
-                                    </select>
+                                <label
+                                    class="admin-form-label direction"
+                                    data-label="Направление текста:"
+                                >
+                                    <AdminSelect
+                                        :model-value="languageForm.direction"
+                                        :options="
+                                            options.language_directions || []
+                                        "
+                                        @update:modelValue="
+                                            languageForm.direction = $event
+                                        "
+                                    />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Порядок сортировки</span>
+                                <label
+                                    class="admin-form-label sort-order"
+                                    data-label="Порядок сортировки:"
+                                >
                                     <input
                                         v-model.number="languageForm.sort_order"
                                         class="admin-input"
@@ -1240,98 +1299,107 @@ onMounted(loadSettings);
                                 </label>
 
                                 <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="languageForm.is_active"
-                                            type="checkbox"
-                                        />
-                                        Активный язык</span
+                                    <AdminCheckbox
+                                        :model-value="languageForm.is_active"
+                                        @update:modelValue="
+                                            languageForm.is_active = $event
+                                        "
                                     >
+                                        Активный язык
+                                    </AdminCheckbox>
                                 </label>
-                            </div>
+                                <div class="flex-end">
+                                    <AdminButton
+                                        type="button"
+                                        @click="submitLanguageForm"
+                                    >
+                                        <Icon
+                                            :name="
+                                                editingLanguageId
+                                                    ? 'save'
+                                                    : 'new'
+                                            "
+                                            width="18"
+                                            height="18"
+                                        />
 
-                            <div class="admin-actions-row">
-                                <AdminButton
-                                    type="button"
-                                    @click="submitLanguageForm"
-                                >
-                                    {{
-                                        editingLanguageId
-                                            ? "Сохранить язык"
-                                            : "Добавить язык"
-                                    }}
-                                </AdminButton>
-                                <AdminButton
-                                    v-if="editingLanguageId"
-                                    type="button"
-                                    @click="resetLanguageForm"
-                                >
-                                    Отменить редактирование
-                                </AdminButton>
+                                        {{
+                                            editingLanguageId
+                                                ? "Сохранить язык"
+                                                : "Добавить язык"
+                                        }}
+                                    </AdminButton>
+                                    <AdminButton
+                                        v-if="editingLanguageId"
+                                        type="button"
+                                        @click="resetLanguageForm"
+                                        class="button-danger"
+                                    >
+                                        <Icon
+                                            name="cancel"
+                                            width="18"
+                                            height="18"
+                                        />
+                                        Отменить редактирование
+                                    </AdminButton>
+                                </div>
                             </div>
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Маршрутизация и главные страницы по языкам
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <p class="title-tooltip">
+                                    Маршрутизация и главные страницы по языкам
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span
+                                        >Для default-языка главная живет на `/`,
+                                        для остальных используется код языка:
+                                        например `/ua/`, `/en/` и т.д.</span
+                                    >
+                                </p>
+                            </div>
                             <label class="admin-form-label">
-                                <span>Главные страницы по языкам</span>
-                                <div class="admin-stack">
+                                <div class="page-meta-grid">
                                     <label
                                         v-for="language in languages"
                                         :key="language.id"
-                                        class="admin-form-label"
+                                        class="admin-form-label language-homepage"
+                                        :data-label="languageLabel(language)"
+                                        :style="{
+                                            '--label-width': `${measureLanguageWidth(language)}px`,
+                                        }"
                                     >
-                                        <span
-                                            >{{ language.native_name }}
-                                            <small class="muted"
-                                                >({{ language.code
-                                                }}{{
-                                                    language.is_default
-                                                        ? ", основной язык"
-                                                        : ""
-                                                }})</small
-                                            ></span
-                                        >
-                                        <select
-                                            v-model="
+                                        <AdminSelect
+                                            :model-value="
                                                 form.home_page_ids[language.id]
                                             "
-                                            class="admin-select"
-                                        >
-                                            <option value="">Автовыбор</option>
-                                            <option
-                                                v-for="page in homePageOptionsForLanguage(
+                                            :options="[
+                                                {
+                                                    label: 'Автовыбор',
+                                                    value: '',
+                                                },
+                                                ...homePageOptionsForLanguage(
                                                     language.id,
-                                                )"
-                                                :key="page.value"
-                                                :value="page.value"
-                                            >
-                                                {{ page.label
-                                                }}{{
-                                                    page.path
-                                                        ? ` (/${page.path})`
-                                                        : language.is_default
-                                                          ? " (/)"
-                                                          : ` (/${language.code})`
-                                                }}
-                                            </option>
-                                        </select>
+                                                ),
+                                            ]"
+                                            @update:modelValue="
+                                                form.home_page_ids[
+                                                    language.id
+                                                ] = $event
+                                            "
+                                        />
                                     </label>
                                 </div>
-                                <small class="muted"
-                                    >Для default-языка главная живет на `/`, для
-                                    остальных используется код языка: например
-                                    `/ua/`, `/en/` и т.д.</small
-                                >
                             </label>
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Список языков
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Список языков</h3>
+                            </div>
                             <p v-if="languages.length === 0" class="muted">
                                 Языки пока не добавлены.
                             </p>
@@ -1339,62 +1407,88 @@ onMounted(loadSettings);
                                 <article
                                     v-for="language in languages"
                                     :key="language.id"
-                                    class="page-trash-card"
+                                    class="page-trash-card settings"
                                 >
-                                    <div>
+                                    <div class="cell-page">
                                         <h3>
                                             {{ language.native_name }}
-                                            <span class="muted"
-                                                >({{ language.code }})</span
-                                            >
+                                            <span>({{ language.code }})</span>
                                         </h3>
-                                        <p class="muted">
+                                        <p>
                                             {{ language.name }} |
                                             {{ language.locale }} |
                                             {{ language.direction }} | sort
                                             {{ language.sort_order }}
                                         </p>
-                                        <p class="muted">
-                                            {{
-                                                language.is_default
-                                                    ? "По умолчанию"
-                                                    : "Не по умолчанию"
-                                            }}
-                                            |
-                                            {{
-                                                language.is_active
-                                                    ? "Активный"
-                                                    : "Выключен"
-                                            }}
+                                        <p class="plugin-status">
+                                            <small>
+                                                {{
+                                                    language.is_default
+                                                        ? "По умолчанию"
+                                                        : "Не по умолчанию"
+                                                }}
+                                                |</small
+                                            >
+                                            <span
+                                                class="plugin-status-badge"
+                                                :class="
+                                                    language.is_active
+                                                        ? 'is-enabled'
+                                                        : 'is-disabled'
+                                                "
+                                            >
+                                                {{
+                                                    language.is_active
+                                                        ? "Активен"
+                                                        : "Выключен"
+                                                }}
+                                            </span>
                                         </p>
                                     </div>
 
-                                    <div class="admin-actions-row">
+                                    <div class="cell-actions">
                                         <label
                                             class="settings-default-language-toggle"
+                                            :class="{
+                                                active: language.is_default,
+                                            }"
+                                            @click="
+                                                setDefaultLanguage(language)
+                                            "
                                         >
                                             <input
                                                 type="radio"
                                                 name="default-language"
                                                 :checked="language.is_default"
-                                                @change="
-                                                    setDefaultLanguage(language)
-                                                "
                                             />
-                                            <span>Главный</span>
+
+                                            <span class="fake-radio"></span>
+
+                                            <span class="text">Главный</span>
                                         </label>
                                         <AdminButton
                                             type="button"
                                             @click="fillLanguageForm(language)"
+                                            title="Редактировать"
+                                            class="button-link"
                                         >
-                                            Редактировать
+                                            <Icon
+                                                name="pencil"
+                                                width="20"
+                                                height="20"
+                                            />
                                         </AdminButton>
                                         <AdminButton
                                             type="button"
                                             variant="danger"
-                                            @click="removeLanguage(language)"
+                                            @click="askRemoveLanguage(language)"
+                                            title="Удалить"
                                         >
-                                            Удалить
+                                            <Icon
+                                                name="trash"
+                                                width="20"
+                                                height="20"
+                                            />
                                         </AdminButton>
                                     </div>
                                 </article>
@@ -1404,12 +1498,12 @@ onMounted(loadSettings);
 
                     <section
                         v-show="activeSettingsTab === 'seo'"
-                        class="settings-tab-panel"
+                        class="settings-tab-panel admin-label-block"
                     >
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Индексация и базовые meta-правила
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Индексация и базовые meta-правила</h3>
+                            </div>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span
@@ -1489,7 +1583,7 @@ onMounted(loadSettings);
                                     >
                                 </label>
 
-                                <label class="admin-form-label settings-span-2">
+                                <label class="admin-form-label">
                                     <span
                                         >Соцсети, для которых готовить
                                         разметку</span
@@ -1521,9 +1615,9 @@ onMounted(loadSettings);
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Канонический домен и структура URL
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Канонический домен и структура URL</h3>
+                            </div>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span>Основной протокол</span>
@@ -1566,7 +1660,7 @@ onMounted(loadSettings);
                                     >
                                 </label>
 
-                                <label class="admin-form-label settings-span-2">
+                                <label class="admin-form-label">
                                     <span
                                         ><input
                                             v-model="form.seo_trailing_slash"
@@ -1587,9 +1681,9 @@ onMounted(loadSettings);
                         </div>
 
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Sitemap и robots.txt
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Sitemap и robots.txt</h3>
+                            </div>
                             <div class="page-meta-grid">
                                 <label class="admin-form-label">
                                     <span
@@ -1631,13 +1725,13 @@ onMounted(loadSettings);
                                     >
                                 </label>
 
-                                <p class="muted settings-span-2">
+                                <p class="muted">
                                     Sitemap отдает index-файл и при росте
                                     количества страниц автоматически разбивается
                                     на несколько частей.
                                 </p>
 
-                                <label class="admin-form-label settings-span-2">
+                                <label class="admin-form-label">
                                     <span>Исключить пути из sitemap</span>
                                     <textarea
                                         v-model="
@@ -1654,7 +1748,7 @@ onMounted(loadSettings);
                                     >
                                 </label>
 
-                                <label class="admin-form-label settings-span-2">
+                                <label class="admin-form-label">
                                     <span
                                         >Дополнительные правила robots.txt</span
                                     >
@@ -1705,38 +1799,17 @@ onMounted(loadSettings);
 
                     <section
                         v-show="activeSettingsTab === 'cache'"
-                        class="settings-tab-panel"
+                        class="settings-tab-panel admin-label-block"
                     >
-                        <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Кэш сайта и CMS
-                            </p>
+                        <div class="settings-cache-card settings">
+                            <div class="admin-stack__head mb">
+                                <h3>Кэш сайта и CMS</h3>
+                            </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.cache_data_enabled"
-                                            type="checkbox"
-                                        />
-                                        Data cache (модули, настройки,
-                                        вычисления)</span
-                                    >
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.cache_response_enabled
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Full-page cache (готовый HTML)</span
-                                    >
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>TTL full-page cache (сек)</span>
+                                <label
+                                    class="admin-form-label cache"
+                                    data-label="TTL full-page cache (сек):"
+                                >
                                     <input
                                         v-model.number="form.cache_response_ttl"
                                         class="admin-input"
@@ -1745,132 +1818,229 @@ onMounted(loadSettings);
                                         step="1"
                                         :disabled="!form.cache_response_enabled"
                                     />
-                                    <small class="muted"
-                                        >0 = бессрочно, с инвалидацией по
-                                        изменениям контента/настроек.</small
-                                    >
+                                    <p class="title-tooltip">
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        /><span
+                                            >0 = бессрочно, с инвалидацией по
+                                            изменениям контента/настроек.</span
+                                        >
+                                    </p>
                                 </label>
                             </div>
-                            <p class="muted">
-                                Data cache (форма):
-                                {{
-                                    form.cache_data_enabled
-                                        ? "включен"
-                                        : "выключен"
-                                }}
-                                | Full-page (форма):
-                                {{
-                                    form.cache_response_enabled
-                                        ? "включен"
-                                        : "выключен"
-                                }}
-                            </p>
-                            <p class="muted">
-                                Data cache (сервер):
-                                {{
-                                    cacheStats.data_enabled === true
-                                        ? "включен"
-                                        : cacheStats.data_enabled === false
-                                          ? "выключен"
-                                          : "—"
-                                }}
-                                | Full-page (сервер):
-                                {{
-                                    cacheStats.response_enabled === true
-                                        ? "включен"
-                                        : cacheStats.response_enabled === false
-                                          ? "выключен"
-                                          : "—"
-                                }}
-                            </p>
-                            <p class="muted">
-                                Site version:
-                                {{ cacheStats.site_version ?? "—" }} | CMS
-                                version: {{ cacheStats.cms_version ?? "—" }}
-                            </p>
-                            <p class="muted">
-                                Последняя очистка:
-                                {{ cacheStats.last_cleared_at ?? "нет данных" }}
-                            </p>
+                            <div class="cache-grid">
+                                <p class="plugin-status">
+                                    <small> Data cache (форма) | </small>
+
+                                    <span
+                                        class="plugin-status-badge"
+                                        :class="
+                                            form.cache_data_enabled
+                                                ? 'is-enabled'
+                                                : 'is-disabled'
+                                        "
+                                    >
+                                        {{
+                                            form.cache_data_enabled
+                                                ? "включен"
+                                                : "выключен"
+                                        }}
+                                    </span>
+                                </p>
+
+                                <p class="plugin-status">
+                                    <small> Full-page (форма) | </small>
+
+                                    <span
+                                        class="plugin-status-badge"
+                                        :class="
+                                            form.cache_response_enabled
+                                                ? 'is-enabled'
+                                                : 'is-disabled'
+                                        "
+                                    >
+                                        {{
+                                            form.cache_response_enabled
+                                                ? "включен"
+                                                : "выключен"
+                                        }}
+                                    </span>
+                                </p>
+
+                                <p class="plugin-status">
+                                    <small> Data cache (сервер) | </small>
+
+                                    <span
+                                        class="plugin-status-badge"
+                                        :class="
+                                            cacheStats.data_enabled === true
+                                                ? 'is-enabled'
+                                                : cacheStats.data_enabled ===
+                                                    false
+                                                  ? 'is-disabled'
+                                                  : ''
+                                        "
+                                    >
+                                        {{
+                                            cacheStats.data_enabled === true
+                                                ? "включен"
+                                                : cacheStats.data_enabled ===
+                                                    false
+                                                  ? "выключен"
+                                                  : "—"
+                                        }}
+                                    </span>
+                                </p>
+
+                                <p class="plugin-status">
+                                    <small> Full-page (сервер) | </small>
+
+                                    <span
+                                        class="plugin-status-badge"
+                                        :class="
+                                            cacheStats.response_enabled === true
+                                                ? 'is-enabled'
+                                                : cacheStats.response_enabled ===
+                                                    false
+                                                  ? 'is-disabled'
+                                                  : ''
+                                        "
+                                    >
+                                        {{
+                                            cacheStats.response_enabled === true
+                                                ? "включен"
+                                                : cacheStats.response_enabled ===
+                                                    false
+                                                  ? "выключен"
+                                                  : "—"
+                                        }}
+                                    </span>
+                                </p>
+
+                                <p class="plugin-status">
+                                    <small>
+                                        Site version:
+                                        {{ cacheStats.site_version ?? "—" }} |
+                                        CMS version:
+                                        {{ cacheStats.cms_version ?? "—" }}
+                                    </small>
+                                </p>
+                            </div>
+
+                            <div class="page-meta-grid">
+                                <div>
+                                    <AdminCheckbox
+                                        v-model="form.cache_data_enabled"
+                                    >
+                                        Data cache (модули, настройки,
+                                        вычисления)
+                                    </AdminCheckbox>
+
+                                    <AdminCheckbox
+                                        v-model="form.cache_response_enabled"
+                                    >
+                                        Full-page cache (готовый HTML)
+                                    </AdminCheckbox>
+                                </div>
+                                <p class="text-end">
+                                    <strong>Последняя очистка:</strong>
+                                    {{
+                                        cacheStats.last_cleared_at ??
+                                        "нет данных"
+                                    }}
+                                </p>
+                            </div>
                         </div>
                     </section>
 
                     <section
                         v-show="activeSettingsTab === 'security'"
-                        class="settings-tab-panel"
+                        class="settings-tab-panel admin-label-block"
                     >
                         <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Путь входа в админ-панель
-                            </p>
+                            <div class="admin-stack__head mb">
+                                <h3>Путь входа в админ-панель</h3>
+                            </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span>Путь входа в админ-панель</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Путь входа:"
+                                >
                                     <input
                                         v-model.trim="form.admin_entry_path"
-                                        class="admin-input"
+                                        class="admin-input path"
                                         type="text"
                                         placeholder="secure-panel"
                                     />
-                                    <small class="muted"
-                                        >Только латиница, цифры и дефис. Без / и
-                                        без служебных путей вроде api, login,
-                                        storage.</small
-                                    >
-                                    <small class="muted"
-                                        >Итоговая ссылка:
-                                        {{ adminEntryPreviewUrl }}</small
-                                    >
+                                    <p class="title-tooltip">
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        /><span
+                                            >Только латиница, цифры и дефис. Без
+                                            / и без служебных путей вроде api,
+                                            login, storage.</span
+                                        >
+                                    </p>
+                                    <p class="page-editor__full-url">
+                                        Итоговая ссылка:
+                                        <strong>{{
+                                            adminEntryPreviewUrl
+                                        }}</strong>
+                                    </p>
                                 </label>
                             </div>
                         </div>
 
-                        <div class="settings-cache-card">
-                            <p class="settings-cache-card__title">
-                                Защита CMS (DDoS / Brute-force / Emergency)
-                            </p>
-                            <div class="admin-stack">
-                                <p class="muted">
-                                    Готовые профили для быстрого старта:
-                                </p>
-                                <div class="admin-actions-row">
+                        <div class="settings-cache-card mt-16">
+                            <div class="admin-stack__head mb">
+                                <h3>
+                                    Защита CMS (DDoS / Brute-force / Emergency)
+                                </h3>
+                            </div>
+                            <div class="admin-stack pi-0">
+                                <p>Готовые профили для быстрого старта:</p>
+                                <div class="admin-tabs">
                                     <AdminButton
                                         v-for="profile in securityProfiles"
                                         :key="profile.key"
                                         type="button"
-                                        @click="applySecurityProfile(profile)"
+                                        class="admin-tab"
+                                        :class="{
+                                            'is-active':
+                                                selectedSecurityProfile ===
+                                                profile.key,
+                                        }"
+                                        @click="
+                                            selectedSecurityProfile =
+                                                profile.key;
+                                            applySecurityProfile(profile);
+                                        "
                                     >
                                         {{ profile.label }}
                                     </AdminButton>
                                 </div>
                                 <p
-                                    class="muted"
                                     v-for="profile in securityProfiles"
                                     :key="`hint-${profile.key}`"
                                 >
-                                    {{ profile.label }}: {{ profile.hint }}
+                                    <strong>{{ profile.label }}</strong
+                                    >: {{ profile.hint }}
                                 </p>
                             </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.security_rate_limit_enabled
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Включить runtime rate-limit</span
-                                    >
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>Лимит запросов в минуту (IP)</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Лимит запросов в минуту (IP):"
+                                >
                                     <input
                                         v-model.number="
                                             form.security_rate_limit_per_minute
                                         "
-                                        class="admin-input"
+                                        class="admin-input limit"
                                         type="number"
                                         min="30"
                                         max="2000"
@@ -1881,13 +2051,15 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Burst за 10 сек (IP)</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Burst за 10 сек (IP):"
+                                >
                                     <input
                                         v-model.number="
                                             form.security_rate_limit_burst_per_10s
                                         "
-                                        class="admin-input"
+                                        class="admin-input burst"
                                         type="number"
                                         min="10"
                                         max="1000"
@@ -1898,13 +2070,15 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Блок IP (сек) после превышения</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Блок IP (сек) после превышения:"
+                                >
                                     <input
                                         v-model.number="
                                             form.security_ip_ban_seconds
                                         "
-                                        class="admin-input"
+                                        class="admin-input block"
                                         type="number"
                                         min="60"
                                         max="86400"
@@ -1915,13 +2089,15 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Неудачных логинов до lock</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Неудачных логинов до lock:"
+                                >
                                     <input
                                         v-model.number="
                                             form.security_login_max_attempts
                                         "
-                                        class="admin-input"
+                                        class="admin-input lock"
                                         type="number"
                                         min="3"
                                         max="20"
@@ -1929,13 +2105,15 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Окно подсчета login-fail (сек)</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Окно подсчета login-fail (сек):"
+                                >
                                     <input
                                         v-model.number="
                                             form.security_login_decay_seconds
                                         "
-                                        class="admin-input"
+                                        class="admin-input login-fail"
                                         type="number"
                                         min="30"
                                         max="3600"
@@ -1943,13 +2121,15 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Блок логина (сек)</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Блок логина (сек):"
+                                >
                                     <input
                                         v-model.number="
                                             form.security_login_ban_seconds
                                         "
-                                        class="admin-input"
+                                        class="admin-input log"
                                         type="number"
                                         min="60"
                                         max="86400"
@@ -1957,43 +2137,37 @@ onMounted(loadSettings);
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.security_emergency_mode
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Emergency mode (503 для публичной
-                                        части)</span
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    v-model="form.security_rate_limit_enabled"
+                                >
+                                    Включить runtime rate-limit
+                                </AdminCheckbox>
 
-                                <label class="admin-form-label">
-                                    <span>Текст emergency-режима</span>
-                                    <textarea
-                                        v-model="
-                                            form.security_emergency_message
-                                        "
-                                        class="admin-textarea"
-                                        rows="3"
-                                        :disabled="
-                                            !form.security_emergency_mode
-                                        "
-                                    ></textarea>
-                                </label>
+                                <AdminCheckbox
+                                    v-model="form.security_emergency_mode"
+                                >
+                                    Emergency mode (503 для публичной части)
+                                </AdminCheckbox>
                             </div>
+                            <label class="admin-form-label mt-16">
+                                <textarea
+                                    v-model="form.security_emergency_message"
+                                    class="admin-textarea"
+                                    rows="3"
+                                    :disabled="!form.security_emergency_mode"
+                                    placeholder="Текст emergency-режима"
+                                ></textarea>
+                            </label>
                         </div>
                     </section>
 
-                    <div class="admin-actions-row">
+                    <div class="admin-buttons">
                         <AdminButton
                             type="submit"
                             variant="primary"
                             :disabled="saving"
                         >
-                            {{
+                            <Icon name="save" width="18" height="18" />{{
                                 saving ? "Сохранение..." : "Сохранить настройки"
                             }}
                         </AdminButton>
@@ -2003,7 +2177,7 @@ onMounted(loadSettings);
                             :disabled="clearingCache || !canManageCache"
                             @click="clearCache"
                         >
-                            {{
+                            <Icon name="clean" width="22" height="22" />{{
                                 clearingCache
                                     ? "Очистка..."
                                     : "Очистить кэш сайта и CMS"
@@ -2014,4 +2188,30 @@ onMounted(loadSettings);
             </AdminCard>
         </section>
     </AdminPage>
+    <AdminModal
+        :open="deleteLanguageModal"
+        title="Удаление языка"
+        @close="deleteLanguageModal = false"
+    >
+        <p v-if="languageToDelete">
+            Удалить
+            <strong>{{ languageToDelete.native_name }}</strong> язык?
+        </p>
+
+        <template #footer>
+            <div class="admin-actions-row">
+                <AdminButton type="button" @click="deleteLanguageModal = false">
+                    Отмена
+                </AdminButton>
+
+                <AdminButton
+                    type="button"
+                    class="button-danger"
+                    @click="confirmRemoveLanguage"
+                >
+                    Удалить
+                </AdminButton>
+            </div>
+        </template>
+    </AdminModal>
 </template>

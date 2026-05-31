@@ -198,6 +198,7 @@ function showDefaultValueLabel(type) {
                         :disabled="index === 0"
                         @click="moveField(index, -1)"
                         class="button-editor"
+                        title="Переместить поле вверх"
                         ><Icon name="arrow-top" width="16" height="16"
                     /></AdminButton>
                     <AdminButton
@@ -205,6 +206,7 @@ function showDefaultValueLabel(type) {
                         :disabled="index === fields().length - 1"
                         @click="moveField(index, 1)"
                         class="button-editor"
+                        title="Переместить поле вниз"
                         ><Icon
                             name="arrow-top"
                             width="16"
@@ -215,6 +217,7 @@ function showDefaultValueLabel(type) {
                         type="button"
                         @click="removeField(index)"
                         class="button-danger"
+                        title="Удалить поле"
                         ><Icon name="trash" width="18" height="18"
                     /></AdminButton>
                 </div>
@@ -563,6 +566,7 @@ function showDefaultValueLabel(type) {
                             :disabled="optionIndex === 0"
                             @click="moveOption(index, optionIndex, -1)"
                             class="button-editor"
+                            title="Переместить вариант вверх"
                             ><Icon name="arrow-top" width="16" height="16"
                         /></AdminButton>
                         <AdminButton
@@ -578,6 +582,7 @@ function showDefaultValueLabel(type) {
                                 width="16"
                                 height="16"
                                 class="icon-rotated"
+                                title="Переместить вариант вниз"
                         /></AdminButton>
                         <AdminButton
                             type="button"

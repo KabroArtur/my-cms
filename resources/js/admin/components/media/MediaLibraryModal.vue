@@ -38,6 +38,8 @@ import {
     toNumericId,
     withMediaCacheBust,
 } from "./mediaHelpers";
+import AdminCheckbox from "../ui/AdminCheckbox.vue";
+import AdminSelect from "../ui/AdminSelect.vue";
 import Icon from "../ui/Icon.vue";
 
 const props = defineProps({
@@ -1516,14 +1518,14 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                     </div>
                                 </section>
 
-                                <p v-if="loading" class="muted">
+                                <p v-if="loading" class="muted text-center">
                                     Загрузка медиатеки...
                                 </p>
-                                <p v-else-if="errorMessage" class="error-text">
+                                <p
+                                    v-else-if="errorMessage"
+                                    class="error-text text-center"
+                                >
                                     {{ errorMessage }}
-                                </p>
-                                <p v-else-if="noticeMessage" class="muted">
-                                    {{ noticeMessage }}
                                 </p>
 
                                 <MediaGrid
@@ -1651,191 +1653,195 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                     </div>
                                 </div>
 
-                                <div class="media-library-modal__tool-switcher">
-                                    <button
-                                        type="button"
-                                        class="media-library-modal__tool-button"
-                                        :class="{
-                                            'is-active':
-                                                transformTool === 'crop',
-                                        }"
-                                        @click="toggleTransformTool('crop')"
-                                    >
-                                        Кадрировать
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="media-library-modal__tool-button"
-                                        :class="{
-                                            'is-active':
-                                                transformTool === 'resize',
-                                        }"
-                                        @click="toggleTransformTool('resize')"
-                                    >
-                                        Размер
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="media-library-modal__tool-button"
-                                        :class="{
-                                            'is-active':
-                                                transformTool === 'format',
-                                        }"
-                                        @click="toggleTransformTool('format')"
-                                    >
-                                        Формат
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="media-library-modal__tool-button"
-                                        :class="{
-                                            'is-active':
-                                                transformTool === 'quality',
-                                        }"
-                                        @click="toggleTransformTool('quality')"
-                                    >
-                                        Качество
-                                    </button>
-                                </div>
-
-                                <div
-                                    v-if="transformTool"
-                                    class="admin-form-stack media-library-modal__tool-panel"
-                                >
-                                    <p
-                                        v-if="transformTool === 'crop'"
-                                        class="muted"
-                                    >
-                                        Тяните рамку мышкой за область или
-                                        уголки, чтобы обрезать изображение прямо
-                                        в этой модалке.
-                                    </p>
-
-                                    <label
-                                        v-if="transformTool === 'crop'"
-                                        class="admin-form-label"
-                                    >
-                                        <span
-                                            ><input
-                                                v-model="
-                                                    transformForm.crop_enabled
-                                                "
-                                                type="checkbox"
-                                            />
-                                            Включить кадрирование</span
+                                <div class="media-library-modal__img">
+                                    <div class="admin-page-head admin-tabs">
+                                        <button
+                                            type="button"
+                                            class="admin-tab"
+                                            :class="{
+                                                'is-active':
+                                                    transformTool === 'crop',
+                                            }"
+                                            @click="toggleTransformTool('crop')"
                                         >
-                                    </label>
+                                            Кадрировать
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="admin-tab"
+                                            :class="{
+                                                'is-active':
+                                                    transformTool === 'resize',
+                                            }"
+                                            @click="
+                                                toggleTransformTool('resize')
+                                            "
+                                        >
+                                            Размер
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="admin-tab"
+                                            :class="{
+                                                'is-active':
+                                                    transformTool === 'format',
+                                            }"
+                                            @click="
+                                                toggleTransformTool('format')
+                                            "
+                                        >
+                                            Формат
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="admin-tab"
+                                            :class="{
+                                                'is-active':
+                                                    transformTool === 'quality',
+                                            }"
+                                            @click="
+                                                toggleTransformTool('quality')
+                                            "
+                                        >
+                                            Качество
+                                        </button>
+                                    </div>
 
-                                    <template v-if="transformTool === 'resize'">
-                                        <label class="admin-form-label">
-                                            <span
-                                                ><input
-                                                    v-model="
-                                                        transformForm.maintain_aspect_ratio
-                                                    "
-                                                    type="checkbox"
-                                                />
-                                                Сохранять пропорции</span
+                                    <div
+                                        v-if="transformTool"
+                                        class="admin-form-stack media-library-modal__tool-panel"
+                                    >
+                                        <p
+                                            v-if="transformTool === 'crop'"
+                                            class="muted"
+                                        >
+                                            Тяните рамку мышкой за область или
+                                            уголки, чтобы обрезать изображение
+                                            прямо в этой модалке.
+                                        </p>
+                                        <AdminCheckbox
+                                            v-if="transformTool === 'crop'"
+                                            v-model="transformForm.crop_enabled"
+                                        >
+                                            Включить кадрирование
+                                        </AdminCheckbox>
+
+                                        <template
+                                            v-if="transformTool === 'resize'"
+                                        >
+                                            <AdminCheckbox
+                                                v-model="
+                                                    transformForm.maintain_aspect_ratio
+                                                "
                                             >
+                                                Сохранять пропорции
+                                            </AdminCheckbox>
+
+                                            <div
+                                                class="media-library-modal__editor-grid"
+                                            >
+                                                <label
+                                                    class="admin-form-label width"
+                                                    data-label="Ширина:"
+                                                >
+                                                    <input
+                                                        v-model.number="
+                                                            transformForm.resize_width
+                                                        "
+                                                        class="admin-input"
+                                                        type="number"
+                                                        min="1"
+                                                        step="1"
+                                                        @input="
+                                                            handleResizeWidthInput
+                                                        "
+                                                    />
+                                                </label>
+
+                                                <label
+                                                    class="admin-form-label height"
+                                                    data-label="Высота:"
+                                                >
+                                                    <input
+                                                        v-model.number="
+                                                            transformForm.resize_height
+                                                        "
+                                                        class="admin-input"
+                                                        type="number"
+                                                        min="1"
+                                                        step="1"
+                                                        @input="
+                                                            handleResizeHeightInput
+                                                        "
+                                                    />
+                                                </label>
+                                            </div>
+                                        </template>
+
+                                        <label
+                                            v-if="transformTool === 'format'"
+                                            class="admin-form-label format"
+                                            data-label="Формат:"
+                                        >
+                                            <AdminSelect
+                                                v-model="transformForm.format"
+                                                :options="
+                                                    transformFormatOptions
+                                                "
+                                            />
+                                        </label>
+                                        <label
+                                            v-if="transformTool === 'quality'"
+                                            class="admin-form-label quality"
+                                            data-label="Качество:"
+                                        >
+                                            <input
+                                                v-model.number="
+                                                    transformForm.quality
+                                                "
+                                                class="admin-input"
+                                                type="number"
+                                                min="30"
+                                                max="100"
+                                                step="1"
+                                                placeholder="По умолчанию из настроек"
+                                            />
                                         </label>
 
                                         <div
-                                            class="media-library-modal__editor-grid"
+                                            class="admin-actions-row media-library-modal__editor-actions"
                                         >
-                                            <label class="admin-form-label">
-                                                <span>Ширина</span>
-                                                <input
-                                                    v-model.number="
-                                                        transformForm.resize_width
-                                                    "
-                                                    class="admin-input"
-                                                    type="number"
-                                                    min="1"
-                                                    step="1"
-                                                    @input="
-                                                        handleResizeWidthInput
-                                                    "
-                                                />
-                                            </label>
-
-                                            <label class="admin-form-label">
-                                                <span>Высота</span>
-                                                <input
-                                                    v-model.number="
-                                                        transformForm.resize_height
-                                                    "
-                                                    class="admin-input"
-                                                    type="number"
-                                                    min="1"
-                                                    step="1"
-                                                    @input="
-                                                        handleResizeHeightInput
-                                                    "
-                                                />
-                                            </label>
-                                        </div>
-                                    </template>
-
-                                    <label
-                                        v-if="transformTool === 'format'"
-                                        class="admin-form-label"
-                                    >
-                                        <span>Формат</span>
-                                        <select
-                                            v-model="transformForm.format"
-                                            class="admin-select"
-                                        >
-                                            <option
-                                                v-for="option in transformFormatOptions"
-                                                :key="option.value"
-                                                :value="option.value"
+                                            <button
+                                                type="button"
+                                                class="button-base button-secondary"
+                                                :disabled="transforming"
+                                                @click="setActiveTab('library')"
                                             >
-                                                {{ option.label }}
-                                            </option>
-                                        </select>
-                                    </label>
-
-                                    <label
-                                        v-if="transformTool === 'quality'"
-                                        class="admin-form-label"
-                                    >
-                                        <span>Качество</span>
-                                        <input
-                                            v-model.number="
-                                                transformForm.quality
-                                            "
-                                            class="admin-input"
-                                            type="number"
-                                            min="30"
-                                            max="100"
-                                            step="1"
-                                            placeholder="По умолчанию из настроек"
-                                        />
-                                    </label>
-
-                                    <div
-                                        class="admin-actions-row media-library-modal__editor-actions"
-                                    >
-                                        <AdminButton
-                                            type="button"
-                                            variant="primary"
-                                            :disabled="transforming"
-                                            @click="applyTransform"
-                                        >
-                                            {{
-                                                transforming
-                                                    ? "Обработка..."
-                                                    : "Применить изменения"
-                                            }}
-                                        </AdminButton>
-                                        <button
-                                            type="button"
-                                            class="button-link"
-                                            :disabled="transforming"
-                                            @click="setActiveTab('library')"
-                                        >
-                                            К библиотеке
-                                        </button>
+                                                <Icon
+                                                    name="return"
+                                                    width="18"
+                                                    height="18"
+                                                />
+                                                К библиотеке
+                                            </button>
+                                            <AdminButton
+                                                type="button"
+                                                variant="primary"
+                                                :disabled="transforming"
+                                                @click="applyTransform"
+                                            >
+                                                <Icon
+                                                    name="save"
+                                                    width="18"
+                                                    height="18"
+                                                />
+                                                {{
+                                                    transforming
+                                                        ? "Обработка..."
+                                                        : "Применить изменения"
+                                                }}
+                                            </AdminButton>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
