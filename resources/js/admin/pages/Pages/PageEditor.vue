@@ -565,7 +565,7 @@ async function loadPage() {
         fillForm(payload.data);
         await loadApplicableAdditionalFields();
     } catch (error) {
-        errorMessage.value = "Не удалось загрузить страницу.";
+        notifyError("Не удалось загрузить страницу.");
         console.error(error);
     } finally {
         loading.value = false;
@@ -574,7 +574,7 @@ async function loadPage() {
 
 async function submitForm() {
     if (!isCreateMode.value && !canUpdatePage.value) {
-        errorMessage.value = "У вас нет прав на редактирование этой страницы.";
+        notifyError("У вас нет прав на редактирование этой страницы.");
 
         return;
     }
@@ -608,8 +608,10 @@ async function submitForm() {
     } catch (error) {
         if (error.response?.status === 422) {
             validationErrors.value = error.response.data.errors ?? {};
+
+            notifyError("Проверьте корректность заполненных полей.");
         } else {
-            errorMessage.value = "Не удалось сохранить страницу.";
+            notifyError("Не удалось сохранить страницу.");
             notifyError(errorMessage.value);
         }
 
@@ -664,6 +666,10 @@ watch(
 onBeforeUnmount(() => {
     contentEditor.value?.destroy();
 });
+
+const toggleContentMode = () => {
+    contentMode.value = contentMode.value === "source" ? "visual" : "source";
+};
 </script>
 
 <template>
@@ -725,52 +731,6 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="page-editor">
-                            <div class="page-editor__row">
-                                <div
-                                    class="page-editor__label lang"
-                                    data-label="Язык:"
-                                >
-                                    <AdminSelect
-                                        v-model="form.language_id"
-                                        :options="
-                                            languageOptions.map((l) => ({
-                                                value: l.value,
-                                                label: `${l.label} (${l.code})`,
-                                            }))
-                                        "
-                                    />
-                                    <small
-                                        v-if="validationErrors.language_id"
-                                        class="error-text absolute"
-                                    >
-                                        {{ validationErrors.language_id[0] }}
-                                    </small>
-                                </div>
-
-                                <div
-                                    class="page-editor__label group"
-                                    data-label="Группа переводов:"
-                                >
-                                    <input
-                                        v-model="form.translation_group_id"
-                                        class="admin-input"
-                                        type="text"
-                                        placeholder="UUID группы переводов"
-                                    />
-                                    <small
-                                        v-if="
-                                            validationErrors.translation_group_id
-                                        "
-                                        class="error-text absolute"
-                                    >
-                                        {{
-                                            validationErrors
-                                                .translation_group_id[0]
-                                        }}
-                                    </small>
-                                </div>
-                            </div>
-
                             <div
                                 class="page-editor__label name"
                                 data-label="Название страницы:"
@@ -813,12 +773,60 @@ onBeforeUnmount(() => {
                                 >
                             </div>
 
-                            <div class="page-editor__label">
+                            <div class="page-editor__row">
+                                <div>
+                                    <AdminSelect
+                                        class="page-editor__label lang"
+                                        data-label="Язык:"
+                                        v-model="form.language_id"
+                                        :options="
+                                            languageOptions.map((l) => ({
+                                                value: l.value,
+                                                label: `${l.label} (${l.code})`,
+                                            }))
+                                        "
+                                    />
+                                    <small
+                                        v-if="validationErrors.language_id"
+                                        class="error-text absolute"
+                                    >
+                                        {{ validationErrors.language_id[0] }}
+                                    </small>
+                                </div>
+
+                                <div
+                                    class="page-editor__label group"
+                                    data-label="Группа переводов:"
+                                >
+                                    <input
+                                        v-model="form.translation_group_id"
+                                        class="admin-input"
+                                        type="text"
+                                        placeholder="UUID группы переводов"
+                                    />
+                                    <small
+                                        v-if="
+                                            validationErrors.translation_group_id
+                                        "
+                                        class="error-text absolute"
+                                    >
+                                        {{
+                                            validationErrors
+                                                .translation_group_id[0]
+                                        }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div
+                                class="page-editor__label textarea-wrapper"
+                                data-label="Краткое описание страницы:"
+                            >
                                 <textarea
                                     v-model="form.excerpt"
                                     class="admin-textarea"
                                     rows="4"
-                                    placeholder="Краткое описание страницы"
+                                    placeholder=""
                                 ></textarea>
                                 <small
                                     v-if="validationErrors.excerpt"
@@ -861,7 +869,7 @@ onBeforeUnmount(() => {
                             </button>
                         </div>
                         <transition name="content">
-                            <label
+                            <div
                                 v-show="contentVisible"
                                 class="page-editor__label page-editor-content-field"
                             >
@@ -893,30 +901,23 @@ onBeforeUnmount(() => {
                                                 'is-active':
                                                     contentMode === 'source',
                                             }"
-                                            @click="setContentMode('source')"
+                                            @click.stop="toggleContentMode"
                                         >
                                             <Icon
                                                 name="code"
                                                 width="20"
                                                 height="20"
                                             />
-                                            Код
-                                        </button>
 
-                                        <button
-                                            type="button"
-                                            class="button-base"
-                                            :class="{
-                                                'is-active':
-                                                    contentMode === 'visual',
-                                            }"
-                                            @click="setContentMode('visual')"
-                                        >
-                                            <Icon
-                                                name="return"
-                                                width="20"
-                                                height="20"
-                                            />
+                                            <span
+                                                v-if="contentMode === 'source'"
+                                            >
+                                                Код
+                                            </span>
+
+                                            <span v-else>
+                                                Текстовый редактор
+                                            </span>
                                         </button>
                                     </div>
                                 </div>
@@ -952,7 +953,7 @@ onBeforeUnmount(() => {
                                         placeholder="<p>HTML, inline script и любая разметка страницы.</p>"
                                     ></textarea>
                                 </template>
-                            </label>
+                            </div>
                         </transition>
 
                         <p v-show="!contentVisible" class="page-editor__info">
@@ -1007,13 +1008,18 @@ onBeforeUnmount(() => {
                                         :to="{ name: 'content-structure' }"
                                         class="button-base"
                                     >
+                                        <Icon
+                                            name="structure"
+                                            width="18"
+                                            height="18"
+                                        />
                                         Настроить структуру
                                     </RouterLink>
                                 </div>
 
                                 <p
                                     v-if="additionalFieldGroups.length === 0"
-                                    class="muted"
+                                    class="text-center muted"
                                 >
                                     Для текущего шаблона нет подключенных
                                     наборов полей.
@@ -1065,9 +1071,7 @@ onBeforeUnmount(() => {
                                         </span>
                                     </summary>
 
-                                    <div
-                                        class="admin-stack additional-fields-group__body"
-                                    >
+                                    <div class="additional-fields-group__body">
                                         <CustomFieldRenderer
                                             v-for="field in group.fields"
                                             :key="field.key"
@@ -1096,19 +1100,6 @@ onBeforeUnmount(() => {
                         </p>
                     </section>
                 </AdminCard>
-
-                <div class="page-editor-footer">
-                    <p v-if="errorMessage" class="error-text">
-                        {{ errorMessage }}
-                    </p>
-                    <p
-                        v-if="!isCreateMode && !canUpdatePage"
-                        class="error-text"
-                    >
-                        Только автор страницы или администратор может ее
-                        изменять.
-                    </p>
-                </div>
             </div>
 
             <div class="page-editor-layout__aside">
@@ -1137,11 +1128,10 @@ onBeforeUnmount(() => {
                                 </p>
                             </div>
 
-                            <label
-                                class="page-editor__label status"
-                                data-label="Статус:"
-                            >
+                            <div>
                                 <AdminSelect
+                                    class="status"
+                                    data-label="Статус:"
                                     v-model="form.status"
                                     :options="[
                                         { value: 'draft', label: 'Черновик' },
@@ -1166,13 +1156,12 @@ onBeforeUnmount(() => {
                                 >
                                     {{ validationErrors.status[0] }}
                                 </small>
-                            </label>
+                            </div>
 
-                            <label
-                                class="page-editor__label visibility"
-                                data-label="Видимость:"
-                            >
+                            <div>
                                 <AdminSelect
+                                    class="visibility"
+                                    data-label="Видимость:"
                                     v-model="form.visibility"
                                     :options="[
                                         { value: 'public', label: 'Публичная' },
@@ -1185,7 +1174,7 @@ onBeforeUnmount(() => {
                                 >
                                     {{ validationErrors.visibility[0] }}
                                 </small>
-                            </label>
+                            </div>
 
                             <label
                                 class="page-editor__label date"
@@ -1212,11 +1201,10 @@ onBeforeUnmount(() => {
                                 </small>
                             </label>
 
-                            <label
-                                class="page-editor__label parent"
-                                data-label="Родительская страница:"
-                            >
+                            <div>
                                 <AdminSelect
+                                    class="parent"
+                                    data-label="Родительская страница:"
                                     v-model="form.parent_id"
                                     :options="[
                                         { value: '', label: 'Без родителя' },
@@ -1232,13 +1220,12 @@ onBeforeUnmount(() => {
                                 >
                                     {{ validationErrors.parent_id[0] }}
                                 </small>
-                            </label>
+                            </div>
 
-                            <label
-                                class="page-editor__label shab"
-                                data-label="Шаблон:"
-                            >
+                            <div>
                                 <AdminSelect
+                                    class="shab"
+                                    data-label="Шаблон:"
                                     v-model="form.template"
                                     :options="
                                         templateOptions.map((option) => ({
@@ -1253,7 +1240,7 @@ onBeforeUnmount(() => {
                                 >
                                     {{ validationErrors.template[0] }}
                                 </small>
-                            </label>
+                            </div>
                         </div>
                     </section>
                 </AdminCard>

@@ -574,8 +574,10 @@ const trashCount = computed(() => trashedPages.value.length);
                         />
                     </div>
 
-                    <div class="admin-filter-field lang" data-label="Язык:">
+                    <div class="admin-filter-field">
                         <AdminSelect
+                            class="lang"
+                            data-label="Язык:"
                             v-model="languageFilter"
                             :options="[
                                 { value: 'all', label: 'Все языки' },
@@ -584,8 +586,10 @@ const trashCount = computed(() => trashedPages.value.length);
                         />
                     </div>
 
-                    <div class="admin-filter-field status" data-label="Статус:">
+                    <div class="admin-filter-field">
                         <AdminSelect
+                            class="status"
+                            data-label="Статус:"
                             v-model="statusFilter"
                             :options="[
                                 { value: 'all', label: 'Все статусы' },
@@ -601,8 +605,10 @@ const trashCount = computed(() => trashedPages.value.length);
                         />
                     </div>
 
-                    <div class="admin-filter-field shab" data-label="Шаблон:">
+                    <div class="admin-filter-field">
                         <AdminSelect
+                            class="shab"
+                            data-label="Шаблон:"
                             v-model="templateFilter"
                             :options="[
                                 { value: 'all', label: 'Все' },
@@ -612,11 +618,10 @@ const trashCount = computed(() => trashedPages.value.length);
                         />
                     </div>
 
-                    <div
-                        class="admin-filter-field sort"
-                        data-label="Сортировка:"
-                    >
+                    <div class="admin-filter-field">
                         <AdminSelect
+                            class="sort"
+                            data-label="Сортировка:"
                             v-model="sortBy"
                             :options="[
                                 { value: 'updated_at', label: 'Обновлено' },
@@ -769,7 +774,22 @@ const trashCount = computed(() => trashedPages.value.length);
                     </div>
                 </div>
 
-                <div v-else class="page-trash-grid">
+                <div v-else class="admin-table">
+                    <div class="admin-table__head trash">
+                        <div>
+                            <Icon name="page" width="14" height="14" />Страница
+                        </div>
+                        <div v-if="visibleFields.author">
+                            <Icon name="avatar" width="14" height="14" />Создал
+                        </div>
+                        <div>
+                            <Icon
+                                name="settings"
+                                width="16"
+                                height="16"
+                            />Действия
+                        </div>
+                    </div>
                     <article
                         v-for="page in trashedPages"
                         :key="page.id"
@@ -778,7 +798,7 @@ const trashCount = computed(() => trashedPages.value.length);
                         <div class="page-trash-card__title-block">
                             <h3>{{ page.title }}</h3>
 
-                            <p class="">
+                            <p>
                                 ID{{ page.id }}<span></span>{{ page.slug }}
                                 <span></span>Удалена:
                                 <strong>
@@ -788,8 +808,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                 >
                             </p>
                         </div>
-                        <p class="mt-20">
-                            Создал:
+                        <p class="create">
                             <strong>{{ resolveCreatorLabel(page) }}</strong>
                         </p>
                         <div class="admin-actions-row">

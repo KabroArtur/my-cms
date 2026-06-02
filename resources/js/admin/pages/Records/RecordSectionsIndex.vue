@@ -9,6 +9,9 @@ import {
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import AdminSelect from "../../components/ui/AdminSelect.vue";
+import AdminCheckbox from "../../components/ui/AdminCheckbox.vue";
+import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 
 const loading = ref(false);
@@ -111,112 +114,141 @@ onMounted(loadSections);
             </p>
 
             <form class="admin-form-stack" @submit.prevent="submitSection">
-                <label class="admin-form-label">
-                    <span>Название раздела</span>
+                <label class="admin-form-label" data-label="Название раздела:">
                     <input
                         v-model="form.title"
-                        class="admin-input"
+                        class="admin-input name-section"
                         type="text"
                         required
                         placeholder="Blog"
                     />
                 </label>
-
-                <label class="admin-form-label">
-                    <span>Slug</span>
-                    <input
-                        v-model="form.slug"
-                        class="admin-input"
-                        type="text"
-                        placeholder="blog"
-                    />
-                </label>
-
                 <div class="page-meta-grid">
-                    <label class="admin-form-label">
-                        <span
-                            ><input
-                                v-model="form.has_categories"
-                                type="checkbox"
-                            />
-                            Включить категории</span
-                        >
+                    <label class="admin-form-label slug" data-label="Slug:">
+                        <input
+                            v-model="form.slug"
+                            class="admin-input"
+                            type="text"
+                            placeholder="blog"
+                        />
                     </label>
-                    <label class="admin-form-label">
-                        <span
-                            ><input v-model="form.has_tags" type="checkbox" />
-                            Включить теги</span
-                        >
-                    </label>
-                    <label class="admin-form-label">
-                        <span
-                            ><input v-model="form.has_seo" type="checkbox" />
-                            Включить SEO</span
-                        >
-                    </label>
-                    <label class="admin-form-label">
-                        <span
-                            ><input
-                                v-model="form.has_featured_image"
-                                type="checkbox"
-                            />
-                            Включить изображение</span
-                        >
-                    </label>
+                    <AdminSelect
+                        class="status"
+                        data-label="Статус:"
+                        :model-value="form.status"
+                        :options="[
+                            { value: 'active', label: 'Активен' },
+                            { value: 'disabled', label: 'Отключён' },
+                        ]"
+                        @update:modelValue="form.status = $event"
+                    />
                 </div>
 
-                <label class="admin-form-label">
-                    <span>Статус</span>
-                    <select v-model="form.status" class="admin-select">
-                        <option value="active">active</option>
-                        <option value="disabled">disabled</option>
-                    </select>
-                </label>
+                <div class="page-meta-grid">
+                    <AdminCheckbox
+                        :model-value="form.has_categories"
+                        @update:modelValue="form.has_categories = $event"
+                    >
+                        Включить категории
+                    </AdminCheckbox>
 
-                <AdminButton type="submit" variant="primary" :disabled="saving">
-                    {{ saving ? "Сохраняем..." : "Создать раздел" }}
-                </AdminButton>
+                    <AdminCheckbox
+                        :model-value="form.has_tags"
+                        @update:modelValue="form.has_tags = $event"
+                    >
+                        Включить теги
+                    </AdminCheckbox>
+
+                    <AdminCheckbox
+                        :model-value="form.has_seo"
+                        @update:modelValue="form.has_seo = $event"
+                    >
+                        Включить SEO
+                    </AdminCheckbox>
+
+                    <AdminCheckbox
+                        :model-value="form.has_featured_image"
+                        @update:modelValue="form.has_featured_image = $event"
+                    >
+                        Включить изображение
+                    </AdminCheckbox>
+                </div>
+
+                <div class="flex-end">
+                    <AdminButton
+                        type="submit"
+                        variant="primary"
+                        :disabled="saving"
+                        class="flex-end"
+                    >
+                        <Icon name="create" width="18" height="18" />
+                        {{ saving ? "Сохраняем..." : "Создать раздел" }}
+                    </AdminButton>
+                </div>
             </form>
         </AdminCard>
 
         <AdminCard>
-            <h2>Разделы</h2>
-            <p v-if="loading" class="muted">Загрузка...</p>
+            <p v-if="loading" class="muted text-2xl">Загрузка...</p>
 
-            <table v-else class="table">
+            <table v-else class="table create-partition">
                 <thead>
                     <tr>
-                        <th>Раздел</th>
-                        <th>Slug</th>
-                        <th>Статус</th>
-                        <th>Действия</th>
+                        <th>
+                            <div class="table-inner">
+                                <Icon name="folder" width="14" height="14" />
+                                Раздел
+                            </div>
+                        </th>
+
+                        <th>
+                            <div class="table-inner"># Slug</div>
+                        </th>
+
+                        <th>
+                            <div class="table-inner">
+                                <Icon name="status" width="14" height="14" />
+                                Статус
+                            </div>
+                        </th>
+
+                        <th>
+                            <div class="table-inner">
+                                <Icon name="settings" width="14" height="14" />
+                                Действия
+                            </div>
+                        </th>
                     </tr>
                 </thead>
+
                 <tbody>
                     <tr v-for="section in sections" :key="section.id">
-                        <td>{{ section.name }}</td>
+                        <td>
+                            <strong>{{ section.name }}</strong>
+                        </td>
+
                         <td>/{{ section.slug }}</td>
+
                         <td>{{ section.status }}</td>
-                        <td class="table-actions">
+
+                        <td class="cell-actions">
                             <RouterLink
                                 :to="{
                                     name: 'records-posts',
                                     params: { sectionSlug: section.slug },
                                 }"
                                 class="button-link"
-                                >Открыть</RouterLink
                             >
+                                <Icon name="pencil" width="18" height="18" />
+                            </RouterLink>
+
                             <AdminButton
                                 type="button"
                                 variant="danger"
                                 :disabled="deletingSlug === section.slug"
                                 @click="removeSection(section.slug)"
                             >
-                                {{
-                                    deletingSlug === section.slug
-                                        ? "Удаляем..."
-                                        : "Удалить"
-                                }}
+                                <Icon name="trash" width="18" height="18" />
                             </AdminButton>
                         </td>
                     </tr>

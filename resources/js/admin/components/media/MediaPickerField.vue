@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import AdminButton from "../ui/AdminButton.vue";
 import { fetchMediaFile } from "../../api/media";
 import MediaLibraryModal from "./MediaLibraryModal.vue";
+import Icon from "../../components/ui/Icon.vue";
 import {
     DEFAULT_MEDIA_ACCEPT,
     createExternalMediaReference,
@@ -211,15 +212,17 @@ function clearSelection() {
                     variant="primary"
                     @click="modalOpen = true"
                 >
-                    Выбрать из медиатеки
+                    <Icon name="media" width="18" height="18" />Выбрать из
+                    медиатеки
                 </AdminButton>
 
                 <AdminButton
                     v-if="previewItems.length > 0 || modelValue"
                     type="button"
                     @click="clearSelection"
+                    class="button-danger"
                 >
-                    Очистить
+                    <Icon name="trash" width="18" height="18" /> Очистить
                 </AdminButton>
             </div>
 

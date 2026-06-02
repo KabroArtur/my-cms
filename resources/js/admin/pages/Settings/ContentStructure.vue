@@ -451,7 +451,7 @@ onMounted(async () => {
             Проверка прав доступа...
         </p>
 
-        <div class="admin-grid">
+        <div class="admin-column">
             <AdminCard>
                 <div class="section-wrapper">
                     <div class="section-header">
@@ -540,12 +540,15 @@ onMounted(async () => {
                             >
                         </label>
 
-                        <label class="admin-form-label">
+                        <label
+                            class="admin-form-label"
+                            data-label="Короткое описание набора:"
+                        >
                             <textarea
                                 v-model="form.description"
                                 class="admin-textarea"
                                 rows="2"
-                                placeholder="Короткое описание набора"
+                                placeholder=""
                             ></textarea>
                         </label>
 
@@ -643,53 +646,43 @@ onMounted(async () => {
                                 страниц.</span
                             >
                         </p>
-                        <label class="admin-form-label">
-                            <AdminSelect
-                                v-model="form.location_rules_mode"
-                                :options="[
-                                    {
-                                        value: 'all',
-                                        label: 'Все условия одновременно (AND)',
-                                    },
-                                    {
-                                        value: 'any',
-                                        label: 'Хотя бы одно условие (OR)',
-                                    },
-                                ]"
-                            />
-                        </label>
+                        <AdminSelect
+                            v-model="form.location_rules_mode"
+                            :options="[
+                                {
+                                    value: 'all',
+                                    label: 'Все условия одновременно (AND)',
+                                },
+                                {
+                                    value: 'any',
+                                    label: 'Хотя бы одно условие (OR)',
+                                },
+                            ]"
+                        />
 
                         <div
                             v-for="(rule, index) in form.location_rules"
                             :key="rule.id"
                             class="page-meta-grid"
                         >
-                            <label class="admin-form-label" data-label="Поле:">
-                                <AdminSelect
-                                    v-model="rule.field"
-                                    :options="ruleFieldOptions"
-                                    @update:modelValue="syncRuleOperator(rule)"
-                                    class="field"
-                                />
-                            </label>
+                            <AdminSelect
+                                data-label="Поле:"
+                                v-model="rule.field"
+                                :options="ruleFieldOptions"
+                                @update:modelValue="syncRuleOperator(rule)"
+                                class="field"
+                            />
 
-                            <label
-                                class="admin-form-label"
+                            <AdminSelect
                                 data-label="Оператор:"
-                            >
-                                <AdminSelect
-                                    v-model="rule.operator"
-                                    :options="operatorOptions(rule.field)"
-                                    class="operator"
-                                />
-                            </label>
+                                v-model="rule.operator"
+                                :options="operatorOptions(rule.field)"
+                                class="operator"
+                            />
 
-                            <label
-                                v-if="rule.field === 'template'"
-                                class="admin-form-label"
-                                data-label="Значение:"
-                            >
+                            <div v-if="rule.field === 'template'">
                                 <AdminSelect
+                                    data-label="Значение:"
                                     v-model="rule.value"
                                     :options="templateOptions"
                                     class="value"
@@ -704,14 +697,11 @@ onMounted(async () => {
                                         {{ ruleMeta(rule.field).hint }}</span
                                     >
                                 </p>
-                            </label>
+                            </div>
 
-                            <label
-                                v-else-if="rule.field === 'is_home'"
-                                class="admin-form-label"
-                                data-label="Значение:"
-                            >
+                            <div v-else-if="rule.field === 'is_home'">
                                 <AdminSelect
+                                    data-label="Значение:"
                                     v-model="rule.value"
                                     class="value"
                                     :options="[
@@ -735,7 +725,7 @@ onMounted(async () => {
                                         {{ ruleMeta(rule.field).hint }}</span
                                     >
                                 </p>
-                            </label>
+                            </div>
 
                             <div
                                 v-else-if="rule.field === 'page_id'"

@@ -501,7 +501,9 @@ onBeforeUnmount(() => {
     <div class="admin-shell">
         <aside class="admin-sidebar" :class="{ 'is-open': sidebarOpen }">
             <div class="admin-sidebar__brand">
-                <h1 class="admin-title"><span>my</span> CMS</h1>
+                <RouterLink to="/" class="admin-title">
+                    FL<span>Ξ</span>XORA
+                </RouterLink>
                 <a
                     :href="publicSiteUrl"
                     class="admin-sidebar__site-link"
@@ -511,8 +513,8 @@ onBeforeUnmount(() => {
                 >
                     <Icon
                         name="show"
-                        width="20"
-                        height="20"
+                        width="22"
+                        height="22"
                         class="admin-sidebar__brand-icon"
                     />
                 </a>

@@ -241,7 +241,7 @@ function showDefaultValueLabel(type) {
                     >
                 </label>
 
-                <label class="admin-form-label key" data-label="Key:">
+                <label class="admin-form-label key-settings" data-label="Key:">
                     <input
                         :value="field.key"
                         class="admin-input"
@@ -258,8 +258,10 @@ function showDefaultValueLabel(type) {
                     >
                 </label>
 
-                <label class="admin-form-label type" data-label="Type:">
+                <div>
                     <AdminSelect
+                        class="type"
+                        data-label="Type:"
                         :model-value="field.type"
                         :options="FIELD_TYPE_OPTIONS"
                         @update:modelValue="
@@ -273,7 +275,7 @@ function showDefaultValueLabel(type) {
                     >
                         {{ getFirstError(errors, fieldPath(index, "type")) }}
                     </small>
-                </label>
+                </div>
 
                 <label class="admin-form-label">
                     <AdminCheckbox

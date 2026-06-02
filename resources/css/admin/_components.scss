@@ -26,7 +26,7 @@
     padding: 0;
 }
 
-.panel-card:has(.plugins) {
+.panel-card:has(.plugins, .create-partition) {
     overflow: hidden;
 }
 
@@ -46,11 +46,6 @@
     th,
     td {
         padding: 12px 20px;
-    }
-
-    th + th,
-    td + td {
-        border-left: 1px solid var(--admin-color-border);
     }
 
     thead {
@@ -79,6 +74,31 @@
         justify-content: center;
         gap: 6px;
     }
+
+    .date-w {
+        min-width: 150px;
+    }
+}
+
+.section .panel-card {
+    border: none;
+}
+
+.create-partition {
+    tr:not(:last-child) {
+        border-bottom: 1px solid var(--admin-color-border);
+    }
+
+    td {
+        text-align: center;
+    }
+}
+
+.cell-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .badge {
@@ -164,9 +184,13 @@
         filter: none;
     }
 }
+
+.button-copy {
+    background-color: var(--badge-pending-text);
+}
+
 .admin-page-head {
     display: flex;
-    justify-content: space-between;
     height: 60px;
     padding-inline: 12px;
     border-radius: var(--admin-radius-md) var(--admin-radius-md) 0 0;
@@ -188,43 +212,25 @@
     .admin-filter-field {
         position: relative;
         min-width: 180px;
-
-        &::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 15px;
-            font-weight: 550;
-            color: var(--admin-color-text-muted);
-            pointer-events: none;
-            z-index: 2;
-            transition: opacity 0.2s ease;
-        }
-
-        &:focus-within::before {
-            opacity: 0.8;
-        }
     }
 
     .lang .admin-select-trigger {
-        width: 180px;
-        padding-left: 62px;
+        width: 220px;
+        padding-left: 66px;
     }
     .sort .admin-select-trigger {
-        width: 234px;
-        padding-left: 112px;
+        width: 244px;
+        padding-left: 120px;
     }
 
     .shab .admin-select-trigger {
         width: 180px;
-        padding-left: 84px;
+        padding-left: 90px;
     }
 
     .status .admin-select-trigger {
-        width: 210px;
-        padding-left: 72px;
+        width: 214px;
+        padding-left: 78px;
     }
 }
 .admin-filter-field--search {
@@ -245,8 +251,8 @@
         min-width: 270px;
 
         &::placeholder {
-            color: var(--admin-color-text);
-            opacity: 0.6;
+            color: var(--admin-color-text-muted);
+            opacity: 0.8;
         }
     }
 }
@@ -868,32 +874,6 @@
         background-color: var(--admin-color-primary);
     }
 
-    .admin-form-label.label .admin-input,
-    .admin-form-label.rows .admin-input {
-        padding-left: 64px;
-    }
-
-    .admin-form-label.key .admin-input {
-        padding-left: 50px;
-    }
-
-    .admin-form-label.type .admin-select-trigger {
-        padding-left: 59px;
-    }
-
-    .admin-form-label.default .admin-input,
-    .admin-form-label.default .admin-select-trigger {
-        padding-left: 128px;
-    }
-
-    .admin-form-label.placeholder .admin-input {
-        padding-left: 116px;
-    }
-
-    .admin-form-label.help .admin-input {
-        padding-left: 94px;
-    }
-
     &__card {
         display: grid;
         gap: 1rem;
@@ -964,7 +944,7 @@
     gap: 1rem;
 
     .parent .admin-select-trigger {
-        padding-left: 93px;
+        padding-left: 100px;
     }
 
     &__list {
@@ -994,10 +974,6 @@
                 font-weight: 550;
                 color: var(--admin-color-text-muted);
             }
-        }
-
-        .admin-form-label.name .admin-input {
-            padding-left: 100px;
         }
     }
 
@@ -1332,16 +1308,12 @@ body.modal-open {
             margin-left: 0;
         }
 
-        .admin-form-label.width .admin-input {
-            padding-left: 90px;
-        }
-
-        .admin-form-label.format .admin-select-trigger {
-            padding-left: 86px;
-        }
-
         .admin-form-label.height .admin-input {
             padding-left: 82px;
+        }
+
+        .admin-form-label.width .admin-input {
+            padding-left: 90px;
         }
 
         .admin-form-label.quality .admin-input {
@@ -1368,14 +1340,6 @@ body.modal-open {
         }
     }
 
-    .admin-form-label.name-folder .admin-input {
-        padding-left: 154px;
-    }
-
-    .admin-form-label.slug .admin-input {
-        padding-left: 55px;
-    }
-
     .media-folders {
         padding: 12px 16px;
 
@@ -1400,9 +1364,11 @@ body.modal-open {
 
         input {
             padding-left: 36px;
+            min-width: 360px;
 
             &::placeholder {
-                opacity: 0.7;
+                color: var(--admin-color-text-muted);
+                opacity: 0.8;
             }
         }
 
@@ -1816,8 +1782,8 @@ body.modal-open {
 .media-drag-overlay-enter-active,
 .media-drag-overlay-leave-active {
     transition:
-        opacity 0.18s ease,
-        transform 0.18s ease;
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 
 .media-drag-overlay-enter-from,
@@ -1925,26 +1891,6 @@ body.modal-open {
     margin-right: 20px;
     margin-bottom: 20px;
 
-    .admin-select-custom.folder {
-        position: relative;
-
-        &::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 11;
-            font-size: 15px;
-            font-weight: 550;
-            color: var(--admin-color-text-muted);
-        }
-
-        .admin-select-trigger {
-            padding-left: 148px;
-        }
-    }
-
     .admin-form-label {
         position: relative;
         span {
@@ -2014,10 +1960,6 @@ body.modal-open {
         .button-link {
             height: 40px;
             width: 44px;
-        }
-
-        .button-copy {
-            background-color: var(--badge-pending-text);
         }
     }
 }
@@ -2304,6 +2246,15 @@ body.modal-open {
     }
 }
 
+.admin-form-label .title-tooltip-left {
+    position: absolute;
+    top: 50%;
+    right: -22px;
+    transform: translateY(-50%);
+    z-index: 11;
+    padding: 0;
+}
+
 .admin-multiselect {
     position: relative;
     width: 100%;
@@ -2476,8 +2427,8 @@ body.modal-open {
         left: 12px;
         top: 50%;
         transform: translateY(-50%);
-        z-index: 11;
-        font-size: 15px;
+        z-index: 9;
+        font-size: 16px;
         font-weight: 550;
         color: var(--admin-color-text-muted);
     }
@@ -2528,7 +2479,7 @@ body.modal-open {
     position: absolute;
     top: 100%;
     left: 0;
-    z-index: 20;
+    z-index: 10;
     width: 100%;
     max-height: 180px;
     overflow-y: auto;
@@ -2661,26 +2612,27 @@ body.modal-open {
 
 .lang .admin-select-trigger {
     padding-left: 60px;
-    min-width: 220px;
+    min-width: 240px;
 }
+
 .status .admin-select-trigger {
-    padding-left: 70px;
+    padding-left: 77px;
 }
 
 .visibility .admin-select-trigger {
-    padding-left: 103px;
+    padding-left: 112px;
 }
 
 .date .admin-input {
-    padding-left: 156px;
+    padding-left: 160px;
 }
 
 .parent .admin-select-trigger {
-    padding-left: 204px;
+    padding-left: 220px;
 }
 
 .shab .admin-select-trigger {
-    padding-left: 82px;
+    padding-left: 92px;
 }
 
 .page-editor {
@@ -2708,10 +2660,6 @@ body.modal-open {
     &__label {
         position: relative;
 
-        .admin-textarea {
-            margin-top: 14px;
-        }
-
         &::before {
             content: attr(data-label);
             position: absolute;
@@ -2723,7 +2671,10 @@ body.modal-open {
             color: var(--admin-color-text-muted);
             pointer-events: none;
             z-index: 9;
-            transition: opacity 0.2s ease;
+            transition:
+                opacity 0.3s ease,
+                transform 0.3s ease,
+                background-color 0.3s ease;
         }
 
         &:focus-within::before {
@@ -2731,12 +2682,33 @@ body.modal-open {
         }
     }
 
+    &__label:has(textarea)::before {
+        top: 10px;
+        transform: translateY(0);
+    }
+
+    &__label:has(textarea:not(:placeholder-shown))::before,
+    &__label:has(textarea:focus-within)::before {
+        opacity: 0;
+        transform: translateY(-22px);
+        color: color-mix(
+            in srgb,
+            var(--admin-color-text-muted) 80%,
+            transparent
+        );
+        background-color: var(--admin-color-surface);
+    }
+
     &__label.name .admin-input {
         padding-left: 175px;
     }
 
-    &__label.url .admin-input {
-        padding-left: 50px;
+    &__label.url {
+        margin-bottom: 14px;
+
+        .admin-input {
+            padding-left: 50px;
+        }
     }
 
     &__label.group {

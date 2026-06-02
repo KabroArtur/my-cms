@@ -775,31 +775,25 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
 
-                                <label
-                                    class="admin-form-label data"
+                                <AdminSelect
+                                    class="data"
                                     data-label="Формат даты:"
-                                >
-                                    <AdminSelect
-                                        :model-value="form.date_format"
-                                        :options="options.date_formats"
-                                        @update:modelValue="
-                                            form.date_format = $event
-                                        "
-                                    />
-                                </label>
+                                    :model-value="form.date_format"
+                                    :options="options.date_formats"
+                                    @update:modelValue="
+                                        form.date_format = $event
+                                    "
+                                />
 
-                                <label
-                                    class="admin-form-label time"
+                                <AdminSelect
                                     data-label="Формат времени:"
-                                >
-                                    <AdminSelect
-                                        :model-value="form.time_format"
-                                        :options="options.time_formats"
-                                        @update:modelValue="
-                                            form.time_format = $event
-                                        "
-                                    />
-                                </label>
+                                    :model-value="form.time_format"
+                                    :options="options.time_formats"
+                                    @update:modelValue="
+                                        form.time_format = $event
+                                    "
+                                    class="time"
+                                />
                             </div>
                         </div>
 
@@ -808,11 +802,10 @@ function measureLanguageWidth(language) {
                                 <h3>Тема и оформление сайта</h3>
                             </div>
                             <div class="page-meta-grid">
-                                <label
-                                    class="admin-form-label topic"
-                                    data-label="Тема сайта:"
-                                >
+                                <div>
                                     <AdminSelect
+                                        class="topic"
+                                        data-label="Тема сайта:"
                                         :model-value="form.site_theme"
                                         :options="options.themes"
                                         @update:modelValue="
@@ -834,37 +827,56 @@ function measureLanguageWidth(language) {
                                             "Выбирает blade-тему публичного сайта."
                                         }}</span>
                                     </p>
-                                </label>
+                                </div>
                             </div>
                         </div>
                     </section>
 
                     <section
                         v-show="activeSettingsTab === 'appearance'"
-                        class="settings-tab-panel admin-label-block"
+                        class="settings-tab-panel settings admin-label-block"
                     >
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
                                 <h3>Медиа и визуальная идентика</h3>
                             </div>
-                            <div class="page-meta-grid">
+                            <div class="page-meta-grid settings">
                                 <label class="admin-form-label">
-                                    <span>Favicon сайта</span>
+                                    <p class="title-tooltip">
+                                        Favicon сайта
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        /><span
+                                            >Используется как основной favicon и
+                                            база для touch icons и других
+                                            размеров.</span
+                                        >
+                                    </p>
                                     <MediaPickerField
                                         v-model="form.favicon_media_id"
                                         title="Выбрать favicon"
                                         return-type="id"
                                         :allow-upload="true"
                                     />
-                                    <small class="muted"
-                                        >Используется как основной favicon и
-                                        база для touch icons и других
-                                        размеров.</small
-                                    >
                                 </label>
 
                                 <label class="admin-form-label">
-                                    <span>Общая обложка сайта</span>
+                                    <p class="title-tooltip">
+                                        Общая обложка сайта
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        /><span
+                                            >Используется как fallback для
+                                            страницы без своей обложки. Если у
+                                            страницы задано собственное
+                                            изображение, оно имеет приоритет и в
+                                            шаблоне, и в Open Graph.</span
+                                        >
+                                    </p>
                                     <MediaPickerField
                                         v-model="
                                             form.site_default_featured_media_id
@@ -873,53 +885,34 @@ function measureLanguageWidth(language) {
                                         return-type="id"
                                         :allow-upload="true"
                                     />
-                                    <small class="muted"
-                                        >Используется как fallback для страницы
-                                        без своей обложки. Если у страницы
-                                        задано собственное изображение, оно
-                                        имеет приоритет и в шаблоне, и в Open
-                                        Graph.</small
-                                    >
                                 </label>
+                            </div>
+                            <div class="page-meta-grid mt-16">
+                                <AdminSelect
+                                    class="size"
+                                    data-label="Размер обложки на сайте:"
+                                    :model-value="
+                                        form.site_featured_media_variant
+                                    "
+                                    :options="options.media_variants"
+                                    @update:modelValue="
+                                        form.site_featured_media_variant =
+                                            $event
+                                    "
+                                />
 
-                                <label class="admin-form-label">
-                                    <span>Размер обложки на сайте</span>
-                                    <select
-                                        v-model="
-                                            form.site_featured_media_variant
-                                        "
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="variant in options.media_variants"
-                                            :key="variant.value"
-                                            :value="variant.value"
-                                        >
-                                            {{ variant.label }}
-                                        </option>
-                                    </select>
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span
-                                        >Размер по умолчанию для вставки в
-                                        контент</span
-                                    >
-                                    <select
-                                        v-model="
-                                            form.media_default_insert_variant
-                                        "
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="variant in options.media_variants"
-                                            :key="variant.value"
-                                            :value="variant.value"
-                                        >
-                                            {{ variant.label }}
-                                        </option>
-                                    </select>
-                                </label>
+                                <AdminSelect
+                                    class="default"
+                                    data-label="Размер по умолчанию в контенте:"
+                                    :model-value="
+                                        form.media_default_insert_variant
+                                    "
+                                    :options="options.media_variants"
+                                    @update:modelValue="
+                                        form.media_default_insert_variant =
+                                            $event
+                                    "
+                                />
                             </div>
                         </div>
 
@@ -928,116 +921,100 @@ function measureLanguageWidth(language) {
                                 <h3>Оформление админки</h3>
                             </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span>Режим темы админки</span>
-                                    <select
-                                        v-model="form.admin_theme_mode"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="mode in options.admin_theme_modes"
-                                            :key="mode.value"
-                                            :value="mode.value"
-                                        >
-                                            {{ mode.label }}
-                                        </option>
-                                    </select>
-                                </label>
+                                <AdminSelect
+                                    class="mode"
+                                    data-label="Режим темы админки:"
+                                    v-model="form.admin_theme_mode"
+                                    :options="options.admin_theme_modes"
+                                />
 
-                                <label class="admin-form-label">
-                                    <span>Палитра для светлой темы</span>
-                                    <select
-                                        v-model="form.admin_light_palette"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="palette in options.admin_light_palettes"
-                                            :key="palette.value"
-                                            :value="palette.value"
-                                        >
-                                            {{ palette.label }}
-                                        </option>
-                                    </select>
-                                </label>
+                                <AdminSelect
+                                    class="palette"
+                                    data-label="Палитра для светлой темы:"
+                                    v-model="form.admin_light_palette"
+                                    :options="options.admin_light_palettes"
+                                />
 
-                                <label class="admin-form-label">
-                                    <span>Палитра для темной темы</span>
-                                    <select
-                                        v-model="form.admin_dark_palette"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="palette in options.admin_dark_palettes"
-                                            :key="palette.value"
-                                            :value="palette.value"
-                                        >
-                                            {{ palette.label }}
-                                        </option>
-                                    </select>
-                                </label>
+                                <AdminSelect
+                                    class="palette"
+                                    data-label="Палитра для темной темы:"
+                                    v-model="form.admin_dark_palette"
+                                    :options="options.admin_dark_palettes"
+                                />
                             </div>
                         </div>
 
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
-                                <h3>Обработка изображений</h3>
+                                <h3 class="title-tooltip">
+                                    Обработка изображений
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span
+                                        >Дополнительные размеры берутся из
+                                        конфигурации media.images.sizes. Здесь
+                                        вы управляете оптимизацией, ограничением
+                                        исходника и созданием производных
+                                        файлов.</span
+                                    >
+                                </h3>
                             </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.media_image_optimize"
-                                            type="checkbox"
-                                        />
-                                        Автоматически оптимизировать
-                                        изображения</span
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    :model-value="form.media_image_optimize"
+                                    @update:modelValue="
+                                        form.media_image_optimize = $event
+                                    "
+                                >
+                                    Автоматическая оптимизация изображений
+                                </AdminCheckbox>
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.media_image_keep_original
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Сохранять оригинал</span
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    :model-value="
+                                        form.media_image_keep_original
+                                    "
+                                    @update:modelValue="
+                                        form.media_image_keep_original = $event
+                                    "
+                                >
+                                    Сохранять оригинал
+                                </AdminCheckbox>
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.media_image_convert_to_webp
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Конвертировать производные версии в
-                                        WebP</span
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    :model-value="
+                                        form.media_image_convert_to_webp
+                                    "
+                                    @update:modelValue="
+                                        form.media_image_convert_to_webp =
+                                            $event
+                                    "
+                                >
+                                    Конвертировать в WebP
+                                </AdminCheckbox>
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.media_image_create_thumbnails
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Создавать дополнительные размеры</span
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    :model-value="
+                                        form.media_image_create_thumbnails
+                                    "
+                                    @update:modelValue="
+                                        form.media_image_create_thumbnails =
+                                            $event
+                                    "
+                                >
+                                    Создавать дополнительные размеры
+                                </AdminCheckbox>
 
-                                <label class="admin-form-label">
-                                    <span>Максимальная ширина</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Максимальная ширина:"
+                                >
                                     <input
                                         v-model.number="
                                             form.media_image_max_width
                                         "
-                                        class="admin-input"
+                                        class="admin-input max"
                                         type="number"
                                         min="320"
                                         max="12000"
@@ -1046,13 +1023,15 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Максимальная высота</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Максимальная высота:"
+                                >
                                     <input
                                         v-model.number="
                                             form.media_image_max_height
                                         "
-                                        class="admin-input"
+                                        class="admin-input max"
                                         type="number"
                                         min="320"
                                         max="12000"
@@ -1061,13 +1040,15 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Качество JPG</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Качество JPG:"
+                                >
                                     <input
                                         v-model.number="
                                             form.media_image_jpg_quality
                                         "
-                                        class="admin-input"
+                                        class="admin-input quality"
                                         type="number"
                                         min="30"
                                         max="100"
@@ -1076,13 +1057,15 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
-                                    <span>Качество WebP</span>
+                                <label
+                                    class="admin-form-label"
+                                    data-label="Качество WebP:"
+                                >
                                     <input
                                         v-model.number="
                                             form.media_image_webp_quality
                                         "
-                                        class="admin-input"
+                                        class="admin-input webp"
                                         type="number"
                                         min="30"
                                         max="100"
@@ -1094,128 +1077,114 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
                             </div>
-                            <p class="muted">
-                                Дополнительные размеры берутся из конфигурации
-                                media.images.sizes. Здесь вы управляете
-                                оптимизацией, ограничением исходника и созданием
-                                производных файлов.
-                            </p>
                         </div>
 
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
-                                <h3>Ассеты темы (CSS/JS)</h3>
+                                <h3 class="title-tooltip">
+                                    Ассеты темы (CSS/JS)<Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span>
+                                        Obfuscation применяется только к
+                                        JS-ассетам темы. Для работы нужен
+                                        установленный javascript-obfuscator на
+                                        сервере; если runtime-obfuscator
+                                        недоступен, CMS автоматически вернется к
+                                        обычному minify без падения сайта.</span
+                                    >
+                                </h3>
                             </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.theme_assets_minify_css
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Сжимать CSS</span
-                                    >
-                                </label>
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.theme_assets_minify_js
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Сжимать JS</span
-                                    >
-                                </label>
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.theme_assets_obfuscate_js
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Обфусцировать JS</span
-                                    >
-                                </label>
-                                <label class="admin-form-label">
-                                    <span>Профиль obfuscation</span>
-                                    <select
-                                        v-model="
-                                            form.theme_assets_obfuscation_preset
-                                        "
-                                        class="admin-input"
-                                        :disabled="
-                                            !form.theme_assets_obfuscate_js
-                                        "
-                                    >
-                                        <option
-                                            v-for="preset in options.theme_asset_obfuscation_presets"
-                                            :key="preset.value"
-                                            :value="preset.value"
-                                        >
-                                            {{ preset.label }}
-                                        </option>
-                                    </select>
-                                </label>
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.theme_assets_combine_css
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Объединять CSS</span
-                                    >
-                                </label>
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.theme_assets_combine_js
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Объединять JS</span
-                                    >
-                                </label>
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.theme_assets_defer_scripts
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Defer для JS по умолчанию</span
-                                    >
-                                </label>
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.theme_assets_use_hash"
-                                            type="checkbox"
-                                        />
-                                        Добавлять hash в URL</span
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    :model-value="
+                                        form.theme_assets_obfuscate_js
+                                    "
+                                    @update:modelValue="
+                                        form.theme_assets_obfuscate_js = $event
+                                    "
+                                >
+                                    Обфусцировать JS
+                                </AdminCheckbox>
+
+                                <AdminSelect
+                                    class="mode"
+                                    data-label="Профиль обфускации:"
+                                    :model-value="
+                                        form.theme_assets_obfuscation_preset
+                                    "
+                                    :options="
+                                        options.theme_asset_obfuscation_presets
+                                    "
+                                    :disabled="!form.theme_assets_obfuscate_js"
+                                    @update:modelValue="
+                                        form.theme_assets_obfuscation_preset =
+                                            $event
+                                    "
+                                />
+                                <AdminCheckbox
+                                    :model-value="form.theme_assets_minify_css"
+                                    @update:modelValue="
+                                        form.theme_assets_minify_css = $event
+                                    "
+                                >
+                                    Сжимать CSS
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    :model-value="form.theme_assets_minify_js"
+                                    @update:modelValue="
+                                        form.theme_assets_minify_js = $event
+                                    "
+                                >
+                                    Сжимать JS
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    :model-value="form.theme_assets_combine_css"
+                                    @update:modelValue="
+                                        form.theme_assets_combine_css = $event
+                                    "
+                                >
+                                    Объединять CSS
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    :model-value="form.theme_assets_combine_js"
+                                    @update:modelValue="
+                                        form.theme_assets_combine_js = $event
+                                    "
+                                >
+                                    Объединять JS
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    :model-value="
+                                        form.theme_assets_defer_scripts
+                                    "
+                                    @update:modelValue="
+                                        form.theme_assets_defer_scripts = $event
+                                    "
+                                >
+                                    Defer для JS по умолчанию
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    :model-value="form.theme_assets_use_hash"
+                                    @update:modelValue="
+                                        form.theme_assets_use_hash = $event
+                                    "
+                                >
+                                    Добавлять hash в URL
+                                </AdminCheckbox>
                             </div>
-                            <p class="muted">
-                                Obfuscation применяется только к JS-ассетам
-                                темы. Для работы нужен установленный
-                                javascript-obfuscator на сервере; если
-                                runtime-obfuscator недоступен, CMS автоматически
-                                вернется к обычному minify без падения сайта.
-                            </p>
                         </div>
                     </section>
 
                     <section
                         v-show="activeSettingsTab === 'languages'"
-                        class="settings-tab-panel admin-label-block"
+                        class="settings-tab-panel settings admin-label-block"
                     >
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
@@ -1270,20 +1239,15 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
 
-                                <label
-                                    class="admin-form-label direction"
+                                <AdminSelect
+                                    class="direction"
                                     data-label="Направление текста:"
-                                >
-                                    <AdminSelect
-                                        :model-value="languageForm.direction"
-                                        :options="
-                                            options.language_directions || []
-                                        "
-                                        @update:modelValue="
-                                            languageForm.direction = $event
-                                        "
-                                    />
-                                </label>
+                                    :model-value="languageForm.direction"
+                                    :options="options.language_directions || []"
+                                    @update:modelValue="
+                                        languageForm.direction = $event
+                                    "
+                                />
 
                                 <label
                                     class="admin-form-label sort-order"
@@ -1363,35 +1327,31 @@ function measureLanguageWidth(language) {
                             </div>
                             <label class="admin-form-label">
                                 <div class="page-meta-grid">
-                                    <label
+                                    <AdminSelect
                                         v-for="language in languages"
                                         :key="language.id"
-                                        class="admin-form-label language-homepage"
+                                        class="language-homepage"
                                         :data-label="languageLabel(language)"
                                         :style="{
                                             '--label-width': `${measureLanguageWidth(language)}px`,
                                         }"
-                                    >
-                                        <AdminSelect
-                                            :model-value="
-                                                form.home_page_ids[language.id]
-                                            "
-                                            :options="[
-                                                {
-                                                    label: 'Автовыбор',
-                                                    value: '',
-                                                },
-                                                ...homePageOptionsForLanguage(
-                                                    language.id,
-                                                ),
-                                            ]"
-                                            @update:modelValue="
-                                                form.home_page_ids[
-                                                    language.id
-                                                ] = $event
-                                            "
-                                        />
-                                    </label>
+                                        :model-value="
+                                            form.home_page_ids[language.id]
+                                        "
+                                        :options="[
+                                            {
+                                                label: 'Автовыбор',
+                                                value: '',
+                                            },
+                                            ...homePageOptionsForLanguage(
+                                                language.id,
+                                            ),
+                                        ]"
+                                        @update:modelValue="
+                                            form.home_page_ids[language.id] =
+                                                $event
+                                        "
+                                    />
                                 </div>
                             </label>
                         </div>
@@ -1420,31 +1380,32 @@ function measureLanguageWidth(language) {
                                             {{ language.direction }} | sort
                                             {{ language.sort_order }}
                                         </p>
-                                        <p class="plugin-status">
-                                            <small>
-                                                {{
-                                                    language.is_default
-                                                        ? "По умолчанию"
-                                                        : "Не по умолчанию"
-                                                }}
-                                                |</small
-                                            >
-                                            <span
-                                                class="plugin-status-badge"
-                                                :class="
-                                                    language.is_active
-                                                        ? 'is-enabled'
-                                                        : 'is-disabled'
-                                                "
-                                            >
-                                                {{
-                                                    language.is_active
-                                                        ? "Активен"
-                                                        : "Выключен"
-                                                }}
-                                            </span>
-                                        </p>
                                     </div>
+
+                                    <p class="plugin-status">
+                                        <small>
+                                            {{
+                                                language.is_default
+                                                    ? "По умолчанию"
+                                                    : "Не по умолчанию"
+                                            }}
+                                            |</small
+                                        >
+                                        <span
+                                            class="plugin-status-badge"
+                                            :class="
+                                                language.is_active
+                                                    ? 'is-enabled'
+                                                    : 'is-disabled'
+                                            "
+                                        >
+                                            {{
+                                                language.is_active
+                                                    ? "Активен"
+                                                    : "Выключен"
+                                            }}
+                                        </span>
+                                    </p>
 
                                     <div class="cell-actions">
                                         <label
@@ -1498,290 +1459,335 @@ function measureLanguageWidth(language) {
 
                     <section
                         v-show="activeSettingsTab === 'seo'"
-                        class="settings-tab-panel admin-label-block"
+                        class="settings-tab-panel settings admin-label-block"
                     >
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
                                 <h3>Индексация и базовые meta-правила</h3>
                             </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_allow_indexing"
-                                            type="checkbox"
-                                        />
-                                        Разрешить индексирование страниц</span
-                                    >
-                                    <small class="muted"
-                                        >Управляет `meta robots` и главным
-                                        правилом в robots.txt
-                                        автоматически.</small
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    v-model="form.seo_allow_indexing"
+                                >
+                                    <p class="title-tooltip-down">
+                                        Разрешить индексирование страниц
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_allow_following"
-                                            type="checkbox"
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
                                         />
-                                        Разрешить роботам переходить по
-                                        ссылкам</span
-                                    >
-                                    <small class="muted"
-                                        >При выключении страницы автоматически
-                                        отдают `nofollow`.</small
-                                    >
-                                </label>
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="
-                                                form.seo_open_graph_enabled
-                                            "
-                                            type="checkbox"
-                                        />
-                                        Выводить Open Graph / social meta</span
-                                    >
-                                    <small class="muted"
-                                        >Добавляет og:title, og:description,
-                                        og:image и, при выборе X, twitter-card
-                                        теги.</small
-                                    >
-                                </label>
+                                        <strong>
+                                            Управляет `meta robots` и главным
+                                            правилом в robots.txt автоматически.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_favicon_enabled"
-                                            type="checkbox"
-                                        />
-                                        Выводить favicon и touch icons</span
-                                    >
-                                    <small class="muted"
-                                        >При сохранении CMS подготовит набор
-                                        размеров 16, 32, 180, 192 и 512 px для
-                                        выбранного favicon.</small
-                                    >
-                                </label>
+                                <AdminCheckbox
+                                    v-model="form.seo_allow_following"
+                                >
+                                    <p class="title-tooltip-down">
+                                        Разрешить роботам переходить по ссылкам
 
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_hreflang_enabled"
-                                            type="checkbox"
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
                                         />
+
+                                        <strong>
+                                            При выключении страницы
+                                            автоматически отдают `nofollow`.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    v-model="form.seo_open_graph_enabled"
+                                >
+                                    <p class="title-tooltip-down">
+                                        Выводить Open Graph / social meta
+
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <strong>
+                                            Добавляет og:title, og:description,
+                                            og:image и, при выборе X,
+                                            twitter-card теги.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    v-model="form.seo_favicon_enabled"
+                                >
+                                    <p class="title-tooltip-down">
+                                        Выводить favicon и touch icons
+
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <strong>
+                                            При сохранении CMS подготовит набор
+                                            размеров 16, 32, 180, 192 и 512 px
+                                            для выбранного favicon.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    v-model="form.seo_hreflang_enabled"
+                                >
+                                    <p class="title-tooltip-down">
                                         Выводить hreflang для мультиязычных
-                                        страниц</span
-                                    >
-                                    <small class="muted"
-                                        >Теги появятся только если активных
-                                        языков больше одного и у страницы есть
-                                        переводы.</small
-                                    >
-                                </label>
+                                        страниц
 
-                                <label class="admin-form-label">
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <strong>
+                                            Теги появятся только если активных
+                                            языков больше одного и у страницы
+                                            есть переводы.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
+                            </div>
+                            <label class="admin-form-label mt-28">
+                                <p class="title-tooltip">
+                                    Соцсети, для которых готовить разметку
+                                    <Icon name="info" width="16" height="16" />
                                     <span
-                                        >Соцсети, для которых готовить
-                                        разметку</span
-                                    >
-                                    <div class="settings-checkbox-grid">
-                                        <label
-                                            v-for="network in options.seo_social_networks ||
-                                            []"
-                                            :key="network.value"
-                                            class="settings-checkbox-card"
-                                        >
-                                            <input
-                                                v-model="
-                                                    form.seo_social_networks
-                                                "
-                                                type="checkbox"
-                                                :value="network.value"
-                                            />
-                                            <span>{{ network.label }}</span>
-                                        </label>
-                                    </div>
-                                    <small class="muted"
                                         >Facebook, LinkedIn, Telegram и WhatsApp
                                         используют OG-теги. Для X дополнительно
-                                        выводятся twitter-card теги.</small
+                                        выводятся twitter-card теги.
+                                    </span>
+                                </p>
+
+                                <div class="settings-checkbox-grid">
+                                    <AdminCheckbox
+                                        v-for="network in options.seo_social_networks ||
+                                        []"
+                                        :key="network.value"
+                                        v-model="form.seo_social_networks"
+                                        :value="network.value"
                                     >
-                                </label>
-                            </div>
+                                        {{ network.label }}
+                                    </AdminCheckbox>
+                                </div>
+                            </label>
                         </div>
 
-                        <div class="settings-cache-card">
+                        <div class="settings-cache-card mt-16">
                             <div class="admin-stack__head mb">
                                 <h3>Канонический домен и структура URL</h3>
                             </div>
                             <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span>Основной протокол</span>
-                                    <select
+                                <div class="mr-12">
+                                    <AdminSelect
+                                        class="protocol"
+                                        data-label="Основной протокол:"
                                         v-model="form.seo_canonical_scheme"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="scheme in options.seo_canonical_schemes"
-                                            :key="scheme.value"
-                                            :value="scheme.value"
-                                        >
-                                            {{ scheme.label }}
-                                        </option>
-                                    </select>
-                                    <small class="muted"
-                                        >Используется в canonical URL,
-                                        robots.txt и sitemap, чтобы не было
-                                        смешения http и https.</small
-                                    >
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span>Режим www</span>
-                                    <select
-                                        v-model="form.seo_canonical_www_mode"
-                                        class="admin-select"
-                                    >
-                                        <option
-                                            v-for="mode in options.seo_canonical_www_modes"
-                                            :key="mode.value"
-                                            :value="mode.value"
-                                        >
-                                            {{ mode.label }}
-                                        </option>
-                                    </select>
-                                    <small class="muted"
-                                        >Переключает основной домен на вариант с
-                                        www или без www поверх APP_URL.</small
-                                    >
-                                </label>
-
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_trailing_slash"
-                                            type="checkbox"
+                                        :options="options.seo_canonical_schemes"
+                                    />
+                                    <p class="title-tooltip">
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
                                         />
+
+                                        <span>
+                                            Используется в canonical URL,
+                                            robots.txt и sitemap, чтобы не было
+                                            смешения http и https.
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div class="mr-12">
+                                    <AdminSelect
+                                        class="www"
+                                        data-label="Режим www:"
+                                        v-model="form.seo_canonical_www_mode"
+                                        :options="
+                                            options.seo_canonical_www_modes
+                                        "
+                                    />
+
+                                    <p class="title-tooltip-left">
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <span>
+                                            Переключает основной домен на
+                                            вариант с www или без www поверх
+                                            APP_URL.
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <AdminCheckbox
+                                    v-model="form.seo_trailing_slash"
+                                >
+                                    <p class="title-tooltip-down">
                                         Добавлять завершающий слеш в URL и
                                         canonical для всех страниц, кроме
-                                        главной</span
-                                    >
-                                    <small class="muted"
-                                        >Влияет на canonical, hreflang, sitemap
-                                        и публичные ссылки CMS. Главные страницы
-                                        языков остаются без дополнительного
-                                        хвостового слеша.</small
-                                    >
-                                </label>
+                                        главной
+
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <strong>
+                                            Влияет на canonical, hreflang,
+                                            sitemap и публичные ссылки CMS.
+                                            Главные страницы языков остаются без
+                                            дополнительного хвостового слеша.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
                             </div>
                         </div>
 
                         <div class="settings-cache-card">
-                            <div class="admin-stack__head mb">
-                                <h3>Sitemap и robots.txt</h3>
-                            </div>
-                            <div class="page-meta-grid">
-                                <label class="admin-form-label">
-                                    <span
-                                        ><input
-                                            v-model="form.seo_sitemap_enabled"
-                                            type="checkbox"
-                                        />
-                                        Публиковать sitemap.xml
-                                        автоматически</span
-                                    >
-                                    <small class="muted"
-                                        >Карта сайта собирается автоматически из
-                                        опубликованных публичных страниц
-                                        CMS.</small
-                                    >
-                                </label>
+                            <div class="admin-stack__head mb mt-16">
+                                <p class="title-tooltip">
+                                    Sitemap и robots.txt
+                                    <Icon name="info" width="16" height="16" />
 
-                                <label class="admin-form-label">
-                                    <span>Частота обновления sitemap</span>
-                                    <select
-                                        v-model="
-                                            form.seo_sitemap_change_frequency
-                                        "
-                                        class="admin-select"
-                                        :disabled="!form.seo_sitemap_enabled"
-                                    >
-                                        <option
-                                            v-for="frequency in options.seo_sitemap_change_frequencies"
-                                            :key="frequency.value"
-                                            :value="frequency.value"
-                                        >
-                                            {{ frequency.label }}
-                                        </option>
-                                    </select>
-                                    <small class="muted"
-                                        >Поле записывается в `changefreq`, чтобы
-                                        поисковые системы понимали ожидаемую
-                                        динамику сайта.</small
-                                    >
-                                </label>
-
-                                <p class="muted">
-                                    Sitemap отдает index-файл и при росте
-                                    количества страниц автоматически разбивается
-                                    на несколько частей.
+                                    <span>
+                                        Sitemap отдает index-файл и при росте
+                                        количества страниц автоматически
+                                        разбивается на несколько частей.
+                                    </span>
                                 </p>
+                            </div>
+                            <div class="admin-column">
+                                <AdminCheckbox
+                                    v-model="form.seo_sitemap_enabled"
+                                >
+                                    <p class="title-tooltip-down">
+                                        Публиковать sitemap.xml автоматически
 
-                                <label class="admin-form-label">
-                                    <span>Исключить пути из sitemap</span>
-                                    <textarea
-                                        v-model="
-                                            form.seo_sitemap_excluded_paths
-                                        "
-                                        class="admin-textarea"
-                                        rows="4"
-                                        placeholder="privacy-policy\nthanks\nsecret/landing"
-                                    ></textarea>
-                                    <small class="muted"
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <strong>
+                                            Карта сайта собирается автоматически
+                                            из опубликованных публичных страниц
+                                            CMS.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
+                                <div class="page-meta-grid">
+                                    <div class="mr-12">
+                                        <AdminSelect
+                                            class="sitemap"
+                                            data-label="Частота обновления sitemap:"
+                                            v-model="
+                                                form.seo_sitemap_change_frequency
+                                            "
+                                            :options="
+                                                options.seo_sitemap_change_frequencies
+                                            "
+                                            :disabled="
+                                                !form.seo_sitemap_enabled
+                                            "
+                                        />
+
+                                        <p class="title-tooltip">
+                                            <Icon
+                                                name="info"
+                                                width="16"
+                                                height="16"
+                                            />
+
+                                            <span>
+                                                Поле записывается в
+                                                `changefreq`, чтобы поисковые
+                                                системы понимали ожидаемую
+                                                динамику сайта.
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <p class="title-tooltip">
+                                    Исключить пути из sitemap
+                                    <Icon name="info" width="16" height="16" />
+
+                                    <span
                                         >По одному пути на строку, без домена.
                                         Например `privacy-policy` исключит
-                                        страницу `/privacy-policy`.</small
-                                    >
-                                </label>
+                                        страницу `/privacy-policy`.
+                                    </span>
+                                </p>
+                                <textarea
+                                    v-model="form.seo_sitemap_excluded_paths"
+                                    class="admin-textarea"
+                                    rows="2"
+                                    placeholder="privacy-policy\nthanks\nsecret/landing"
+                                ></textarea>
 
-                                <label class="admin-form-label">
+                                <p class="title-tooltip">
+                                    Дополнительные правила robots.txt
+                                    <Icon name="info" width="16" height="16" />
+
                                     <span
-                                        >Дополнительные правила robots.txt</span
-                                    >
-                                    <textarea
-                                        v-model="form.seo_robots_custom_rules"
-                                        class="admin-textarea"
-                                        rows="5"
-                                        placeholder="Disallow: /admin/\nAllow: /storage/\nCrawl-delay: 5"
-                                    ></textarea>
-                                    <small class="muted"
                                         >Необязательно. Этот блок будет добавлен
                                         после автоматически сгенерированных
-                                        правил.</small
-                                    >
-                                </label>
+                                        правил.
+                                    </span>
+                                </p>
+                                <textarea
+                                    v-model="form.seo_robots_custom_rules"
+                                    class="admin-textarea"
+                                    rows="3"
+                                    placeholder="Disallow: /admin/\nAllow: /storage/\nCrawl-delay: 5"
+                                ></textarea>
                             </div>
 
-                            <p class="muted">
+                            <p class="mt-16">
                                 Robots:
-                                <a
-                                    :href="robotsPreviewUrl"
-                                    target="_blank"
-                                    rel="noopener"
-                                    >{{ robotsPreviewUrl }}</a
+                                <strong
+                                    ><a
+                                        :href="robotsPreviewUrl"
+                                        target="_blank"
+                                        rel="noopener"
+                                        >{{ robotsPreviewUrl }}</a
+                                    ></strong
                                 >
                             </p>
-                            <p class="muted">
+                            <p>
                                 Sitemap:
-                                <a
-                                    :href="sitemapPreviewUrl"
-                                    target="_blank"
-                                    rel="noopener"
-                                    >{{ sitemapPreviewUrl }}</a
+                                <strong
+                                    ><a
+                                        :href="sitemapPreviewUrl"
+                                        target="_blank"
+                                        rel="noopener"
+                                        >{{ sitemapPreviewUrl }}</a
+                                    ></strong
                                 >
                             </p>
                         </div>
@@ -1799,7 +1805,7 @@ function measureLanguageWidth(language) {
 
                     <section
                         v-show="activeSettingsTab === 'cache'"
-                        class="settings-tab-panel admin-label-block"
+                        class="settings-tab-panel settings admin-label-block"
                     >
                         <div class="settings-cache-card settings">
                             <div class="admin-stack__head mb">
@@ -1957,7 +1963,7 @@ function measureLanguageWidth(language) {
 
                     <section
                         v-show="activeSettingsTab === 'security'"
-                        class="settings-tab-panel admin-label-block"
+                        class="settings-tab-panel settings admin-label-block"
                     >
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
@@ -2149,13 +2155,16 @@ function measureLanguageWidth(language) {
                                     Emergency mode (503 для публичной части)
                                 </AdminCheckbox>
                             </div>
-                            <label class="admin-form-label mt-16">
+                            <label
+                                class="admin-form-label mt-16"
+                                data-label="Текст для emergency-режима:"
+                            >
                                 <textarea
                                     v-model="form.security_emergency_message"
                                     class="admin-textarea"
                                     rows="3"
                                     :disabled="!form.security_emergency_mode"
-                                    placeholder="Текст emergency-режима"
+                                    placeholder=""
                                 ></textarea>
                             </label>
                         </div>

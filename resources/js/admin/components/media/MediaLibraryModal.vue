@@ -1778,18 +1778,16 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                             </div>
                                         </template>
 
-                                        <label
-                                            v-if="transformTool === 'format'"
-                                            class="admin-form-label format"
-                                            data-label="Формат:"
-                                        >
+                                        <div v-if="transformTool === 'format'">
                                             <AdminSelect
+                                                class="format"
+                                                data-label="Формат:"
                                                 v-model="transformForm.format"
                                                 :options="
                                                     transformFormatOptions
                                                 "
                                             />
-                                        </label>
+                                        </div>
                                         <label
                                             v-if="transformTool === 'quality'"
                                             class="admin-form-label quality"
@@ -1808,9 +1806,7 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                             />
                                         </label>
 
-                                        <div
-                                            class="admin-actions-row media-library-modal__editor-actions"
-                                        >
+                                        <div class="admin-actions-row flex-end">
                                             <button
                                                 type="button"
                                                 class="button-base button-secondary"

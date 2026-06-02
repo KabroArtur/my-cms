@@ -147,22 +147,18 @@ function handleMoveFile(value) {
                 />
             </label>
 
-            <div
-                class="admin-select-custom folder"
+            <AdminSelect
+                class="folder"
                 data-label="Выберите папку:"
-            >
-                <AdminSelect
-                    v-model="form.folder_id"
-                    :options="
-                        moveFolderOptions.map((folder) => ({
-                            value: folder.id ?? '',
-                            label: folder.path || folder.name,
-                        }))
-                    "
-                    @update:modelValue="handleMoveFile"
-                />
-            </div>
-
+                v-model="form.folder_id"
+                :options="
+                    moveFolderOptions.map((folder) => ({
+                        value: folder.id ?? '',
+                        label: folder.path || folder.name,
+                    }))
+                "
+                @update:modelValue="handleMoveFile"
+            />
             <div class="admin-actions-row media-sidebar__actions">
                 <button
                     type="button"

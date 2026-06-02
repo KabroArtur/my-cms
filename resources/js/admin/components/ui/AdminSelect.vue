@@ -6,6 +6,7 @@ const props = defineProps({
     modelValue: [String, Number],
     options: { type: Array, required: true },
     placeholder: { type: String, default: "Выберите значение" },
+    showIcons: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["update:modelValue"]);
@@ -58,8 +59,17 @@ onBeforeUnmount(() => {
             :class="{ 'is-open': open }"
             @mousedown.prevent="toggle"
         >
-            <span>
-                {{ selectedOption?.label || placeholder }}
+            <span class="selected">
+                <Icon
+                    v-if="showIcons && selectedOption?.icon"
+                    :name="selectedOption.icon"
+                    width="18"
+                    height="18"
+                />
+
+                <span v-else>
+                    {{ selectedOption?.label || placeholder }}
+                </span>
             </span>
 
             <span class="arrow" :class="{ open }">
@@ -78,7 +88,16 @@ onBeforeUnmount(() => {
                     }"
                     @mousedown.prevent="select(option)"
                 >
-                    {{ option.label }}
+                    <Icon
+                        v-if="showIcons && option.icon"
+                        :name="option.icon"
+                        width="18"
+                        height="18"
+                    />
+
+                    <span v-else>
+                        {{ option.label }}
+                    </span>
                 </div>
             </div>
         </transition>

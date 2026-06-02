@@ -213,8 +213,8 @@ onMounted(loadPlugins);
                 <tbody>
                     <tr v-for="plugin in plugins" :key="plugin.slug">
                         <td>
-                            {{ plugin.name }}
-                            <p class="muted">
+                            <strong>{{ plugin.name }}</strong>
+                            <p>
                                 {{ plugin.description || plugin.slug }}
                             </p>
                         </td>
