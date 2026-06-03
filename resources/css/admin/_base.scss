@@ -207,6 +207,12 @@ select:-webkit-autofill:focus {
     }
 }
 
+.admin-form-title {
+    font-size: 17px;
+    font-weight: 550;
+    line-height: 1;
+}
+
 .admin-form-stack.pb {
     padding-bottom: 14px;
 }
@@ -314,12 +320,6 @@ select:-webkit-autofill:focus {
 .admin-input::placeholder,
 .admin-textarea::placeholder {
     color: color-mix(in srgb, var(--admin-color-text-muted) 90%, transparent);
-}
-
-.admin-fieldset {
-    border: 1px solid var(--admin-color-border);
-    border-radius: var(--admin-radius-md);
-    padding: var(--admin-space-3);
 }
 
 .admin-choice {

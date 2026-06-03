@@ -7,7 +7,8 @@
     --login-muted: #5e7483;
     --login-accent: #4b945d;
     --login-danger: #b3261e;
-    --login-shadow: 0 0 10px 4px rgba(22, 32, 51, 0.12);
+    --login-shadow: 0 0 10px 4px #1620331f;
+    --login-color-shadow: #0f172a49;
     --login-radius-sm: 8px;
     --login-radius-md: 12px;
 }
@@ -70,6 +71,11 @@ select:-webkit-autofill:focus {
     -webkit-text-fill-color: var(--login-text) !important;
 }
 
+::selection {
+    color: var(--login-surface);
+    background: color-mix(in srgb, var(--login-accent) 90%, transparent);
+}
+
 .login-card {
     width: min(380px, 100%);
     border-radius: var(--login-radius-md);
@@ -90,29 +96,26 @@ select:-webkit-autofill:focus {
 
 .login-card__head h1 {
     display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 6px;
-    font-size: 32px;
-    font-weight: 500;
-    color: var(--login-muted);
+    gap: 2px;
+    font-family: "Cormorant Garamond", serif;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
-    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 2px;
+    text-decoration: none;
+    color: var(--login-color-text);
+    transition: 0.25s ease;
+    text-shadow: 0 1px 0 var(--login-color-shadow);
 }
 
 .login-card__head h1 span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    font-weight: 550;
-    text-transform: lowercase;
-    color: var(--login-surface);
-    text-shadow: 0.5px 0.5px 0.5px var(--login-text);
-    line-height: 1;
-    padding: 8px 8px 10px 8px;
-    border-radius: var(--login-radius-sm);
-    background-color: var(--login-accent);
+    font-family: "Inter", sans-serif;
+    color: var(--login-accent);
+    font-size: 30px;
+    text-shadow: 0 0 4px var(--login-color-shadow);
 }
 
 .login-form {

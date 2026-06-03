@@ -10,7 +10,7 @@
 <body>
     <main class="login-card">
         <div class="login-card__head">
-            <h1><span>my</span>CMS</h1>
+         <h1>FL<span>Ξ</span>XORA</h1>       
         </div>
 
         <form class="login-form" method="post" action="{{ route('login.store') }}">

@@ -696,7 +696,7 @@ const toggleContentMode = () => {
                     target="_blank"
                     rel="noopener"
                 >
-                    <Icon name="show" width="18" height="18" />
+                    <Icon name="show" width="22" height="22" />
                 </a>
 
                 <RouterLink :to="{ name: 'pages' }" class="button-base">

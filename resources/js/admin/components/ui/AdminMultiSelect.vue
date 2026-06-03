@@ -15,12 +15,17 @@ const props = defineProps({
 
     placeholder: {
         type: String,
-        default: "Выберите страницы",
+        default: "Выберите значения",
     },
 
     emptyText: {
         type: String,
         default: "Ничего не найдено",
+    },
+
+    noOptionsText: {
+        type: String,
+        default: "Нет доступных вариантов",
     },
 });
 
@@ -30,15 +35,16 @@ const root = ref(null);
 const open = ref(false);
 const search = ref("");
 
-const normalizedModelValue = computed(() => {
-    if (!Array.isArray(props.modelValue)) {
-        return [];
-    }
+const hasOptions = computed(() => props.options.length > 0);
 
+const normalizedModelValue = computed(() => {
+    if (!Array.isArray(props.modelValue)) return [];
     return props.modelValue.map(String);
 });
 
 const filteredOptions = computed(() => {
+    if (!hasOptions.value) return [];
+
     const q = search.value.trim().toLowerCase();
 
     return props.options.filter((option) => {
@@ -46,13 +52,9 @@ const filteredOptions = computed(() => {
             String(option.value),
         );
 
-        if (selected) {
-            return false;
-        }
+        if (selected) return false;
 
-        if (!q) {
-            return true;
-        }
+        if (!q) return true;
 
         return option.label.toLowerCase().includes(q);
     });
@@ -66,7 +68,7 @@ const selectedOptions = computed(() => {
 
 const allSelected = computed(() => {
     return (
-        props.options.length > 0 &&
+        hasOptions.value &&
         selectedOptions.value.length === props.options.length
     );
 });
@@ -81,7 +83,6 @@ function selectOption(option) {
     ];
 
     emit("update:modelValue", nextValues);
-
     search.value = "";
 }
 
@@ -148,37 +149,44 @@ onBeforeUnmount(() => {
                 class="admin-multiselect__arrow"
             />
         </div>
+
         <transition name="select">
             <div v-if="open" class="admin-multiselect__dropdown">
-                <input
-                    v-if="!allSelected"
-                    v-model="search"
-                    type="search"
-                    class="admin-input admin-multiselect__search"
-                    placeholder="Поиск по названию, slug, пути или шаблону"
-                    @click.stop
-                />
-
-                <div v-if="allSelected" class="admin-multiselect__empty">
-                    Вы выбрали все доступные страницы
+                <div v-if="!hasOptions" class="admin-multiselect__empty">
+                    {{ noOptionsText }}
                 </div>
 
-                <div
-                    v-else-if="filteredOptions.length === 0"
-                    class="admin-multiselect__empty"
-                >
-                    {{ emptyText }}
-                </div>
+                <template v-else>
+                    <input
+                        v-if="!allSelected"
+                        v-model="search"
+                        type="search"
+                        class="admin-input admin-multiselect__search"
+                        placeholder="Поиск..."
+                        @click.stop
+                    />
 
-                <button
-                    v-for="option in filteredOptions"
-                    :key="option.value"
-                    type="button"
-                    class="admin-multiselect__option"
-                    @click.stop="selectOption(option)"
-                >
-                    {{ option.label }}
-                </button>
+                    <div v-if="allSelected" class="admin-multiselect__empty">
+                        Все доступные варианты выбраны
+                    </div>
+
+                    <div
+                        v-else-if="filteredOptions.length === 0"
+                        class="admin-multiselect__empty"
+                    >
+                        {{ emptyText }}
+                    </div>
+
+                    <button
+                        v-for="option in filteredOptions"
+                        :key="option.value"
+                        type="button"
+                        class="admin-multiselect__option"
+                        @click.stop="selectOption(option)"
+                    >
+                        {{ option.label }}
+                    </button>
+                </template>
             </div>
         </transition>
     </div>

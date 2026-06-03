@@ -727,9 +727,6 @@ const trashCount = computed(() => trashedPages.value.length);
                         </div>
 
                         <div class="cell-status">
-                            <div class="cell-status__date">
-                                {{ formatDateTime(page.published_at) }}
-                            </div>
                             <div
                                 :class="[
                                     'page-badge',
@@ -738,16 +735,19 @@ const trashCount = computed(() => trashedPages.value.length);
                             >
                                 {{ resolveStatusLabel(page.status) }}
                             </div>
+                            <div class="cell-status__date">
+                                {{ formatDateTime(page.published_at) }}
+                            </div>
                         </div>
 
-                        <div class="cell-actions">
+                        <div class="cell-actions admin-table__inner">
                             <a
                                 :href="resolvePublicUrl(page)"
                                 target="_blank"
                                 class="button-base"
                                 title="Просмотреть страницу на сайте"
                             >
-                                <Icon name="show" width="20" height="20" />
+                                <Icon name="show" width="22" height="22" />
                             </a>
 
                             <RouterLink
@@ -808,7 +808,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                 >
                             </p>
                         </div>
-                        <p class="create">
+                        <p class="admin-table__inner">
                             <strong>{{ resolveCreatorLabel(page) }}</strong>
                         </p>
                         <div class="admin-actions-row">

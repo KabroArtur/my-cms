@@ -379,7 +379,7 @@ function clearNodeDrop(event) {
                         target="_blank"
                         rel="noopener"
                     >
-                        <Icon name="show" width="20" height="20" />
+                        <Icon name="show" width="22" height="22" />
                     </a>
                 </div>
             </article>

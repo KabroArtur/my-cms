@@ -5,6 +5,8 @@ import AdminBadge from "../../components/ui/AdminBadge.vue";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
 import AdminPage from "../../components/ui/AdminPage.vue";
+import AdminCheckbox from "../../components/ui/AdminCheckbox.vue";
+import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import { createRole, fetchRoles, updateRole } from "../../api/roles";
 
@@ -185,18 +187,24 @@ onMounted(loadRoles);
         description="Экран ролей и прав открыт как внутренний раздел из страницы пользователей, а не как отдельный пункт общего меню."
     >
         <template #actions>
-            <RouterLink :to="{ name: 'users' }" class="button-link">
-                К пользователям
+            <RouterLink :to="{ name: 'users' }" class="button-base">
+                <Icon name="users" width="18" height="18" />К пользователям
             </RouterLink>
         </template>
 
         <div class="roles-grid">
             <AdminCard>
-                <h2>{{ editingId ? "Редактирование роли" : "Новая роль" }}</h2>
+                <div class="section-header">
+                    <h2>
+                        {{ editingId ? "Редактирование роли" : "Новая роль" }}
+                    </h2>
+                </div>
 
-                <form class="admin-form-stack" @submit.prevent="submitForm">
-                    <label class="admin-form-label">
-                        <span>Name</span>
+                <form
+                    class="admin-form-stack admin-stack mt-16"
+                    @submit.prevent="submitForm"
+                >
+                    <label class="admin-form-label slug" data-label="Имя:">
                         <input
                             v-model="form.name"
                             class="admin-input"
@@ -209,8 +217,7 @@ onMounted(loadRoles);
                         >
                     </label>
 
-                    <label class="admin-form-label">
-                        <span>Slug</span>
+                    <label class="admin-form-label slug" data-label="Slug:">
                         <input
                             v-model="form.slug"
                             class="admin-input"
@@ -222,38 +229,31 @@ onMounted(loadRoles);
                             >{{ validationErrors.slug[0] }}</small
                         >
                     </label>
-
-                    <fieldset class="admin-fieldset">
-                        <legend>Access</legend>
-
-                        <label
+                    <legend>Access</legend>
+                    <div class="field-definition-editor__card">
+                        <AdminCheckbox
                             v-for="permission in permissionOptions"
                             :key="permission.slug"
-                            class="admin-choice"
+                            v-model="form.permission_slugs"
+                            :value="permission.slug"
                         >
-                            <input
-                                :checked="
-                                    form.permission_slugs.includes(
-                                        permission.slug,
-                                    )
-                                "
-                                type="checkbox"
-                                @change="togglePermission(permission.slug)"
-                            />
-                            <span>{{ permission.label }}</span>
-                        </label>
-                    </fieldset>
+                            {{ permission.label }}
+                        </AdminCheckbox>
+                    </div>
 
                     <p v-if="errorMessage" class="error-text">
                         {{ errorMessage }}
                     </p>
 
-                    <div class="admin-actions-row">
+                    <div class="flex-end">
                         <AdminButton
                             type="submit"
                             variant="primary"
                             :disabled="saving"
+                            class="button-secondary"
+                            title="Создать роль"
                         >
+                            <Icon name="new" width="18" height="18" />
                             {{
                                 saving
                                     ? "Сохранение..."
@@ -267,41 +267,88 @@ onMounted(loadRoles);
                             v-if="editingId"
                             type="button"
                             @click="resetForm"
+                            class="button-danger"
                         >
-                            Отмена
+                            <Icon name="cancel" width="18" height="18" />Отмена
                         </AdminButton>
                     </div>
                 </form>
             </AdminCard>
 
             <AdminCard>
-                <p v-if="loading" class="muted">Загрузка ролей...</p>
+                <p v-if="loading" class="muted text-center">
+                    Загрузка ролей...
+                </p>
                 <p
                     v-else-if="errorMessage && roles.length === 0"
                     class="error-text"
                 >
                     {{ errorMessage }}
                 </p>
-                <p v-else-if="roles.length === 0" class="muted">
+                <p v-else-if="roles.length === 0" class="muted text-center">
                     Роли пока не найдены.
                 </p>
 
-                <table v-else class="data-table">
+                <table v-else class="table user user-new">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Slug</th>
-                            <th>Permissions</th>
-                            <th>Users</th>
-                            <th>Action</th>
+                            <th>
+                                <div class="table-inner"><span>#</span>ID</div>
+                            </th>
+                            <th>
+                                <div class="table-inner">
+                                    <Icon
+                                        name="avatar"
+                                        width="14"
+                                        height="14"
+                                    />Имя
+                                </div>
+                            </th>
+                            <th>
+                                <div class="table-inner">
+                                    <Icon
+                                        name="link"
+                                        width="14"
+                                        height="14"
+                                    />Slug
+                                </div>
+                            </th>
+                            <th>
+                                <div class="table-inner">
+                                    <Icon
+                                        name="lock"
+                                        width="14"
+                                        height="14"
+                                    />Права доступа
+                                </div>
+                            </th>
+                            <th>
+                                <div class="table-inner">
+                                    <Icon
+                                        name="users"
+                                        width="14"
+                                        height="14"
+                                    />Пользователи
+                                </div>
+                            </th>
+                            <th>
+                                <div class="table-inner">
+                                    <Icon
+                                        name="settings"
+                                        width="14"
+                                        height="14"
+                                    />Действия
+                                </div>
+                            </th>
                         </tr>
                     </thead>
 
                     <tbody>
                         <tr v-for="role in roles" :key="role.id">
                             <td>{{ role.id }}</td>
-                            <td>{{ role.name }}</td>
+                            <td>
+                                <strong>{{ role.name }}</strong>
+                            </td>
                             <td>{{ role.slug }}</td>
                             <td>
                                 <AdminBadge
@@ -314,12 +361,18 @@ onMounted(loadRoles);
                             </td>
                             <td>{{ role.users_count }}</td>
                             <td>
-                                <div class="admin-actions-row">
+                                <div class="cell-actions">
                                     <AdminButton
                                         type="button"
                                         @click="startEdit(role)"
+                                        title="Редактировать роль"
+                                        class="button-link"
                                     >
-                                        Edit
+                                        <Icon
+                                            name="pencil"
+                                            width="20"
+                                            height="20"
+                                        />
                                     </AdminButton>
                                 </div>
                             </td>

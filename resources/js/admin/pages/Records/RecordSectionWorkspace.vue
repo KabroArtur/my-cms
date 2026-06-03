@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import AdminButton from "../../components/ui/AdminButton.vue";
 import AdminCard from "../../components/ui/AdminCard.vue";
@@ -9,6 +9,7 @@ import AdminPage from "../../components/ui/AdminPage.vue";
 import Icon from "../../components/ui/Icon.vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
 import AdminModal from "../../components/ui/AdminModal.vue";
+import AdminMultiSelect from "../../components/ui/AdminMultiSelect.vue";
 import {
     createSectionCategory,
     createSectionRecord,
@@ -55,6 +56,13 @@ const activeTab = computed(() => {
 
     return "posts";
 });
+
+watch(
+    () => route.name,
+    () => {
+        loadWorkspace();
+    },
+);
 
 const confirmModal = reactive({
     open: false,
@@ -383,10 +391,6 @@ onMounted(loadWorkspace);
         description="Внутри раздела доступны вкладки записи, категории, теги и настройки."
         class="panel-stack"
     >
-        <p v-if="errorMessage" class="error-text">
-            <strong>{{ errorMessage }}</strong>
-        </p>
-        <p v-if="loading" class="muted text-center">Загрузка...</p>
         <div class="panel-card section">
             <div
                 class="admin-tabs admin-page-head"
@@ -456,18 +460,20 @@ onMounted(loadWorkspace);
                                 { value: 'published', label: 'published' },
                             ]"
                         />
-                        <AdminSelect
-                            v-model="recordForm.tag_ids"
-                            class="tags"
-                            data-label="Теги:"
-                            multiple
-                            :options="
-                                tags.map((item) => ({
-                                    value: item.id,
-                                    label: item.name,
-                                }))
-                            "
-                        />
+                        <div class="admin-form-label tags" data-label="Теги:">
+                            <AdminMultiSelect
+                                v-model="recordForm.tag_ids"
+                                :options="
+                                    tags.map((item) => ({
+                                        value: item.id,
+                                        label: item.name,
+                                    }))
+                                "
+                                placeholder="Выберите теги"
+                                empty-text="Теги не найдены"
+                                no-options-text="Теги пока не созданы"
+                            />
+                        </div>
                     </div>
 
                     <label
@@ -650,6 +656,8 @@ onMounted(loadWorkspace);
             </AdminCard>
         </div>
 
+        <p v-if="loading" class="muted text-center">Загрузка...</p>
+
         <AdminCard v-if="activeTab === 'posts'">
             <table class="table create-partition">
                 <thead>
@@ -710,7 +718,7 @@ onMounted(loadWorkspace);
                         </th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody v-if="records.length">
                     <tr v-for="item in records" :key="item.id">
                         <td>
                             <strong>{{ item.title }}</strong>
@@ -738,15 +746,15 @@ onMounted(loadWorkspace);
                                     class="button-link"
                                     ><Icon
                                         name="duplicate"
-                                        width="18"
-                                        height="18"
+                                        width="20"
+                                        height="20"
                                 /></AdminButton>
                                 <AdminButton
                                     v-if="item.status !== 'published'"
                                     type="button"
                                     @click="publishRecord(item.id)"
                                     title="Опубликовать"
-                                    ><Icon name="show" width="18" height="18"
+                                    ><Icon name="show" width="22" height="22"
                                 /></AdminButton>
                                 <AdminButton
                                     v-else
@@ -755,18 +763,23 @@ onMounted(loadWorkspace);
                                     title="Снять с публикации"
                                     ><Icon
                                         name="eye-off"
-                                        width="18"
-                                        height="18"
+                                        width="22"
+                                        height="22"
                                 /></AdminButton>
                                 <AdminButton
                                     type="button"
                                     variant="danger"
                                     title="Удалить"
                                     @click="askRemoveRecord(item.id)"
-                                    ><Icon name="trash" width="18" height="18"
+                                    ><Icon name="trash" width="20" height="20"
                                 /></AdminButton>
                             </div>
                         </td>
+                    </tr>
+                </tbody>
+                <tbody v-else>
+                    <tr>
+                        <td colspan="6">Записей пока нет.</td>
                     </tr>
                 </tbody>
             </table>
@@ -799,7 +812,7 @@ onMounted(loadWorkspace);
                         </th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody v-if="categories.length">
                     <tr v-for="item in categories" :key="item.id">
                         <td>
                             <strong>{{ item.name }}</strong>
@@ -811,14 +824,16 @@ onMounted(loadWorkspace);
                                     type="button"
                                     variant="danger"
                                     @click="removeCategory(item.id)"
-                                    ><Icon
-                                        name="trash"
-                                        width="18"
-                                        height="18"
-                                    />Удалить</AdminButton
-                                >
+                                    title="Удалить"
+                                    ><Icon name="trash" width="20" height="20"
+                                /></AdminButton>
                             </div>
                         </td>
+                    </tr>
+                </tbody>
+                <tbody v-else>
+                    <tr>
+                        <td colspan="3">Категории пока не созданы.</td>
                     </tr>
                 </tbody>
             </table>
@@ -851,7 +866,7 @@ onMounted(loadWorkspace);
                         </th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody v-if="tags.length">
                     <tr v-for="item in tags" :key="item.id">
                         <td>
                             <strong>{{ item.name }}</strong>
@@ -863,14 +878,16 @@ onMounted(loadWorkspace);
                                     type="button"
                                     variant="danger"
                                     @click="removeTag(item.id)"
-                                    ><Icon
-                                        name="trash"
-                                        width="18"
-                                        height="18"
-                                    />Удалить</AdminButton
-                                >
+                                    title="Удалить"
+                                    ><Icon name="trash" width="20" height="20"
+                                /></AdminButton>
                             </div>
                         </td>
+                    </tr>
+                </tbody>
+                <tbody v-else>
+                    <tr>
+                        <td colspan="3">Теги пока не созданы.</td>
                     </tr>
                 </tbody>
             </table>

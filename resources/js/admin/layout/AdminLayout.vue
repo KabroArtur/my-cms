@@ -501,7 +501,7 @@ onBeforeUnmount(() => {
     <div class="admin-shell">
         <aside class="admin-sidebar" :class="{ 'is-open': sidebarOpen }">
             <div class="admin-sidebar__brand">
-                <RouterLink to="/" class="admin-title">
+                <RouterLink :to="adminBasePath()" class="admin-title">
                     FL<span>Ξ</span>XORA
                 </RouterLink>
                 <a
@@ -782,7 +782,7 @@ onBeforeUnmount(() => {
                                 @click="handleLogout"
                             >
                                 <Icon
-                                    name="exit"
+                                    name="log"
                                     width="20"
                                     height="20"
                                     class="admin-user-menu__item__icon"

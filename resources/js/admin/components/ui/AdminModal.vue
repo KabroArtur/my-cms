@@ -46,7 +46,10 @@ function closeModal() {
                     <div class="admin-modal__body text-center">
                         <slot />
 
-                        <div v-if="$slots.footer" class="admin-modal__footer">
+                        <div
+                            v-if="$slots.footer"
+                            class="admin-modal__footer admin-actions-row"
+                        >
                             <slot name="footer" />
                         </div>
                     </div>

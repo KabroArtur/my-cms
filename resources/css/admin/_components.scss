@@ -26,7 +26,7 @@
     padding: 0;
 }
 
-.panel-card:has(.plugins, .create-partition) {
+.panel-card:has(.plugins, .create-partition, .user-new) {
     overflow: hidden;
 }
 
@@ -73,6 +73,11 @@
         align-items: center;
         justify-content: center;
         gap: 6px;
+        font-size: 15px;
+
+        span {
+            font-size: 15px;
+        }
     }
 
     .date-w {
@@ -84,7 +89,8 @@
     border: none;
 }
 
-.create-partition {
+.create-partition,
+.user {
     tr:not(:last-child) {
         border-bottom: 1px solid var(--admin-color-border);
     }
@@ -94,26 +100,35 @@
     }
 }
 
-.cell-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+.user td:not(:last-child),
+.user th:not(:last-child) {
+    border-right: 1px solid var(--admin-color-border);
 }
 
 .badge {
     display: inline-flex;
-    margin: 2px 6px 2px 0;
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: var(--admin-color-info);
-    color: var(--admin-color-info-text);
-    font-size: 12px;
+    align-items: center;
+    font-size: 15px;
+    color: var(--admin-color-primary);
+    padding: 2px 14px;
+    border-radius: var(--admin-radius-sm);
+    border: 1px solid var(--admin-color-primary);
+    background: color-mix(
+        in srgb,
+        var(--admin-color-text-muted) 4%,
+        var(--admin-color-surface)
+    );
 }
 
 .badge-soft {
-    background: #f3f4f6;
-    color: #374151;
+    font-size: 12px;
+    color: var(--admin-color-text);
+    text-shadow: none;
+    padding-inline: 12px;
+    border-radius: var(--admin-radius-md);
+    background: color-mix(in srgb, var(--admin-color-primary) 20%, transparent);
+    border: none;
+    margin: 4px 2px;
 }
 
 .button-base {
@@ -125,6 +140,7 @@
     color: var(--admin-color-text-accent);
     text-shadow: 0.3px 0.3px 0.3px var(--admin-color-text-shadow);
     padding: 8px 12px;
+    min-width: fit-content;
     border: none;
     border-radius: var(--admin-radius-sm);
     background: var(--admin-color-primary);
@@ -187,6 +203,19 @@
 
 .button-copy {
     background-color: var(--badge-pending-text);
+}
+
+.button-eye {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    background-color: transparent;
+    padding: 0;
+
+    svg.icon {
+        fill: var(--admin-color-text);
+    }
 }
 
 .admin-page-head {
@@ -341,23 +370,6 @@
 
 .admin-tab--ghost {
     opacity: 0.5;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-    border: 1px solid var(--admin-color-border);
-    padding: 10px 12px;
-    vertical-align: top;
-}
-
-.data-table th {
-    text-align: left;
-    background: var(--admin-color-surface-muted);
 }
 
 .admin-stat-card {
@@ -828,7 +840,7 @@
 
 .field-definition-editor {
     display: grid;
-    gap: 1rem;
+    gap: 16зч;
 
     &__color {
         width: 100%;
@@ -876,8 +888,8 @@
 
     &__card {
         display: grid;
-        gap: 1rem;
-        padding: 1rem;
+        gap: 16px;
+        padding: 12px 14px;
         border-radius: var(--admin-radius-md);
         border: 1px solid var(--admin-color-border);
         background-color: var(--admin-color-bg);
@@ -1162,7 +1174,7 @@
                 var(--admin-color-surface)
             );
             box-shadow: 0 4px 10px var(--admin-color-shadow);
-            z-index: 9;
+            z-index: 3;
         }
 
         &.is-selected {
@@ -2189,6 +2201,7 @@ body.modal-open {
     position: absolute;
     top: 10px;
     right: 10px;
+    padding: 0;
     width: 30px;
     height: 30px;
     background: var(--admin-color-primary);
@@ -2251,7 +2264,7 @@ body.modal-open {
     top: 50%;
     right: -22px;
     transform: translateY(-50%);
-    z-index: 11;
+    z-index: 9;
     padding: 0;
 }
 
@@ -2615,26 +2628,6 @@ body.modal-open {
     min-width: 240px;
 }
 
-.status .admin-select-trigger {
-    padding-left: 77px;
-}
-
-.visibility .admin-select-trigger {
-    padding-left: 112px;
-}
-
-.date .admin-input {
-    padding-left: 160px;
-}
-
-.parent .admin-select-trigger {
-    padding-left: 220px;
-}
-
-.shab .admin-select-trigger {
-    padding-left: 92px;
-}
-
 .page-editor {
     display: flex;
     flex-direction: column;
@@ -2814,6 +2807,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     gap: 16px;
     padding-inline: 20px;
     height: 50px;
+    width: 100%;
     border-radius: var(--admin-radius-md) var(--admin-radius-md) 0 0;
     background: color-mix(
         in srgb,
@@ -2821,6 +2815,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         var(--admin-color-text-muted)
     );
     border-bottom: 1px solid var(--admin-color-border);
+
+    h2 {
+        font-size: 18px;
+        font-weight: 550;
+        line-height: 1;
+    }
 }
 
 .section-wrapper {

@@ -89,7 +89,7 @@
         top: 50%;
         right: -22px;
         transform: translateY(-50%);
-        z-index: 11;
+        z-index: 9;
         padding: 0;
 
         span {
@@ -208,7 +208,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 16px;
 }
 
 .users-toolbar__actions {
@@ -1532,6 +1531,11 @@
     min-width: 0;
 }
 
+.user-role {
+    display: grid;
+    gap: 12px;
+}
+
 .language-homepage {
     position: relative;
     --label-width: 0px;
@@ -1601,7 +1605,8 @@
 }
 
 .admin-select-custom.type .admin-select-trigger,
-.admin-select-custom.tags .admin-select-trigger {
+.admin-select-custom.tags .admin-select-trigger,
+.tags .admin-multiselect__control {
     padding-left: 59px;
 }
 
@@ -1615,12 +1620,17 @@
     padding-left: 72px;
 }
 
+.status .admin-select-trigger {
+    padding-left: 77px;
+}
+
 .admin-select-custom.format .admin-select-trigger,
 .admin-form-label.expert .admin-input {
     padding-left: 86px;
 }
 
-.admin-form-label.help .admin-input {
+.admin-form-label.help .admin-input,
+.shab .admin-select-trigger {
     padding-left: 94px;
 }
 
@@ -1636,7 +1646,8 @@
     padding-left: 108px;
 }
 
-.admin-select-custom.topic .admin-select-trigger {
+.admin-select-custom.topic .admin-select-trigger,
+.visibility .admin-select-trigger {
     padding-left: 112px;
 }
 
@@ -1670,7 +1681,8 @@
     padding-left: 156px;
 }
 
-.admin-select-custom.time .admin-select-trigger {
+.admin-select-custom.time .admin-select-trigger,
+.date .admin-input {
     padding-left: 161px;
 }
 
@@ -1701,7 +1713,8 @@
     padding-left: 214px;
 }
 
-.admin-form-label.cache .admin-input {
+.admin-form-label.cache .admin-input,
+.parent .admin-select-trigger {
     padding-left: 224px;
 }
 
@@ -1740,7 +1753,7 @@
 .page-meta-grid-3 {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--admin-space-6);
+    gap: var(--admin-space-2);
 }
 
 .page-title-link {
@@ -1816,12 +1829,8 @@
 
 .page-trash-card {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: center;
-
-    .create {
-        text-align: center;
-    }
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 
     div {
         padding: 10px 20px;
@@ -3507,5 +3516,16 @@
     .page-editor-content-field__head {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+.admin-password {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .admin-form-label {
+        width: 100%;
     }
 }
