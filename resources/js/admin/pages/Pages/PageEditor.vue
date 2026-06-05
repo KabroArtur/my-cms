@@ -1260,21 +1260,28 @@ const toggleContentMode = () => {
                             </div>
                         </div>
                         <div class="page-editor">
-                            <label class="page-editor__label">
-                                <input
+                            <label
+                                class="page-editor__label"
+                                data-label="SEO заголовок страницы:"
+                            >
+                                <textarea
                                     v-model="form.meta_title"
                                     class="admin-input"
                                     type="text"
-                                    placeholder="SEO заголовок страницы"
-                                />
+                                    rows="1"
+                                    placeholder=""
+                                ></textarea>
                             </label>
 
-                            <label class="page-editor__label">
+                            <label
+                                class="page-editor__label"
+                                data-label="SEO описание страницы:"
+                            >
                                 <textarea
                                     v-model="form.meta_description"
                                     class="admin-textarea mt-0"
                                     rows="4"
-                                    placeholder="SEO описание страницы"
+                                    placeholder=""
                                 ></textarea>
                             </label>
 

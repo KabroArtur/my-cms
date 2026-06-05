@@ -82,20 +82,30 @@
 }
 
 :root[data-admin-theme-mode="light"][data-admin-theme-palette="sand"] {
-    --admin-color-bg: #f6f2ea;
-    --admin-color-surface: #fffdfa;
-    --admin-color-surface-muted: #efe7d8;
-    --admin-color-border: #d8c8a9;
-    --admin-color-border-strong: #b9a17d;
-    --admin-color-text: #3f2f1f;
-    --admin-color-text-muted: #6f5a42;
-    --admin-color-primary: #c77a2a;
-    --admin-color-primary-contrast: #2f1f0f;
-    --admin-color-danger: #b13a2d;
-    --admin-color-danger-bg: #ffe7df;
-    --admin-color-danger-border: #f2c0b5;
-    --admin-color-info: #efe4d0;
-    --admin-color-info-text: #7a4c0c;
+    --admin-color-bg: #f7f3ee;
+    --admin-color-surface: #ffffff;
+    --admin-color-surface-muted: #7a6a5a;
+    --admin-color-border: #e3d6c8;
+    --admin-color-border-strong: #d6c2a8;
+    --admin-color-text: #3a2f28;
+    --admin-color-text-accent: #ffffff;
+    --admin-color-text-shadow: #4a372a;
+    --admin-color-text-muted: #6b5a4d;
+    --admin-color-primary: #d97706;
+    --admin-color-primary-contrast: #3b1f00;
+    --admin-color-success: #6b8e23;
+    --admin-color-danger: #dc2626;
+    --admin-color-warning: #f59e0b;
+    --admin-color-info: #b45309;
+    --admin-color-shadow: rgba(60, 40, 20, 0.18);
+    --admin-color-info-text: #3b2a1a;
+    --admin-color-high: #f59e0b;
+    --badge-draft-text: #2563eb;
+    --badge-pending-text: #f59e0b;
+    --badge-scheduled-text: #a855f7;
+    --badge-published-text: #16a34a;
+    --badge-archived-text: #8b6f5a;
+    --badge-home-text: #d97706;
 }
 
 :root[data-admin-theme-mode="light"][data-admin-theme-palette="forest"] {

@@ -841,7 +841,10 @@ function measureLanguageWidth(language) {
                                 <h3>Медиа и визуальная идентика</h3>
                             </div>
                             <div class="page-meta-grid settings">
-                                <label class="admin-form-label">
+                                <label
+                                    class="admin-form-label"
+                                    @click.stop.prevent
+                                >
                                     <p class="title-tooltip">
                                         Favicon сайта
                                         <Icon
@@ -862,7 +865,10 @@ function measureLanguageWidth(language) {
                                     />
                                 </label>
 
-                                <label class="admin-form-label">
+                                <label
+                                    class="admin-form-label"
+                                    @click.stop.prevent
+                                >
                                     <p class="title-tooltip">
                                         Общая обложка сайта
                                         <Icon
@@ -902,7 +908,7 @@ function measureLanguageWidth(language) {
                                 />
 
                                 <AdminSelect
-                                    class="default"
+                                    class="size-default"
                                     data-label="Размер по умолчанию в контенте:"
                                     :model-value="
                                         form.media_default_insert_variant

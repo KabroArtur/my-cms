@@ -128,8 +128,7 @@ function handleMoveFile(value) {
         />
 
         <form class="admin-form-stack" @submit.prevent="submit">
-            <label class="admin-form-label">
-                <span>Название:</span>
+            <label class="admin-form-label" data-label="Название:">
                 <input
                     v-model="form.original_name"
                     class="admin-input name"
@@ -138,8 +137,7 @@ function handleMoveFile(value) {
                 />
             </label>
 
-            <label class="admin-form-label">
-                <span>Alt текст:</span>
+            <label class="admin-form-label" data-label="Alt текст:">
                 <input
                     v-model="form.alt_text"
                     class="admin-input alt"
@@ -149,7 +147,7 @@ function handleMoveFile(value) {
 
             <AdminSelect
                 class="folder"
-                data-label="Выберите папку:"
+                data-label="Папка:"
                 v-model="form.folder_id"
                 :options="
                     moveFolderOptions.map((folder) => ({
@@ -194,7 +192,7 @@ function handleMoveFile(value) {
                     @click="emit('edit', file)"
                     title="Редактировать"
                 >
-                    <Icon name="pencil" width="20" height="20" />
+                    <Icon name="pencil" width="22" height="22" />
                 </button>
 
                 <button

@@ -103,10 +103,11 @@ function toggleMenu(folderId) {
         <div class="media-breadcrumbs media-folders__breadcrumbs">
             <button
                 type="button"
-                class="button-base"
+                class="media-folders__home"
                 @click="emit('open-root')"
+                title="Корень медиатеки"
             >
-                Корень
+                <Icon name="home" width="20" height="20" />
             </button>
 
             <template v-for="folder in breadcrumbs" :key="folder.id">

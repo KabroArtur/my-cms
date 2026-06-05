@@ -229,7 +229,7 @@ onMounted(loadRoles);
                             >{{ validationErrors.slug[0] }}</small
                         >
                     </label>
-                    <legend>Access</legend>
+                    <h3 class="admin-form-title">Access</h3>
                     <div class="field-definition-editor__card">
                         <AdminCheckbox
                             v-for="permission in permissionOptions"
@@ -237,7 +237,7 @@ onMounted(loadRoles);
                             v-model="form.permission_slugs"
                             :value="permission.slug"
                         >
-                            {{ permission.label }}
+                            <strong>{{ permission.label }}</strong>
                         </AdminCheckbox>
                     </div>
 

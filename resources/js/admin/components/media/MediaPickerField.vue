@@ -247,6 +247,7 @@ function clearSelection() {
             v-if="previewItems.length > 0"
             class="media-picker-field__previews"
             :class="{ 'is-multiple': multiple }"
+            @click.prevent.stop
         >
             <article
                 v-for="item in previewItems"

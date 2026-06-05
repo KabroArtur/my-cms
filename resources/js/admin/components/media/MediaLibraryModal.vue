@@ -1723,20 +1723,14 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                             v-if="transformTool === 'crop'"
                                             v-model="transformForm.crop_enabled"
                                         >
-                                            Включить кадрирование
+                                            <strong
+                                                >Включить кадрирование</strong
+                                            >
                                         </AdminCheckbox>
 
                                         <template
                                             v-if="transformTool === 'resize'"
                                         >
-                                            <AdminCheckbox
-                                                v-model="
-                                                    transformForm.maintain_aspect_ratio
-                                                "
-                                            >
-                                                Сохранять пропорции
-                                            </AdminCheckbox>
-
                                             <div
                                                 class="media-library-modal__editor-grid"
                                             >
@@ -1775,6 +1769,16 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                                         "
                                                     />
                                                 </label>
+                                                <AdminCheckbox
+                                                    v-model="
+                                                        transformForm.maintain_aspect_ratio
+                                                    "
+                                                >
+                                                    <strong
+                                                        >Сохранять
+                                                        пропорции</strong
+                                                    >
+                                                </AdminCheckbox>
                                             </div>
                                         </template>
 

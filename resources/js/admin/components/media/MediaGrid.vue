@@ -89,11 +89,11 @@ function canRemoveUpload(file) {
             >
                 <strong>{{ file.original_name }}</strong>
                 <p class="text-center">
-                    <span>{{ file.size_human }}</span>
-                    <span
+                    <small>{{ file.size_human }}</small>
+                    <small
                         ><template v-if="file.width && file.height">
                             {{ file.width }} x {{ file.height }}</template
-                        ></span
+                        ></small
                     >
                 </p>
 
