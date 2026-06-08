@@ -17,10 +17,18 @@ function toggle() {
 }
 
 function update(key, value) {
-    emit("update:modelValue", {
+    const next = {
         ...props.modelValue,
         [key]: value,
-    });
+    };
+
+    if (key === "compact" && value) {
+        Object.keys(next).forEach((k) => {
+            if (k !== "compact") next[k] = false;
+        });
+    }
+
+    emit("update:modelValue", next);
 }
 
 function clickOutside(e) {

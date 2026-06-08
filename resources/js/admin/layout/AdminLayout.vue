@@ -820,8 +820,8 @@ onBeforeUnmount(() => {
                 >
                     <Icon
                         name="menu"
-                        width="34"
-                        height="34"
+                        width="26"
+                        height="26"
                         class="admin-menu-button__icon"
                     />
                 </button>

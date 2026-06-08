@@ -85,10 +85,6 @@ select:-webkit-autofill:focus {
     background: color-mix(in srgb, var(--admin-color-high) 70%, transparent);
 }
 
-::-webkit-search-cancel-button {
-    filter: grayscale(1) opacity(0.6);
-}
-
 .eyebrow {
     font-size: 12px;
     font-weight: 550;

@@ -38,21 +38,23 @@ const menuModalOpen = ref(false);
 const languageFilter = ref("all");
 const languageOptions = ref([]);
 const visibleFields = ref({
+    shab: true,
     language: true,
     author: true,
-    date: true,
     status: true,
     compact: false,
 });
+
 const deleteModalOpen = ref(false);
 const pageToDelete = ref(null);
 const fieldLabels = {
-    status: "Показывать шаблон",
+    shab: "Показывать шаблон",
     language: "Показывать язык",
     author: "Показывать автора",
-    date: "Показывать дату",
+    status: "Показывать статус",
     compact: "Компактный режим",
 };
+
 const searchQuery = ref("");
 const statusFilter = ref("all");
 const templateFilter = ref("all");
@@ -482,6 +484,42 @@ const archivedCount = computed(
     () => pages.value.filter((p) => p.status === "archived").length,
 );
 const trashCount = computed(() => trashedPages.value.length);
+
+const tableColumns = computed(() => {
+    const columns = ["2.2fr"];
+
+    if (visibleFields.value.author) {
+        columns.push("1fr");
+    }
+
+    if (visibleFields.value.language) {
+        columns.push("0.8fr");
+    }
+
+    if (visibleFields.value.shab) {
+        columns.push("0.8fr");
+    }
+
+    if (visibleFields.value.status) {
+        columns.push("1.2fr");
+    }
+
+    columns.push("1.4fr");
+
+    return columns.join(" ");
+});
+
+const trashColumns = computed(() => {
+    const columns = ["2fr"];
+
+    if (visibleFields.value.author) {
+        columns.push("1.2fr");
+    }
+
+    columns.push("1fr");
+
+    return columns.join(" ");
+});
 </script>
 
 <template>
@@ -632,12 +670,14 @@ const trashCount = computed(() => trashedPages.value.length);
                     </div>
                 </div>
 
-                <p v-if="loading" class="muted">Загрузка страниц...</p>
+                <p v-if="loading" class="muted text-center">
+                    Загрузка страниц...
+                </p>
                 <p
                     v-else-if="
                         activeTab !== 'trash' && visiblePages.length === 0
                     "
-                    class="muted"
+                    class="muted text-center"
                 >
                     По выбранному фильтру страниц нет.
                 </p>
@@ -645,13 +685,16 @@ const trashCount = computed(() => trashedPages.value.length);
                     v-else-if="
                         activeTab === 'trash' && trashedPages.length === 0
                     "
-                    class="muted"
+                    class="muted text-center"
                 >
                     Удалённых страниц пока нет.
                 </p>
 
                 <div v-else-if="activeTab !== 'trash'" class="admin-table">
-                    <div class="admin-table__head">
+                    <div
+                        class="admin-table__head"
+                        :style="{ gridTemplateColumns: tableColumns }"
+                    >
                         <div>
                             <Icon name="page" width="14" height="14" />Страница
                         </div>
@@ -661,10 +704,10 @@ const trashCount = computed(() => trashedPages.value.length);
                         <div v-if="visibleFields.language">
                             <Icon name="lang" width="14" height="14" />Язык
                         </div>
-                        <div v-if="visibleFields.status">
+                        <div v-if="visibleFields.shab">
                             <Icon name="shab" width="14" height="14" />Шаблон
                         </div>
-                        <div>
+                        <div v-if="visibleFields.status">
                             <Icon name="status" width="14" height="14" />Статус
                         </div>
                         <div>
@@ -679,6 +722,7 @@ const trashCount = computed(() => trashedPages.value.length);
                         v-for="page in visiblePages"
                         :key="page.id"
                         class="admin-table__row"
+                        :style="{ gridTemplateColumns: tableColumns }"
                     >
                         <div class="cell-page">
                             <RouterLink
@@ -691,7 +735,7 @@ const trashCount = computed(() => trashedPages.value.length);
                                 {{ page.title }}
                             </RouterLink>
 
-                            <div class="page-sub">
+                            <div v-if="visibleFields.slug" class="page-sub">
                                 <span>ID {{ page.id }}</span>
                                 <span>{{ resolvePublicUrl(page) }}</span>
                                 <span>{{ page.slug }}</span>
@@ -720,23 +764,23 @@ const trashCount = computed(() => trashedPages.value.length);
                         </div>
 
                         <div
-                            v-if="visibleFields.status"
+                            v-if="visibleFields.shab"
                             class="admin-table__inner"
                         >
                             {{ page.template || "default" }}
                         </div>
 
-                        <div class="cell-status">
+                        <div class="cell-status" v-if="visibleFields.status">
                             <div
                                 :class="[
                                     'page-badge',
                                     `page-badge--${page.status}`,
                                 ]"
                             >
+                                <div class="cell-status__date">
+                                    {{ formatDateTime(page.published_at) }}
+                                </div>
                                 {{ resolveStatusLabel(page.status) }}
-                            </div>
-                            <div class="cell-status__date">
-                                {{ formatDateTime(page.published_at) }}
                             </div>
                         </div>
 
@@ -775,7 +819,10 @@ const trashCount = computed(() => trashedPages.value.length);
                 </div>
 
                 <div v-else class="admin-table">
-                    <div class="admin-table__head trash">
+                    <div
+                        class="admin-table__head trash"
+                        :style="{ gridTemplateColumns: trashColumns }"
+                    >
                         <div>
                             <Icon name="page" width="14" height="14" />Страница
                         </div>
@@ -794,6 +841,7 @@ const trashCount = computed(() => trashedPages.value.length);
                         v-for="page in trashedPages"
                         :key="page.id"
                         class="page-trash-card"
+                        :style="{ gridTemplateColumns: trashColumns }"
                     >
                         <div class="page-trash-card__title-block">
                             <h3>{{ page.title }}</h3>
@@ -808,19 +856,19 @@ const trashCount = computed(() => trashedPages.value.length);
                                 >
                             </p>
                         </div>
-                        <p class="admin-table__inner">
+                        <p
+                            class="admin-table__inner"
+                            v-if="visibleFields.author"
+                        >
                             <strong>{{ resolveCreatorLabel(page) }}</strong>
                         </p>
-                        <div class="admin-actions-row">
+                        <div class="cell-actions">
                             <AdminButton
                                 type="button"
                                 @click="restoreTrashedPage(page)"
+                                title="Восстановить страницу"
                             >
-                                <Icon
-                                    name="return"
-                                    width="18"
-                                    height="18"
-                                />Восстановить
+                                <Icon name="return" width="18" height="18" />
                             </AdminButton>
 
                             <AdminButton
@@ -828,9 +876,9 @@ const trashCount = computed(() => trashedPages.value.length);
                                 variant="danger"
                                 :disabled="!page.can?.delete"
                                 @click="forceRemovePage(page)"
+                                title="Удалить навсегда"
                             >
                                 <Icon name="trash" width="20" height="20" />
-                                Удалить навсегда
                             </AdminButton>
                         </div>
                     </article>
