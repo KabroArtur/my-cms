@@ -623,7 +623,7 @@ onMounted(loadSettings);
 
 function languageLabel(language) {
     return `${language.native_name} (${language.code}${
-        language.is_default ? ", основной язык" : ""
+        language.is_default ? ", основной" : ""
     })`;
 }
 
@@ -654,14 +654,16 @@ function measureLanguageWidth(language) {
         description="Базовые настройки сайта, медиаслоя и внешнего вида административной системы."
     >
         <template #actions>
-            <RouterLink
-                v-if="canManageAdditionalFields"
-                :to="{ name: 'content-structure' }"
-                class="button-base"
-            >
-                <Icon name="structure" width="18" height="18" />Структура
-                контента
-            </RouterLink>
+            <div class="admin-actions-row">
+                <RouterLink
+                    v-if="canManageAdditionalFields"
+                    :to="{ name: 'content-structure' }"
+                    class="button-base"
+                >
+                    <Icon name="structure" width="18" height="18" />Структура
+                    контента
+                </RouterLink>
+            </div>
         </template>
 
         <section class="admin-page-grid">
@@ -799,35 +801,31 @@ function measureLanguageWidth(language) {
 
                         <div class="settings-cache-card">
                             <div class="admin-stack__head mb">
-                                <h3>Тема и оформление сайта</h3>
+                                <h3 class="title-tooltip">
+                                    Тема и оформление сайта
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span>{{
+                                        options.themes.find(
+                                            (theme) =>
+                                                theme.value === form.site_theme,
+                                        )?.description ||
+                                        "Выбирает blade-тему публичного сайта."
+                                    }}</span>
+                                </h3>
                             </div>
                             <div class="page-meta-grid">
-                                <div>
-                                    <AdminSelect
-                                        class="topic"
-                                        data-label="Тема сайта:"
-                                        :model-value="form.site_theme"
-                                        :options="options.themes"
-                                        @update:modelValue="
-                                            form.site_theme = $event
-                                        "
-                                    />
-
-                                    <p class="title-tooltip">
-                                        <Icon
-                                            name="info"
-                                            width="16"
-                                            height="16"
-                                        /><span>{{
-                                            options.themes.find(
-                                                (theme) =>
-                                                    theme.value ===
-                                                    form.site_theme,
-                                            )?.description ||
-                                            "Выбирает blade-тему публичного сайта."
-                                        }}</span>
-                                    </p>
-                                </div>
+                                <AdminSelect
+                                    class="topic"
+                                    data-label="Тема сайта:"
+                                    :model-value="form.site_theme"
+                                    :options="options.themes"
+                                    @update:modelValue="
+                                        form.site_theme = $event
+                                    "
+                                />
                             </div>
                         </div>
                     </section>
@@ -935,14 +933,14 @@ function measureLanguageWidth(language) {
                                 />
 
                                 <AdminSelect
-                                    class="palette"
+                                    class="palette light"
                                     data-label="Палитра для светлой темы:"
                                     v-model="form.admin_light_palette"
                                     :options="options.admin_light_palettes"
                                 />
 
                                 <AdminSelect
-                                    class="palette"
+                                    class="palette dark"
                                     data-label="Палитра для темной темы:"
                                     v-model="form.admin_dark_palette"
                                     :options="options.admin_dark_palettes"
@@ -1331,35 +1329,32 @@ function measureLanguageWidth(language) {
                                     >
                                 </p>
                             </div>
-                            <label class="admin-form-label">
-                                <div class="page-meta-grid">
-                                    <AdminSelect
-                                        v-for="language in languages"
-                                        :key="language.id"
-                                        class="language-homepage"
-                                        :data-label="languageLabel(language)"
-                                        :style="{
-                                            '--label-width': `${measureLanguageWidth(language)}px`,
-                                        }"
-                                        :model-value="
-                                            form.home_page_ids[language.id]
-                                        "
-                                        :options="[
-                                            {
-                                                label: 'Автовыбор',
-                                                value: '',
-                                            },
-                                            ...homePageOptionsForLanguage(
-                                                language.id,
-                                            ),
-                                        ]"
-                                        @update:modelValue="
-                                            form.home_page_ids[language.id] =
-                                                $event
-                                        "
-                                    />
-                                </div>
-                            </label>
+                            <div class="page-meta-grid">
+                                <AdminSelect
+                                    v-for="language in languages"
+                                    :key="language.id"
+                                    class="language-homepage"
+                                    :data-label="languageLabel(language)"
+                                    :style="{
+                                        '--label-width': `${measureLanguageWidth(language)}px`,
+                                    }"
+                                    :model-value="
+                                        form.home_page_ids[language.id]
+                                    "
+                                    :options="[
+                                        {
+                                            label: 'Автовыбор',
+                                            value: '',
+                                        },
+                                        ...homePageOptionsForLanguage(
+                                            language.id,
+                                        ),
+                                    ]"
+                                    @update:modelValue="
+                                        form.home_page_ids[language.id] = $event
+                                    "
+                                />
+                            </div>
                         </div>
 
                         <div class="settings-cache-card">
@@ -1433,30 +1428,36 @@ function measureLanguageWidth(language) {
 
                                             <span class="text">Главный</span>
                                         </label>
-                                        <AdminButton
-                                            type="button"
-                                            @click="fillLanguageForm(language)"
-                                            title="Редактировать"
-                                            class="button-link"
-                                        >
-                                            <Icon
-                                                name="pencil"
-                                                width="20"
-                                                height="20"
-                                            />
-                                        </AdminButton>
-                                        <AdminButton
-                                            type="button"
-                                            variant="danger"
-                                            @click="askRemoveLanguage(language)"
-                                            title="Удалить"
-                                        >
-                                            <Icon
-                                                name="trash"
-                                                width="20"
-                                                height="20"
-                                            />
-                                        </AdminButton>
+                                        <div class="flex-center">
+                                            <AdminButton
+                                                type="button"
+                                                @click="
+                                                    fillLanguageForm(language)
+                                                "
+                                                title="Редактировать"
+                                                class="button-link"
+                                            >
+                                                <Icon
+                                                    name="pencil"
+                                                    width="20"
+                                                    height="20"
+                                                />
+                                            </AdminButton>
+                                            <AdminButton
+                                                type="button"
+                                                variant="danger"
+                                                @click="
+                                                    askRemoveLanguage(language)
+                                                "
+                                                title="Удалить"
+                                            >
+                                                <Icon
+                                                    name="trash"
+                                                    width="20"
+                                                    height="20"
+                                                />
+                                            </AdminButton>
+                                        </div>
                                     </div>
                                 </article>
                             </div>
@@ -1492,25 +1493,6 @@ function measureLanguageWidth(language) {
                                 </AdminCheckbox>
 
                                 <AdminCheckbox
-                                    v-model="form.seo_allow_following"
-                                >
-                                    <p class="title-tooltip-down">
-                                        Разрешить роботам переходить по ссылкам
-
-                                        <Icon
-                                            name="info"
-                                            width="16"
-                                            height="16"
-                                        />
-
-                                        <strong>
-                                            При выключении страницы
-                                            автоматически отдают `nofollow`.
-                                        </strong>
-                                    </p>
-                                </AdminCheckbox>
-
-                                <AdminCheckbox
                                     v-model="form.seo_open_graph_enabled"
                                 >
                                     <p class="title-tooltip-down">
@@ -1526,6 +1508,25 @@ function measureLanguageWidth(language) {
                                             Добавляет og:title, og:description,
                                             og:image и, при выборе X,
                                             twitter-card теги.
+                                        </strong>
+                                    </p>
+                                </AdminCheckbox>
+
+                                <AdminCheckbox
+                                    v-model="form.seo_allow_following"
+                                >
+                                    <p class="title-tooltip-down">
+                                        Разрешить роботам переходить по ссылкам
+
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+
+                                        <strong>
+                                            При выключении страницы
+                                            автоматически отдают `nofollow`.
                                         </strong>
                                     </p>
                                 </AdminCheckbox>
@@ -1600,7 +1601,7 @@ function measureLanguageWidth(language) {
                             <div class="admin-stack__head mb">
                                 <h3>Канонический домен и структура URL</h3>
                             </div>
-                            <div class="page-meta-grid">
+                            <div class="page-meta-grid url">
                                 <div class="mr-12">
                                     <AdminSelect
                                         class="protocol"
@@ -1819,7 +1820,7 @@ function measureLanguageWidth(language) {
                             </div>
                             <div class="page-meta-grid">
                                 <label
-                                    class="admin-form-label cache"
+                                    class="admin-form-label cache mr-12"
                                     data-label="TTL full-page cache (сек):"
                                 >
                                     <input
@@ -1977,7 +1978,7 @@ function measureLanguageWidth(language) {
                             </div>
                             <div class="page-meta-grid">
                                 <label
-                                    class="admin-form-label"
+                                    class="admin-form-label mr-12"
                                     data-label="Путь входа:"
                                 >
                                     <input
@@ -2083,7 +2084,7 @@ function measureLanguageWidth(language) {
                                 </label>
 
                                 <label
-                                    class="admin-form-label"
+                                    class="admin-form-label block"
                                     data-label="Блок IP (сек) после превышения:"
                                 >
                                     <input

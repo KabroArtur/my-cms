@@ -680,7 +680,10 @@ onMounted(async () => {
                                 class="operator"
                             />
 
-                            <div v-if="rule.field === 'template'">
+                            <div
+                                v-if="rule.field === 'template'"
+                                class="admin-form-label tooltip"
+                            >
                                 <AdminSelect
                                     data-label="Значение:"
                                     v-model="rule.value"
@@ -699,7 +702,10 @@ onMounted(async () => {
                                 </p>
                             </div>
 
-                            <div v-else-if="rule.field === 'is_home'">
+                            <div
+                                v-else-if="rule.field === 'is_home'"
+                                class="admin-form-label tooltip"
+                            >
                                 <AdminSelect
                                     data-label="Значение:"
                                     v-model="rule.value"
@@ -729,7 +735,7 @@ onMounted(async () => {
 
                             <div
                                 v-else-if="rule.field === 'page_id'"
-                                class="admin-form-label"
+                                class="admin-form-label tooltip"
                                 data-label="Страницы:"
                             >
                                 <AdminMultiSelect
@@ -761,7 +767,7 @@ onMounted(async () => {
                                 </p>
                             </div>
 
-                            <label v-else class="admin-form-label">
+                            <label v-else class="admin-form-label tooltip">
                                 <span>Значение:</span>
                                 <input
                                     v-model="rule.value"
@@ -820,6 +826,15 @@ onMounted(async () => {
                     </p>
 
                     <div class="admin-buttons">
+                        <button
+                            type="button"
+                            class="button-base"
+                            @click="resetForm"
+                        >
+                            <Icon name="new" width="18" height="18" />Новый
+                            набор
+                        </button>
+
                         <AdminButton
                             type="submit"
                             variant="primary"
@@ -845,15 +860,6 @@ onMounted(async () => {
                                 deleting ? "Удаление..." : "Удалить набор"
                             }}
                         </AdminButton>
-
-                        <button
-                            type="button"
-                            class="button-base"
-                            @click="resetForm"
-                        >
-                            <Icon name="new" width="18" height="18" />Новый
-                            набор
-                        </button>
                     </div>
                 </form>
             </AdminCard>

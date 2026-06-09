@@ -12,7 +12,6 @@
 .admin-page-grid {
     display: grid;
     gap: 20px;
-    overflow-x: auto;
 }
 
 .admin-kpi-grid {
@@ -60,6 +59,7 @@
     .admin-tabs {
         display: flex;
         align-items: stretch;
+        justify-content: center;
         height: 60px;
         padding-inline: 10px;
         background: color-mix(
@@ -122,7 +122,7 @@
 .cache-grid {
     display: grid;
     grid-template-columns: minmax(275px, 300px) minmax(0, 1fr);
-    gap: var(--admin-space-2) var(--admin-space-1);
+    gap: var(--admin-space-2);
     margin-top: 16px;
 }
 
@@ -2086,7 +2086,7 @@
         var(--admin-color-text-muted) 4%,
         var(--admin-color-surface)
     );
-    margin: 10px 20px 0;
+    margin: 16px 20px 0;
 
     &::before {
         content: "";
@@ -2990,10 +2990,6 @@
     .page-record-card__meta {
         grid-template-columns: 1fr;
     }
-
-    .page-trash-card {
-        grid-template-columns: 1fr;
-    }
 }
 .page-editor-layout {
     display: grid;
@@ -3118,15 +3114,8 @@
 }
 
 .page-editor-content-mode {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.page-editor-content-mode .button-base.is-active,
-.page-editor-content-field :deep(.tiptap-toolbar-btn.button-base.is-active) {
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18);
-    filter: brightness(1.08) saturate(1.22);
+    display: flex;
+    justify-content: end;
 }
 
 .page-editor-content-field :deep(.admin-editor-toolbar) {
@@ -3208,6 +3197,10 @@
     align-items: center;
 }
 
+.page-meta-grid.url {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @media (max-width: 1526px) {
     .admin-filter-bar {
         display: grid;
@@ -3268,6 +3261,143 @@
     .tiptap-toolbar-group {
         flex-wrap: wrap;
     }
+
+    .title-tooltip span {
+        width: fit-content;
+    }
+
+    .admin-modal .media-grid .title-tooltip-down strong,
+    .media-library-page__section .media-grid .title-tooltip-down strong {
+        top: calc(100% + 10px);
+        left: auto;
+        right: 0;
+        transform: none;
+        width: min-content;
+
+        &:after {
+            display: none;
+        }
+    }
+
+    .admin-modal .media-grid .title-tooltip-down svg:hover + strong,
+    .media-library-page__section
+        .media-grid
+        .title-tooltip-down
+        svg:focus-visible
+        + strong {
+        transform: translateY(-6px);
+    }
+
+    .admin-form-stack .admin-buttons {
+        justify-content: center;
+    }
+
+    .page-meta-grid.url {
+        grid-template-columns: 1fr;
+    }
+
+    .cache-grid {
+        grid-template-columns: 1fr;
+        gap: var(--admin-space-3);
+    }
+
+    .text-end {
+        text-align: start;
+    }
+}
+
+@media (max-width: 500px) {
+    .title-tooltip span,
+    .title-tooltip-down strong {
+        top: 100%;
+    }
+
+    .admin-select-custom.parent {
+        &::before {
+            content: "Родитель:";
+        }
+
+        .admin-select-trigger {
+            padding-left: 100px;
+        }
+    }
+
+    .date {
+        &::before {
+            content: "Дата публ.:";
+        }
+
+        .admin-input {
+            padding-left: 106px;
+        }
+    }
+
+    .admin-select-custom.sitemap {
+        &::before {
+            content: "Обновление:";
+        }
+
+        .admin-select-trigger {
+            padding-left: 124px;
+        }
+    }
+
+    .admin-form-label.block {
+        &::before {
+            content: "Блок IP (сек):";
+        }
+
+        .admin-input {
+            padding-left: 130px;
+        }
+    }
+
+    .title-tooltip span,
+    .title-tooltip-left span,
+    .title-tooltip-down strong {
+        top: calc(100% + 10px);
+        left: auto;
+        right: 0;
+        transform: none;
+
+        &:after {
+            display: none;
+        }
+    }
+
+    .title-tooltip svg:hover + span,
+    .title-tooltip svg:focus-visible + span,
+    .title-tooltip-left svg:hover + span,
+    .title-tooltip-left svg:focus-visible + span,
+    .title-tooltip-down svg:hover + strong,
+    .title-tooltip-down svg:focus-visible + strong {
+        transform: translateY(-6px);
+    }
+
+    .media-library-modal__tab span {
+        display: none;
+    }
+
+    .admin-modal__header h2 {
+        width: min-content;
+    }
+
+    .settings-tab-panel.settings .language-homepage {
+        &::before {
+            max-width: 100px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .admin-select-trigger {
+            padding-left: 124px;
+
+            .selected {
+                max-width: 100%;
+            }
+        }
+    }
 }
 
 @media (max-width: 1470px) {
@@ -3276,9 +3406,107 @@
     }
 }
 
+@media (max-width: 1200px) {
+    .page-trash-card {
+        grid-template-columns: 1fr;
+    }
+
+    .page-meta-grid.url .title-tooltip-down {
+        width: fit-content;
+    }
+
+    .page-trash-card.settings {
+        .cell-actions {
+            justify-content: space-between;
+
+            .flex-center {
+                padding: 0;
+            }
+        }
+
+        .plugin-status {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+
+    .settings-tab-panel.settings {
+        .title-tooltip span,
+        .title-tooltip-left span,
+        .title-tooltip-down strong {
+            top: calc(100% + 10px);
+            left: auto;
+            right: 0;
+            transform: none;
+            width: 180px;
+
+            &:after {
+                display: none;
+            }
+        }
+
+        .title-tooltip svg:hover + span,
+        .title-tooltip svg:focus-visible + span,
+        .title-tooltip-left svg:hover + span,
+        .title-tooltip-left svg:focus-visible + span,
+        .title-tooltip-down svg:hover + strong,
+        .title-tooltip-down svg:focus-visible + strong {
+            transform: translateY(-6px);
+        }
+    }
+}
+
 @media (max-width: 900px) {
     .page-identity-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .settings-tab-panel.settings {
+        .admin-select-trigger .selected {
+            max-width: 100px;
+        }
+
+        .size {
+            &::before {
+                content: "Размер обложки:";
+            }
+
+            .admin-select-trigger {
+                padding-left: 160px;
+            }
+        }
+
+        .size-default {
+            &::before {
+                content: "Размер в контенте:";
+            }
+
+            .admin-select-trigger {
+                padding-left: 175px;
+            }
+        }
+
+        .mode {
+            &::before {
+                content: "Режим темы:";
+            }
+
+            .admin-select-trigger {
+                padding-left: 126px;
+            }
+        }
+
+        .palette .admin-select-trigger {
+            padding-left: 162px;
+        }
+
+        .palette.light::before {
+            content: "Палитра светлой:";
+        }
+
+        .palette.dark::before {
+            content: "Палитра темной:";
+        }
     }
 }
 
@@ -3290,5 +3518,26 @@
 
     .admin-form-label {
         width: 100%;
+    }
+}
+
+@media (max-width: 1080px) {
+    .tooltip.admin-form-label {
+        margin-right: 12px;
+
+        .title-tooltip span {
+            top: 100%;
+            left: auto;
+            right: 0;
+
+            &:after {
+                display: none;
+            }
+        }
+
+        .title-tooltip svg:hover + span,
+        .title-tooltip svg:focus-visible + span {
+            transform: translateY(-9px);
+        }
     }
 }

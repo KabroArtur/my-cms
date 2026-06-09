@@ -1305,7 +1305,7 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                 @click="setActiveTab('library')"
                             >
                                 <Icon name="media" width="18" height="18" /> Все
-                                изображения
+                                <span>изображения</span>
                             </button>
                             <button
                                 type="button"
@@ -1496,26 +1496,24 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                         />
                                     </label>
 
-                                    <div class="media-library-modal__actions">
-                                        <div class="media-library-modal__stat">
-                                            <strong>{{
-                                                filteredFiles.length
-                                            }}</strong>
-                                            <span>файлов в текущем списке</span>
-                                        </div>
-
-                                        <AdminButton
-                                            v-if="allowUpload"
-                                            type="button"
-                                            @click="openUploadDialog"
-                                        >
-                                            <Icon
-                                                name="download"
-                                                width="18"
-                                                height="18"
-                                            />Загрузить файлы
-                                        </AdminButton>
+                                    <div class="media-library-modal__stat">
+                                        <strong>{{
+                                            filteredFiles.length
+                                        }}</strong>
+                                        <span>файлов в текущем списке</span>
                                     </div>
+
+                                    <AdminButton
+                                        v-if="allowUpload"
+                                        type="button"
+                                        @click="openUploadDialog"
+                                    >
+                                        <Icon
+                                            name="download"
+                                            width="18"
+                                            height="18"
+                                        />Загрузить файлы
+                                    </AdminButton>
                                 </section>
 
                                 <p v-if="loading" class="muted text-center">

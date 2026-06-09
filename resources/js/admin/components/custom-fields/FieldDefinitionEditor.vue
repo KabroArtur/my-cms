@@ -270,7 +270,7 @@ function showDefaultValueLabel(type) {
 
                     <div>
                         <AdminSelect
-                            class="type"
+                            class="tags"
                             data-label="Type:"
                             :model-value="field.type"
                             :options="FIELD_TYPE_OPTIONS"

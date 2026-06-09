@@ -137,14 +137,19 @@ select:-webkit-autofill:focus {
     right: 10px;
 }
 
+.admin-tooltip {
+    position: relative;
+}
+
 .admin-form-stack {
     display: grid;
     gap: 14px;
 
     .admin-buttons {
         display: flex;
-        justify-content: flex-end;
         align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
         gap: var(--admin-space-2);
         padding-right: 16px;
     }
