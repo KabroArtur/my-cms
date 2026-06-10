@@ -456,13 +456,13 @@ onMounted(async () => {
                 <div class="section-wrapper">
                     <div class="section-header">
                         <div>
-                            <h2 class="title-tooltip">
+                            <h2 class="title-tooltip-down">
                                 Наборы дополнительных полей
                                 <Icon name="info" width="16" height="16" />
-                                <span>
+                                <strong>
                                     Для массового использования создавайте
                                     наборы полей и назначайте их по
-                                    правилам.</span
+                                    правилам.</strong
                                 >
                             </h2>
                         </div>

@@ -175,6 +175,7 @@ const resolvedParent = computed(
             (page) => String(page.id) === String(form.parent_id),
         ) ?? null,
 );
+
 const publicUrl = computed(() => {
     const segments = [];
     const usesPrefix =
@@ -718,13 +719,13 @@ const toggleContentMode = () => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2 class="title-tooltip">
+                                <h2 class="title-tooltip-down">
                                     Основное
                                     <Icon name="info" width="16" height="16" />
-                                    <span>
+                                    <strong>
                                         Название, адрес страницы и краткое
                                         описание для списков и
-                                        предпросмотра.</span
+                                        предпросмотра.</strong
                                     >
                                 </h2>
                             </div>
@@ -843,13 +844,13 @@ const toggleContentMode = () => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2 class="title-tooltip">
+                                <h2 class="title-tooltip-down">
                                     Контент
                                     <Icon name="info" width="16" height="16" />
-                                    <span>
+                                    <strong>
                                         Основное содержимое страницы. Панель
                                         инструментов остаётся рядом с
-                                        редактором.</span
+                                        редактором.</strong
                                     >
                                 </h2>
                             </div>
@@ -967,16 +968,16 @@ const toggleContentMode = () => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <p class="title-tooltip">
+                                <h2 class="title-tooltip-down">
                                     Дополнительные поля
                                     <Icon name="info" width="16" height="16" />
-                                    <span
+                                    <strong
                                         >Поля текущего шаблона и структуры
                                         контента. Сгруппированы отдельно от
                                         основного текста, чтобы не мешать
-                                        редактированию.</span
+                                        редактированию.</strong
                                     >
-                                </p>
+                                </h2>
                             </div>
                             <button
                                 type="button"
@@ -1107,12 +1108,12 @@ const toggleContentMode = () => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2 class="title-tooltip">
+                                <h2 class="title-tooltip-down">
                                     Публикация
                                     <Icon name="info" width="16" height="16" />
-                                    <span
+                                    <strong
                                         >Статус, видимость, дата и место
-                                        страницы в структуре.</span
+                                        страницы в структуре.</strong
                                     >
                                 </h2>
                             </div>
@@ -1249,12 +1250,12 @@ const toggleContentMode = () => {
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
-                                <h2 class="title-tooltip">
+                                <h2 class="title-tooltip-down">
                                     SEO и обложка
                                     <Icon name="info" width="16" height="16" />
-                                    <span
+                                    <strong
                                         >Поисковый сниппет и визуальная обложка
-                                        собраны в одном боковом блоке.</span
+                                        собраны в одном боковом блоке.</strong
                                     >
                                 </h2>
                             </div>

@@ -39,11 +39,29 @@
         display: flex;
         align-items: end;
         justify-content: space-between;
-        margin-bottom: 40px;
+        margin-bottom: 30px;
     }
 
     &__brand-icon {
         fill: var(--admin-color-text-accent);
+    }
+
+    &__brand-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .close {
+            svg {
+                stroke: var(--admin-color-text);
+                transition: transform 0.3s ease;
+            }
+
+            &:hover svg,
+            &:focus-visible svg {
+                transform: rotate(180deg);
+            }
+        }
     }
 }
 
@@ -410,7 +428,7 @@
         left: 0;
         top: 0;
         height: 100%;
-        width: min(280px, 86vw);
+        width: min(300px, 86vw);
         max-width: 100%;
         transform: translateX(-102%);
         transition: transform 0.3s ease;
@@ -450,15 +468,15 @@
 }
 
 .admin-table {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     font-size: 14px;
+    overflow-x: auto;
 
     &__head,
     &__row {
         display: grid;
         align-items: center;
-        gap: 16px;
+        gap: var(--admin-space-4);
     }
 
     &__head {
@@ -475,7 +493,7 @@
         div {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--admin-space-2);
             padding: 12px 20px;
 
             svg {
@@ -543,6 +561,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 0 0 348px;
 }
 
 .page-sub {
@@ -588,6 +607,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
+    min-width: 0;
 
     button,
     a,
@@ -595,5 +615,6 @@
         padding: 0;
         height: 40px;
         width: 44px;
+        flex-shrink: 0;
     }
 }

@@ -486,25 +486,25 @@ const archivedCount = computed(
 const trashCount = computed(() => trashedPages.value.length);
 
 const tableColumns = computed(() => {
-    const columns = ["2.2fr"];
+    const columns = ["minmax(260px, 2.2fr)"];
 
     if (visibleFields.value.author) {
-        columns.push("1fr");
+        columns.push("minmax(140px, 1fr)");
     }
 
     if (visibleFields.value.language) {
-        columns.push("0.8fr");
+        columns.push("minmax(120px, 0.8fr)");
     }
 
     if (visibleFields.value.shab) {
-        columns.push("0.8fr");
+        columns.push("minmax(120px, 0.8fr)");
     }
 
     if (visibleFields.value.status) {
-        columns.push("1.2fr");
+        columns.push("minmax(160px, 1.2fr)");
     }
 
-    columns.push("1.4fr");
+    columns.push("minmax(180px, 1.4fr)");
 
     return columns.join(" ");
 });

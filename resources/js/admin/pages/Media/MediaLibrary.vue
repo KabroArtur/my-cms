@@ -1472,6 +1472,8 @@ const fileTypeCounts = computed(() => {
         return acc;
     }, {});
 });
+
+const isRoot = computed(() => breadcrumbs.value.length === 0);
 </script>
 
 <template>
@@ -1521,31 +1523,32 @@ const fileTypeCounts = computed(() => {
             </div>
         </div>
 
-        <section class="panel-card media-library-page">
-            <div :class="{ 'has-sidebar': selectedFile }">
-                <div class="admin-page-head">
-                    <div class="admin-tabs">
-                        <button
-                            v-for="tab in fileTypeTabs"
-                            :key="tab.value"
-                            type="button"
-                            class="admin-tab"
-                            :class="{ 'is-active': activeTab === tab.value }"
-                            @click="activeTab = tab.value"
-                        >
-                            {{ tab.label }}
+        <section
+            class="panel-card media-library-page"
+            :class="{ 'has-sidebar': selectedFile }"
+        >
+            <div class="admin-tabs admin-page-head">
+                <button
+                    v-for="tab in fileTypeTabs"
+                    :key="tab.value"
+                    type="button"
+                    class="admin-tab"
+                    :class="{ 'is-active': activeTab === tab.value }"
+                    @click="activeTab = tab.value"
+                >
+                    {{ tab.label }}
 
-                            <span class="tab-count">
-                                {{ fileTypeCounts[tab.value] ?? 0 }}
-                            </span>
-                        </button>
-                    </div>
-                </div>
+                    <span class="tab-count">
+                        {{ fileTypeCounts[tab.value] ?? 0 }}
+                    </span>
+                </button>
+            </div>
 
+            <div>
                 <div class="media-library-page__toolbar">
                     <button
                         type="button"
-                        class="button-link"
+                        class="button-link search"
                         :class="{ 'is-active': filtersOpen }"
                         @click.stop="filtersOpen = !filtersOpen"
                         title="Поиск файлов и папок"
@@ -1612,8 +1615,25 @@ const fileTypeCounts = computed(() => {
                         class="default"
                         data-label="Охват папок:"
                     />
-                </div>
 
+                    <div class="media-library-page__search-panel">
+                        <div
+                            class="admin-filter-field admin-filter-field--search"
+                        >
+                            <Icon name="search" width="18" height="18" />
+                            <input
+                                v-model="searchQuery"
+                                class="admin-input"
+                                type="search"
+                                placeholder="Поиск папок и файлов"
+                            />
+                            <small class="search-count"
+                                ><strong>({{ filteredFiles.length }})</strong>
+                                файлов</small
+                            >
+                        </div>
+                    </div>
+                </div>
                 <transition name="slide-fade">
                     <div
                         v-if="filtersOpen"
@@ -1636,314 +1656,476 @@ const fileTypeCounts = computed(() => {
                         </div>
                     </div>
                 </transition>
+            </div>
 
-                <div class="page-editor">
-                    <div class="mt-16">
-                        <div class="media-library-page__breadcrumbs">
-                            <button
-                                type="button"
-                                class="media-folders__home"
-                                @click.stop="openRoot"
-                                aria-label="Корень медиатеки"
-                            >
-                                <Icon name="home" width="18" height="18" />
-                            </button>
-
-                            <template
-                                v-for="folder in breadcrumbs"
-                                :key="folder.id"
-                            >
-                                <span>/</span>
-                                <button
-                                    type="button"
-                                    class="button-link"
-                                    @click.stop="openFolder(folder)"
-                                >
-                                    {{ folder.name }}
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-
-                    <p
-                        v-if="errorMessage"
-                        class="error-text media-library-page__error"
+            <div class="pi">
+                <div class="media-library-page__breadcrumbs">
+                    <button
+                        type="button"
+                        class="media-folders__home"
+                        :disabled="isRoot"
+                        @click.stop="openRoot"
+                        aria-label="Корень медиатеки"
                     >
-                        {{ errorMessage }}
-                    </p>
+                        <Icon name="home" width="18" height="18" />
+                    </button>
 
-                    <section class="media-library-page__section">
-                        <div class="media-library-page__section-head mt-16">
-                            <p class="title-tooltip">
-                                Папки
-                                <Icon name="info" width="16" height="16" />
-                                <span>
-                                    Быстрый переход по структуре медиатеки.
-                                </span>
-                            </p>
-                        </div>
-
-                        <div
-                            v-if="loading"
-                            class="media-folders__list is-loading"
+                    <template v-for="folder in breadcrumbs" :key="folder.id">
+                        <span>/</span>
+                        <button
+                            type="button"
+                            class="button-link"
+                            @click.stop="openFolder(folder)"
                         >
-                            <div
-                                v-for="index in 6"
-                                :key="index"
-                                class="media-library-page__folder-skeleton"
-                            ></div>
-                        </div>
-
-                        <div v-else class="media-folders__list">
-                            <article
-                                v-for="folder in visibleFolders"
-                                :key="folder.id"
-                                class="media-folders__card"
-                            >
-                                <button
-                                    type="button"
-                                    class="media-library-page__folder-main"
-                                    @click.stop="openFolder(folder)"
-                                >
-                                    <span
-                                        class="media-folders__icon"
-                                        aria-hidden="true"
-                                    >
-                                        <Icon
-                                            name="folder"
-                                            width="24"
-                                            height="24"
-                                        />
-                                    </span>
-
-                                    <span class="media-folders__copy">
-                                        <strong>{{ folder.name }}</strong>
-                                        <span
-                                            >{{ folder.files_count || 0 }}
-                                            файлов
-                                            <span
-                                                >{{
-                                                    folder.children_count || 0
-                                                }}
-                                                вложенных папок</span
-                                            >
-                                        </span>
-                                    </span>
-                                </button>
-
-                                <div class="media-folders__menu-wrap">
-                                    <button
-                                        type="button"
-                                        class="button-link media-folders__menu-button"
-                                        @click.stop="
-                                            toggleFolderMenu(folder.id)
-                                        "
-                                    >
-                                        <Icon
-                                            name="points"
-                                            width="22"
-                                            height="22"
-                                        />
-                                    </button>
-
-                                    <transition name="fade"
-                                        ><div
-                                            v-if="
-                                                activeFolderMenuId === folder.id
-                                            "
-                                            class="media-folders__menu"
-                                            @click.stop
-                                        >
-                                            <button
-                                                type="button"
-                                                @click.stop="openFolder(folder)"
-                                            >
-                                                Открыть
-                                            </button>
-                                            <button
-                                                type="button"
-                                                @click.stop="
-                                                    openFolderEditModal(
-                                                        folder,
-                                                        'rename',
-                                                    )
-                                                "
-                                            >
-                                                Переименовать
-                                            </button>
-                                            <button
-                                                type="button"
-                                                @click.stop="
-                                                    openFolderEditModal(
-                                                        folder,
-                                                        'move',
-                                                    )
-                                                "
-                                            >
-                                                Переместить
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="media-folders__danger"
-                                                @click.stop="
-                                                    deleteFolder(folder)
-                                                "
-                                            >
-                                                Удалить
-                                            </button>
-                                        </div>
-                                    </transition>
-                                </div>
-                            </article>
-                        </div>
-
-                        <div
-                            v-if="!loading && visibleFolders.length === 0"
-                            class="media-library-page__empty-state"
-                        >
-                            <h4>В текущем разделе пока нет папок</h4>
-                            <p>
-                                Создайте первую папку, чтобы разложить файлы по
-                                структуре.
-                            </p>
-                        </div>
-                    </section>
+                            {{ folder.name }}
+                        </button>
+                    </template>
                 </div>
 
+                <p
+                    v-if="errorMessage"
+                    class="error-text media-library-page__error"
+                >
+                    {{ errorMessage }}
+                </p>
+
                 <section class="media-library-page__section">
-                    <div class="media-library-page__section-head pi">
+                    <div class="media-library-page__section-head mt-16">
                         <p class="title-tooltip">
-                            Файлы
+                            Папки
                             <Icon name="info" width="16" height="16" />
-                            <span
-                                >Клик по карточке открывает модальное окно для
-                                просмотра и редактирования деталей.</span
-                            >
+                            <span>
+                                Быстрый переход по структуре медиатеки.
+                            </span>
                         </p>
-                        <div class="media-library-page__switch">
-                            <button
-                                type="button"
-                                class="button-link library-button"
-                                :class="{
-                                    'is-active': viewMode === 'grid',
-                                }"
-                                @click.stop="viewMode = 'grid'"
-                                aria-label="Сетка"
-                            >
-                                <Icon
-                                    name="grip"
-                                    aria-hidden="true"
-                                    width="16"
-                                    height="16"
-                                />
-                            </button>
-                            <button
-                                type="button"
-                                class="button-link library-button"
-                                :class="{
-                                    'is-active': viewMode === 'list',
-                                }"
-                                @click.stop="viewMode = 'list'"
-                                aria-label="Список"
-                            >
-                                <Icon
-                                    name="list"
-                                    aria-hidden="true"
-                                    width="16"
-                                    height="16"
-                                />
-                            </button>
-                        </div>
                     </div>
 
-                    <div
-                        v-if="loading"
-                        class="media-library-page__file-grid is-loading"
-                    >
+                    <div v-if="loading" class="media-folders__list is-loading">
                         <div
-                            v-for="index in 8"
+                            v-for="index in 6"
                             :key="index"
-                            class="media-library-page__file-skeleton"
+                            class="media-library-page__folder-skeleton"
                         ></div>
                     </div>
 
-                    <div
-                        v-else-if="filteredFiles.length === 0"
-                        class="media-library-page__empty-state"
-                    >
-                        <h4>Файлы не найдены</h4>
-                        <p>
-                            Попробуйте изменить фильтры или загрузить новые
-                            материалы.
-                        </p>
+                    <div v-else class="media-folders__list">
+                        <article
+                            v-for="folder in visibleFolders"
+                            :key="folder.id"
+                            class="media-folders__card"
+                        >
+                            <button
+                                type="button"
+                                class="media-library-page__folder-main"
+                                @click.stop="openFolder(folder)"
+                            >
+                                <span
+                                    class="media-folders__icon"
+                                    aria-hidden="true"
+                                >
+                                    <Icon
+                                        name="folder"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </span>
+
+                                <span class="media-folders__copy">
+                                    <strong>{{ folder.name }}</strong>
+                                    <span
+                                        >{{ folder.files_count || 0 }}
+                                        файлов
+                                        <span
+                                            >{{
+                                                folder.children_count || 0
+                                            }}
+                                            вложенных папок</span
+                                        >
+                                    </span>
+                                </span>
+                            </button>
+
+                            <div class="media-folders__menu-wrap">
+                                <button
+                                    type="button"
+                                    class="button-link media-folders__menu-button"
+                                    @click.stop="toggleFolderMenu(folder.id)"
+                                >
+                                    <Icon
+                                        name="points"
+                                        width="22"
+                                        height="22"
+                                    />
+                                </button>
+
+                                <transition name="fade"
+                                    ><div
+                                        v-if="activeFolderMenuId === folder.id"
+                                        class="media-folders__menu"
+                                        @click.stop
+                                    >
+                                        <button
+                                            type="button"
+                                            @click.stop="openFolder(folder)"
+                                        >
+                                            Открыть
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click.stop="
+                                                openFolderEditModal(
+                                                    folder,
+                                                    'rename',
+                                                )
+                                            "
+                                        >
+                                            Переименовать
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click.stop="
+                                                openFolderEditModal(
+                                                    folder,
+                                                    'move',
+                                                )
+                                            "
+                                        >
+                                            Переместить
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="media-folders__danger"
+                                            @click.stop="deleteFolder(folder)"
+                                        >
+                                            Удалить
+                                        </button>
+                                    </div>
+                                </transition>
+                            </div>
+                        </article>
                     </div>
 
-                    <div v-else>
-                        <div v-if="viewMode === 'grid'" class="media-grid">
-                            <article
+                    <div
+                        v-if="!loading && visibleFolders.length === 0"
+                        class="media-library-page__empty-state"
+                    >
+                        <h4>В текущем разделе пока нет папок</h4>
+                        <p>
+                            Создайте первую папку, чтобы разложить файлы по
+                            структуре.
+                        </p>
+                    </div>
+                </section>
+            </div>
+
+            <section class="media-library-page__section">
+                <div class="media-library-page__section-head pi">
+                    <p class="title-tooltip">
+                        Файлы
+                        <Icon name="info" width="16" height="16" />
+                        <span
+                            >Клик по карточке открывает модальное окно для
+                            просмотра и редактирования деталей.</span
+                        >
+                    </p>
+                    <div class="media-library-page__switch">
+                        <button
+                            type="button"
+                            class="button-link library-button"
+                            :class="{
+                                'is-active': viewMode === 'grid',
+                            }"
+                            @click.stop="viewMode = 'grid'"
+                            aria-label="Сетка"
+                        >
+                            <Icon
+                                name="grip"
+                                aria-hidden="true"
+                                width="16"
+                                height="16"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            class="button-link library-button"
+                            :class="{
+                                'is-active': viewMode === 'list',
+                            }"
+                            @click.stop="viewMode = 'list'"
+                            aria-label="Список"
+                        >
+                            <Icon
+                                name="list"
+                                aria-hidden="true"
+                                width="16"
+                                height="16"
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    v-if="loading"
+                    class="media-library-page__file-grid is-loading"
+                >
+                    <div
+                        v-for="index in 8"
+                        :key="index"
+                        class="media-library-page__file-skeleton"
+                    ></div>
+                </div>
+
+                <div
+                    v-else-if="filteredFiles.length === 0"
+                    class="media-library-page__empty-state"
+                >
+                    <h4>Файлы не найдены</h4>
+                    <p>
+                        Попробуйте изменить фильтры или загрузить новые
+                        материалы.
+                    </p>
+                </div>
+
+                <div v-if="viewMode === 'grid'" class="media-grid">
+                    <article
+                        v-for="file in filteredFiles"
+                        :key="file.id"
+                        class="media-grid__item"
+                        :class="{
+                            'is-upload-placeholder': isUploadPlaceholder(file),
+                            'is-upload-error':
+                                isUploadPlaceholder(file) &&
+                                file.upload_status === 'error',
+                            'is-selected':
+                                !isUploadPlaceholder(file) &&
+                                selectedFileId === file.id,
+                        }"
+                        @click="handleDisplayedFileClick(file)"
+                    >
+                        <div class="media-grid__preview">
+                            <img
+                                v-if="hasImagePreview(file)"
+                                :key="mediaImageRenderKey(file, true)"
+                                :src="file.preview_url || file.url"
+                                :alt="file.alt_text || file.original_name"
+                            />
+                            <span
+                                v-else
+                                class="media-library-page__file-fallback"
+                                >{{ filePreviewLabel(file) }}</span
+                            >
+
+                            <div
+                                v-if="
+                                    isUploadPlaceholder(file) &&
+                                    file.upload_status === 'uploading'
+                                "
+                                class="media-library-page__upload-preview-overlay"
+                            >
+                                <span
+                                    class="media-library-page__upload-spinner"
+                                ></span>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="isUploadPlaceholder(file)"
+                            class="media-grid__meta"
+                        >
+                            <strong>{{ file.original_name }}</strong>
+                            <p class="text-center">
+                                <span
+                                    class="media-library-page__status-pill"
+                                    :class="`is-${file.upload_status}`"
+                                >
+                                    {{
+                                        resolveUploadStatusLabel(
+                                            file.upload_status,
+                                        )
+                                    }}
+                                </span>
+                                <span>{{ file.size_human }}</span>
+                            </p>
+                            <div
+                                class="media-library-page__upload-progress-row media-library-page__upload-progress-row--card"
+                            >
+                                <div class="media-library-page__progress">
+                                    <span
+                                        :style="{
+                                            width: `${file.upload_progress}%`,
+                                        }"
+                                    ></span>
+                                </div>
+                                <span>{{ file.upload_progress }}%</span>
+                            </div>
+                            <p
+                                v-if="file.upload_error"
+                                class="media-library-page__upload-error"
+                            >
+                                {{ file.upload_error }}
+                            </p>
+                            <button
+                                type="button"
+                                class="button-link media-library-page__danger media-library-page__upload-card-remove"
+                                :disabled="file.upload_status === 'uploading'"
+                                @click.stop="removeUploadItem(file.id)"
+                            >
+                                Удалить
+                            </button>
+                        </div>
+
+                        <div v-else class="media-grid__meta">
+                            <strong class="file-name">
+                                <span class="file-name__base">
+                                    {{ stripExtension(file.original_name) }}
+                                </span>
+                                <span class="file-name__ext">
+                                    .{{ file.extension }}
+                                </span>
+                            </strong>
+
+                            <p class="text-center">
+                                <small>{{ file.size_human }}</small>
+                                <small>{{
+                                    formatFileDate(file.created_at)
+                                }}</small>
+                            </p>
+                        </div>
+                    </article>
+                </div>
+
+                <div v-else class="media-library">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="table-inner">
+                                        <Icon
+                                            name="pages"
+                                            width="14"
+                                            height="14"
+                                        />Файл
+                                    </div>
+                                </th>
+                                <th>
+                                    <div class="table-inner">
+                                        <Icon
+                                            name="tags"
+                                            width="14"
+                                            height="14"
+                                        />Тип
+                                    </div>
+                                </th>
+                                <th>
+                                    <div class="table-inner">
+                                        <Icon
+                                            name="size"
+                                            width="14"
+                                            height="14"
+                                        />Размер
+                                    </div>
+                                </th>
+                                <th>
+                                    <div class="table-inner">
+                                        <Icon
+                                            name="folder"
+                                            width="14"
+                                            height="14"
+                                        />Папка
+                                    </div>
+                                </th>
+                                <th>
+                                    <div class="table-inner">
+                                        <Icon
+                                            name="calendar"
+                                            width="14"
+                                            height="14"
+                                        />Дата
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
                                 v-for="file in filteredFiles"
                                 :key="file.id"
-                                class="media-grid__item"
+                                class="media-library-page__row"
                                 :class="{
                                     'is-upload-placeholder':
                                         isUploadPlaceholder(file),
-                                    'is-upload-error':
-                                        isUploadPlaceholder(file) &&
-                                        file.upload_status === 'error',
                                     'is-selected':
                                         !isUploadPlaceholder(file) &&
                                         selectedFileId === file.id,
                                 }"
                                 @click="handleDisplayedFileClick(file)"
                             >
-                                <div class="media-grid__preview">
-                                    <img
-                                        v-if="hasImagePreview(file)"
-                                        :key="mediaImageRenderKey(file, true)"
-                                        :src="file.preview_url || file.url"
-                                        :alt="
-                                            file.alt_text || file.original_name
-                                        "
-                                    />
-                                    <span
-                                        v-else
-                                        class="media-library-page__file-fallback"
-                                        >{{ filePreviewLabel(file) }}</span
-                                    >
-
-                                    <div
-                                        v-if="
-                                            isUploadPlaceholder(file) &&
-                                            file.upload_status === 'uploading'
-                                        "
-                                        class="media-library-page__upload-preview-overlay"
-                                    >
-                                        <span
-                                            class="media-library-page__upload-spinner"
-                                        ></span>
-                                    </div>
-                                </div>
-
-                                <div
-                                    v-if="isUploadPlaceholder(file)"
-                                    class="media-grid__meta"
-                                >
-                                    <strong>{{ file.original_name }}</strong>
-                                    <p class="text-center">
-                                        <span
-                                            class="media-library-page__status-pill"
-                                            :class="`is-${file.upload_status}`"
+                                <td>
+                                    <div class="media-library-page__row-file">
+                                        <div
+                                            class="media-library-page__row-preview"
                                         >
-                                            {{
-                                                resolveUploadStatusLabel(
-                                                    file.upload_status,
-                                                )
-                                            }}
-                                        </span>
-                                        <span>{{ file.size_human }}</span>
-                                    </p>
+                                            <img
+                                                v-if="hasImagePreview(file)"
+                                                :key="
+                                                    mediaImageRenderKey(
+                                                        file,
+                                                        true,
+                                                    )
+                                                "
+                                                :src="
+                                                    file.preview_url || file.url
+                                                "
+                                                :alt="
+                                                    file.alt_text ||
+                                                    file.original_name
+                                                "
+                                            />
+                                            <span v-else>{{
+                                                filePreviewLabel(file)
+                                            }}</span>
+                                        </div>
+                                        <div
+                                            class="media-library-page__view-switch"
+                                        >
+                                            <strong>{{
+                                                file.original_name
+                                            }}</strong>
+                                            <small>
+                                                {{
+                                                    isUploadPlaceholder(file)
+                                                        ? resolveUploadStatusLabel(
+                                                              file.upload_status,
+                                                          )
+                                                        : file.path
+                                                }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span
+                                        v-if="isUploadPlaceholder(file)"
+                                        class="media-library-page__status-pill"
+                                        :class="`is-${file.upload_status}`"
+                                    >
+                                        {{
+                                            resolveUploadStatusLabel(
+                                                file.upload_status,
+                                            )
+                                        }}
+                                    </span>
+                                    <template v-else>
+                                        {{ resolveTypeOptionLabel(file) }}
+                                    </template>
+                                </td>
+                                <td>{{ file.size_human }}</td>
+                                <td>
+                                    {{ file.folder_name || "Корень" }}
+                                </td>
+                                <td>
                                     <div
-                                        class="media-library-page__upload-progress-row media-library-page__upload-progress-row--card"
+                                        v-if="isUploadPlaceholder(file)"
+                                        class="media-library-page__upload-progress-row media-library-page__upload-progress-row--table"
                                     >
                                         <div
                                             class="media-library-page__progress"
@@ -1955,244 +2137,35 @@ const fileTypeCounts = computed(() => {
                                             ></span>
                                         </div>
                                         <span>{{ file.upload_progress }}%</span>
+                                        <small
+                                            v-if="file.upload_error"
+                                            class="media-library-page__upload-error media-library-page__upload-error--table"
+                                        >
+                                            {{ file.upload_error }}
+                                        </small>
+                                        <button
+                                            type="button"
+                                            class="button-link media-library-page__danger"
+                                            :disabled="
+                                                file.upload_status ===
+                                                'uploading'
+                                            "
+                                            @click.stop="
+                                                removeUploadItem(file.id)
+                                            "
+                                        >
+                                            Удалить
+                                        </button>
                                     </div>
-                                    <p
-                                        v-if="file.upload_error"
-                                        class="media-library-page__upload-error"
-                                    >
-                                        {{ file.upload_error }}
-                                    </p>
-                                    <button
-                                        type="button"
-                                        class="button-link media-library-page__danger media-library-page__upload-card-remove"
-                                        :disabled="
-                                            file.upload_status === 'uploading'
-                                        "
-                                        @click.stop="removeUploadItem(file.id)"
-                                    >
-                                        Удалить
-                                    </button>
-                                </div>
-
-                                <div v-else class="media-grid__meta">
-                                    <strong class="file-name">
-                                        <span class="file-name__base">
-                                            {{
-                                                stripExtension(
-                                                    file.original_name,
-                                                )
-                                            }}
-                                        </span>
-                                        <span class="file-name__ext">
-                                            .{{ file.extension }}
-                                        </span>
-                                    </strong>
-
-                                    <p class="text-center">
-                                        <small>{{ file.size_human }}</small>
-                                        <small>{{
-                                            formatFileDate(file.created_at)
-                                        }}</small>
-                                    </p>
-                                </div>
-                            </article>
-                        </div>
-
-                        <div v-else class="media-library-page__table-wrap">
-                            <table class="table media-library">
-                                <thead>
-                                    <tr>
-                                        <th>
-                                            <div class="table-inner">
-                                                <Icon
-                                                    name="pages"
-                                                    width="14"
-                                                    height="14"
-                                                />Файл
-                                            </div>
-                                        </th>
-                                        <th>
-                                            <div class="table-inner">
-                                                <Icon
-                                                    name="tags"
-                                                    width="14"
-                                                    height="14"
-                                                />Тип
-                                            </div>
-                                        </th>
-                                        <th>
-                                            <div class="table-inner">
-                                                <Icon
-                                                    name="size"
-                                                    width="14"
-                                                    height="14"
-                                                />Размер
-                                            </div>
-                                        </th>
-                                        <th>
-                                            <div class="table-inner">
-                                                <Icon
-                                                    name="folder"
-                                                    width="14"
-                                                    height="14"
-                                                />Папка
-                                            </div>
-                                        </th>
-                                        <th>
-                                            <div class="table-inner">
-                                                <Icon
-                                                    name="calendar"
-                                                    width="14"
-                                                    height="14"
-                                                />Дата
-                                            </div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="file in filteredFiles"
-                                        :key="file.id"
-                                        class="media-library-page__row"
-                                        :class="{
-                                            'is-upload-placeholder':
-                                                isUploadPlaceholder(file),
-                                            'is-selected':
-                                                !isUploadPlaceholder(file) &&
-                                                selectedFileId === file.id,
-                                        }"
-                                        @click="handleDisplayedFileClick(file)"
-                                    >
-                                        <td>
-                                            <div
-                                                class="media-library-page__row-file"
-                                            >
-                                                <div
-                                                    class="media-library-page__row-preview"
-                                                >
-                                                    <img
-                                                        v-if="
-                                                            hasImagePreview(
-                                                                file,
-                                                            )
-                                                        "
-                                                        :key="
-                                                            mediaImageRenderKey(
-                                                                file,
-                                                                true,
-                                                            )
-                                                        "
-                                                        :src="
-                                                            file.preview_url ||
-                                                            file.url
-                                                        "
-                                                        :alt="
-                                                            file.alt_text ||
-                                                            file.original_name
-                                                        "
-                                                    />
-                                                    <span v-else>{{
-                                                        filePreviewLabel(file)
-                                                    }}</span>
-                                                </div>
-                                                <div
-                                                    class="media-library-page__view-switch"
-                                                >
-                                                    <strong>{{
-                                                        file.original_name
-                                                    }}</strong>
-                                                    <small>
-                                                        {{
-                                                            isUploadPlaceholder(
-                                                                file,
-                                                            )
-                                                                ? resolveUploadStatusLabel(
-                                                                      file.upload_status,
-                                                                  )
-                                                                : file.path
-                                                        }}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span
-                                                v-if="isUploadPlaceholder(file)"
-                                                class="media-library-page__status-pill"
-                                                :class="`is-${file.upload_status}`"
-                                            >
-                                                {{
-                                                    resolveUploadStatusLabel(
-                                                        file.upload_status,
-                                                    )
-                                                }}
-                                            </span>
-                                            <template v-else>
-                                                {{
-                                                    resolveTypeOptionLabel(file)
-                                                }}
-                                            </template>
-                                        </td>
-                                        <td>{{ file.size_human }}</td>
-                                        <td>
-                                            {{ file.folder_name || "Корень" }}
-                                        </td>
-                                        <td>
-                                            <div
-                                                v-if="isUploadPlaceholder(file)"
-                                                class="media-library-page__upload-progress-row media-library-page__upload-progress-row--table"
-                                            >
-                                                <div
-                                                    class="media-library-page__progress"
-                                                >
-                                                    <span
-                                                        :style="{
-                                                            width: `${file.upload_progress}%`,
-                                                        }"
-                                                    ></span>
-                                                </div>
-                                                <span
-                                                    >{{
-                                                        file.upload_progress
-                                                    }}%</span
-                                                >
-                                                <small
-                                                    v-if="file.upload_error"
-                                                    class="media-library-page__upload-error media-library-page__upload-error--table"
-                                                >
-                                                    {{ file.upload_error }}
-                                                </small>
-                                                <button
-                                                    type="button"
-                                                    class="button-link media-library-page__danger"
-                                                    :disabled="
-                                                        file.upload_status ===
-                                                        'uploading'
-                                                    "
-                                                    @click.stop="
-                                                        removeUploadItem(
-                                                            file.id,
-                                                        )
-                                                    "
-                                                >
-                                                    Удалить
-                                                </button>
-                                            </div>
-                                            <template v-else>
-                                                {{
-                                                    formatFileDate(
-                                                        file.created_at,
-                                                    )
-                                                }}
-                                            </template>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            </div>
+                                    <template v-else>
+                                        {{ formatFileDate(file.created_at) }}
+                                    </template>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </section>
         <transition name="modal">
             <div

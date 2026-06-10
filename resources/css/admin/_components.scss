@@ -1,6 +1,6 @@
 .panel-stack {
     display: grid;
-    gap: 12px;
+    gap: var(--admin-space-3);
 }
 
 .panel-header {
@@ -20,14 +20,11 @@
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-md);
     background: var(--admin-color-surface);
+    overflow-x: auto;
 }
 
 .panel-card:has(.table, .admin-page-head) {
     padding: 0;
-}
-
-.panel-card:has(.plugins, .create-partition, .user-new) {
-    overflow: hidden;
 }
 
 .panel-card:has(.page-editor-section__header, .section-header) {
@@ -41,7 +38,6 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    overflow: hidden;
 
     th,
     td {
@@ -54,6 +50,7 @@
             var(--admin-color-surface) 95%,
             var(--admin-color-text-muted)
         );
+        white-space: nowrap;
 
         svg {
             fill: var(--admin-color-text);
@@ -85,7 +82,8 @@
     }
 }
 
-.section .panel-card {
+.table.user .section .panel-card,
+.panel-card.records {
     border: none;
 }
 
@@ -106,12 +104,16 @@
 }
 
 .media-library {
-    tr {
-        border-top: 1px solid var(--admin-color-border);
-    }
+    overflow-x: auto;
 
-    td:not(:first-child) {
-        text-align: center;
+    .table {
+        tr {
+            border-top: 1px solid var(--admin-color-border);
+        }
+
+        td:not(:first-child) {
+            text-align: center;
+        }
     }
 }
 
@@ -150,7 +152,7 @@
     color: var(--admin-color-text-accent);
     text-shadow: 0.3px 0.3px 0.3px var(--admin-color-text-shadow);
     padding: 8px 12px;
-    min-width: fit-content;
+    min-width: max-content;
     border: none;
     border-radius: var(--admin-radius-sm);
     background: var(--admin-color-primary);
@@ -616,7 +618,8 @@
 }
 
 @media (max-width: 1150px) {
-    .admin-actions-row {
+    .admin-actions-row,
+    .users-toolbar__actions {
         width: 100%;
         justify-content: end;
     }
@@ -1093,7 +1096,9 @@
     width: 44px;
     border-radius: var(--admin-radius-sm);
     background-color: var(--admin-color-primary);
-    transition: filter 0.3s ease;
+    transition:
+        filter 0.3s ease,
+        opacity 0.3s ease;
 
     svg {
         fill: var(--admin-color-text-accent);
@@ -1102,6 +1107,11 @@
     &:hover,
     &:focus-visible {
         filter: brightness(1.1) saturate(1.2);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
     }
 }
 
@@ -1165,6 +1175,7 @@
     grid-template-columns: repeat(auto-fill, 216px);
     gap: 14px;
     justify-content: center;
+    margin-bottom: 16px;
 
     &__overlay {
         position: absolute;
@@ -1340,6 +1351,7 @@
 
 .admin-modal .media-grid {
     grid-template-columns: repeat(auto-fill, 211px);
+
     &__meta strong {
         display: block;
         max-width: 175px;
@@ -1921,6 +1933,10 @@ body:has(.admin-modal) {
         .media-folders__list {
             grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
         }
+    }
+
+    .media-folders__list {
+        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
     }
 }
 
@@ -2929,6 +2945,13 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         font-weight: 550;
         line-height: 1;
     }
+}
+
+.section-header.users-toolbar {
+    position: sticky;
+    z-index: 11;
+    left: 0;
+    right: 0;
 }
 
 .section-wrapper {

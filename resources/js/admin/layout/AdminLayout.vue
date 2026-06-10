@@ -504,20 +504,30 @@ onBeforeUnmount(() => {
                 <RouterLink :to="adminBasePath()" class="admin-title">
                     FL<span>Ξ</span>XORA
                 </RouterLink>
-                <a
-                    :href="publicSiteUrl"
-                    class="admin-sidebar__site-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Посмотреть сайт"
-                >
-                    <Icon
-                        name="show"
-                        width="22"
-                        height="22"
-                        class="admin-sidebar__brand-icon"
-                    />
-                </a>
+
+                <div class="admin-sidebar__brand-actions">
+                    <a
+                        :href="publicSiteUrl"
+                        class="admin-sidebar__site-link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Посмотреть сайт"
+                    >
+                        <Icon
+                            name="show"
+                            width="22"
+                            height="22"
+                            class="admin-sidebar__brand-icon"
+                        />
+                    </a>
+                    <button
+                        type="button"
+                        class="admin-menu-button close"
+                        @click="sidebarOpen = false"
+                    >
+                        <Icon name="close" width="24" height="24" />
+                    </button>
+                </div>
             </div>
 
             <nav class="admin-nav" aria-label="Основная навигация">

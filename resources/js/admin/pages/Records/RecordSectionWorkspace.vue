@@ -414,7 +414,7 @@ onMounted(loadWorkspace);
                 </RouterLink>
             </div>
 
-            <AdminCard v-if="activeTab === 'posts'">
+            <AdminCard v-if="activeTab === 'posts'" class="records">
                 <form class="admin-form-stack" @submit.prevent="submitRecord">
                     <label
                         class="admin-form-label code"
@@ -510,7 +510,7 @@ onMounted(loadWorkspace);
                 </form>
             </AdminCard>
 
-            <AdminCard v-if="activeTab === 'categories'">
+            <AdminCard v-if="activeTab === 'categories'" class="records">
                 <form class="admin-form-stack" @submit.prevent="submitCategory">
                     <label
                         class="admin-form-label language"
@@ -539,7 +539,7 @@ onMounted(loadWorkspace);
                 </form>
             </AdminCard>
 
-            <AdminCard v-if="activeTab === 'tags'">
+            <AdminCard v-if="activeTab === 'tags'" class="records">
                 <form class="admin-form-stack" @submit.prevent="submitTag">
                     <label
                         class="admin-form-label language"
@@ -571,7 +571,7 @@ onMounted(loadWorkspace);
                 </form>
             </AdminCard>
 
-            <AdminCard v-if="activeTab === 'settings'">
+            <AdminCard v-if="activeTab === 'settings'" class="records">
                 <form class="admin-form-stack" @submit.prevent="saveSettings">
                     <label
                         class="admin-form-label language"

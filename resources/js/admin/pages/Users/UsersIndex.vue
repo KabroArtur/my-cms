@@ -383,17 +383,14 @@ onMounted(async () => {
             </AdminCard>
 
             <AdminCard>
-                <div class="users-toolbar">
-                    <div class="section-header">
-                        <h2 class="title-tooltip">
-                            Список пользователей
-                            <Icon name="info" width="16" height="16" /><span
-                                >Управление доступами вынесено в отдельный
-                                экран, но вход в него находится прямо
-                                здесь.</span
-                            >
-                        </h2>
-                    </div>
+                <div class="section-header users-toolbar">
+                    <h2 class="title-tooltip-down">
+                        Список пользователей
+                        <Icon name="info" width="16" height="16" /><strong
+                            >Управление доступами вынесено в отдельный экран, но
+                            вход в него находится прямо здесь.</strong
+                        >
+                    </h2>
                 </div>
 
                 <p v-if="loading" class="muted text-center">

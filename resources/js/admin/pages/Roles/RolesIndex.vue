@@ -187,9 +187,11 @@ onMounted(loadRoles);
         description="Экран ролей и прав открыт как внутренний раздел из страницы пользователей, а не как отдельный пункт общего меню."
     >
         <template #actions>
-            <RouterLink :to="{ name: 'users' }" class="button-base">
-                <Icon name="users" width="18" height="18" />К пользователям
-            </RouterLink>
+            <div class="admin-actions-row">
+                <RouterLink :to="{ name: 'users' }" class="button-base">
+                    <Icon name="users" width="18" height="18" />К пользователям
+                </RouterLink>
+            </div>
         </template>
 
         <div class="roles-grid">
@@ -289,7 +291,7 @@ onMounted(loadRoles);
                     Роли пока не найдены.
                 </p>
 
-                <table v-else class="table user user-new">
+                <table v-else class="table user">
                     <thead>
                         <tr>
                             <th>
