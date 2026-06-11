@@ -23,6 +23,10 @@
     overflow-x: auto;
 }
 
+.admin-page-grid.setting .panel-card {
+    overflow-x: visible;
+}
+
 .panel-card:has(.table, .admin-page-head) {
     padding: 0;
 }

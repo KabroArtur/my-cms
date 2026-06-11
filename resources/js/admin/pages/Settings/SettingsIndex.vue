@@ -666,7 +666,7 @@ function measureLanguageWidth(language) {
             </div>
         </template>
 
-        <section class="admin-page-grid">
+        <section class="admin-page-grid setting">
             <AdminCard>
                 <p v-if="loading" class="muted text-center">
                     Загрузка настроек...

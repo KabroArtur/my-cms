@@ -1,11 +1,11 @@
 :root {
     color-scheme: light;
-    --login-bg: #f2f4f8;
+    --login-bg: #f3f6f9;
     --login-surface: #ffffff;
-    --login-border: #aec3ba;
-    --login-text: #2b484d;
-    --login-muted: #5e7483;
-    --login-accent: #4b945d;
+    --login-border: #b9c4cf;
+    --login-text: #1f2a37;
+    --login-muted: #575c76;
+    --login-accent: #674ec1;
     --login-danger: #b3261e;
     --login-shadow: 0 0 10px 4px #1620331f;
     --login-color-shadow: #0f172a49;

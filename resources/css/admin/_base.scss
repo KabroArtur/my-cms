@@ -151,7 +151,7 @@ select:-webkit-autofill:focus {
         justify-content: flex-end;
         flex-wrap: wrap;
         gap: var(--admin-space-2);
-        padding-right: 16px;
+        padding-inline: 16px;
     }
 
     .admin-form-label {
