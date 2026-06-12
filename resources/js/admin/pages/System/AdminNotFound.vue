@@ -1,21 +1,26 @@
+<script setup>
+import { RouterLink } from "vue-router";
+import Icon from "../../components/ui/Icon.vue";
+</script>
+
 <template>
     <section class="panel-card admin-empty-state">
-        <p class="eyebrow">CMS</p>
-        <h1>404</h1>
-        <p class="muted">Такой страницы в административной части нет. Проверь адрес или вернись к списку страниц.</p>
+        <p>
+            Такой страницы в административной части нет. Проверь адрес или
+            вернись к списку страниц.
+        </p>
 
-        <div class="admin-actions-row">
-            <RouterLink :to="{ name: 'dashboard' }" class="button-link">
-                На dashboard
+        <div class="admin-empty-state__links">
+            <RouterLink
+                :to="{ name: 'dashboard' }"
+                class="button-base button-link"
+            >
+                <Icon name="home" width="18" height="18" />Назад на главную
             </RouterLink>
 
-            <RouterLink :to="{ name: 'pages' }" class="button-link">
-                К страницам
+            <RouterLink :to="{ name: 'pages' }" class="button-base">
+                <Icon name="pages" width="18" height="18" />К страницам
             </RouterLink>
         </div>
     </section>
 </template>
-
-<script setup>
-import { RouterLink } from 'vue-router'
-</script>

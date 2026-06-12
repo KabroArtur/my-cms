@@ -30,7 +30,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="cms-admin-base" content="{{ app(\App\Core\Security\Services\AdminPathManager::class)->basePath() }}">
     <meta name="cms-site-name" content="{{ e($adminBootstrap['siteName']) }}">
-    <title>CMS Admin</title>
+    <title>FLΞXORA</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicons/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicons/favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('favicons/apple-touch-icon.png') }}">
     <script nonce="{{ $cspNonce ?? request()->attributes->get('csp_nonce', '') }}">
         (() => {
             try {
