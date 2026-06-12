@@ -194,17 +194,16 @@ function handleMoveFile(value) {
                 >
                     <Icon name="pencil" width="22" height="22" />
                 </button>
-
-                <button
-                    type="button"
-                    class="button-base button-secondary"
-                    :disabled="selecting"
-                    @click="emit('select', file)"
-                    title="Выбрать обложкой"
-                >
-                    <Icon name="check" width="24" height="24" />
-                </button>
             </div>
+            <button
+                type="button"
+                class="button-base button-secondary"
+                :disabled="selecting"
+                @click="emit('select', file)"
+                title="Выбрать обложкой"
+            >
+                <Icon name="check" width="24" height="24" />Выбрать обложкой
+            </button>
         </form>
     </aside>
 </template>

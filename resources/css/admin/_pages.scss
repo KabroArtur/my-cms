@@ -634,6 +634,15 @@
     display: grid;
     grid-template-columns: minmax(0, 1.32fr) minmax(360px, 480px);
     gap: 24px;
+
+    .cell-actions.save {
+        flex-wrap: wrap;
+
+        .save {
+            padding-inline: var(--admin-space-3);
+            margin-left: auto;
+        }
+    }
 }
 
 .media-library-page__editor-stage-panel,
@@ -1638,6 +1647,8 @@
     min-height: 320px;
     font-family: inherit;
     line-height: 1.5;
+    resize: vertical;
+    overflow-y: auto;
 }
 
 .admin-editor-toolbar {
@@ -1649,13 +1660,13 @@
     flex-wrap: wrap;
     gap: var(--admin-space-2);
     padding: 8px 14px;
-    border-block: 1px solid var(--admin-color-border);
+    border-bottom: 1px solid var(--admin-color-border);
     background-color: color-mix(
         in srgb,
         var(--admin-color-primary) 12%,
         var(--admin-color-bg)
     );
-    margin: 10px -16px;
+    margin: 0 -16px 10px;
 
     button {
         font-size: 15px;
@@ -1671,6 +1682,7 @@
         padding: 4px 8px;
         height: 34px;
         width: 34px;
+        min-height: 34px;
 
         svg.icon {
             fill: var(--admin-color-text);
@@ -1713,18 +1725,19 @@
 
 .tiptap-toolbar-group {
     display: flex;
+    align-items: center;
     gap: var(--admin-space-2);
+    height: fit-content;
 }
 
 .tiptap-toolbar-separator {
     width: 1px;
     align-self: stretch;
-    background: var(--admin-color-border);
-    opacity: 0.75;
+    background: var(--admin-color-border-strong);
 }
 
 .tiptap-toolbar-btn.is-active {
-    filter: saturate(130%);
+    filter: saturate(1.5);
     border-color: var(--admin-color-primary);
 }
 
@@ -1732,11 +1745,11 @@
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-sm);
     background: var(--admin-color-surface);
-    min-height: 220px;
+    min-height: 400px;
 }
 
 .tiptap-editor .tiptap {
-    min-height: 220px;
+    min-height: 380px;
     padding: 12px;
     outline: none;
     overflow-x: hidden;
@@ -2992,30 +3005,13 @@
     flex-direction: column;
     gap: var(--admin-space-4);
 
-    // &:deep(.admin-form-label) {
-    //     display: grid;
-    //     align-items: start;
-    //     gap: 0.5rem;
-    //     min-width: 0;
-    // }
-
-    // &:deep(.admin-form-label > span) {
-    //     display: block;
-    //     min-width: 0;
-    //     line-height: 1.4;
-    // }
-
-    // &:deep(.admin-form-label small) {
-    //     line-height: 1.45;
-    // }
-
     &__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: var(--admin-space-4);
         padding-inline: 20px;
-        height: 50px;
+        height: 54px;
         border-radius: var(--admin-radius-md) var(--admin-radius-md) 0 0;
         background: color-mix(
             in srgb,
@@ -3084,6 +3080,10 @@
 
 .page-editor-content-field {
     padding: 0 16px 14px;
+
+    &__title .title-tooltip {
+        margin-top: 16px;
+    }
 }
 
 .page-editor-content-field__head {
@@ -3155,6 +3155,7 @@
         "Liberation Mono", "Courier New", monospace;
     line-height: 1.5;
     resize: vertical;
+    overflow-y: auto;
     margin-top: 10px;
 }
 
@@ -3194,6 +3195,27 @@
 
 .media-library-page__toolbar .media-library-page__search-panel {
     display: none;
+}
+
+@media (max-width: 1660px) {
+    .page-editor-section.seo {
+        .title-tooltip-down strong {
+            top: calc(100% + 14px);
+            left: auto;
+            right: -11px;
+            transform: none;
+
+            &:after {
+                left: auto;
+                right: 13px;
+            }
+        }
+
+        .title-tooltip-down svg:hover + strong,
+        .title-tooltip-down svg:focus-visible + strong {
+            transform: translateY(-6px);
+        }
+    }
 }
 
 @media (max-width: 1600px) {
@@ -3353,7 +3375,9 @@
                 padding-left: 126px;
             }
         }
+    }
 
+    .settings-cache-card.palette {
         .palette .admin-select-trigger {
             padding-left: 162px;
         }
@@ -3365,6 +3389,11 @@
         .palette.dark::before {
             content: "Палитра темной:";
         }
+    }
+
+    .media-library-modal__toolbar {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 
@@ -3394,11 +3423,6 @@
 
     .page-editor-section__header {
         padding: 14px 20px;
-    }
-
-    .page-editor-content-field__head {
-        flex-direction: column;
-        align-items: stretch;
     }
 
     .title-tooltip-down,
@@ -3471,6 +3495,12 @@
             position: absolute;
             bottom: 10px;
             right: 224px;
+        }
+    }
+
+    .page-editor-section__header {
+        .page-editor__header span {
+            display: none;
         }
     }
 }
@@ -3565,6 +3595,15 @@
             .selected {
                 max-width: 100%;
             }
+        }
+    }
+
+    .media-library-page__file-modal-body .cell-actions.save {
+        flex-wrap: wrap;
+
+        .save {
+            padding-inline: var(--admin-space-3);
+            margin-left: 0;
         }
     }
 }

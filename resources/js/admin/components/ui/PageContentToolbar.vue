@@ -144,9 +144,8 @@ function insertTable() {
             >
                 <Icon name="redo" width="16" height="16" />
             </AdminButton>
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminSelect
@@ -155,9 +154,8 @@ function insertTable() {
                 @update:model-value="setBlockType"
                 class="title"
             />
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminButton
@@ -249,9 +247,8 @@ function insertTable() {
             >
                 <Icon name="code-block" width="20" height="20" />
             </AdminButton>
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminSelect
@@ -294,9 +291,8 @@ function insertTable() {
             >
                 <Icon name="list-number" width="16" height="16" />
             </AdminButton>
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminButton
@@ -306,9 +302,8 @@ function insertTable() {
             >
                 <Icon name="image" width="18" height="18" />
             </AdminButton>
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminButton
@@ -327,9 +322,8 @@ function insertTable() {
             >
                 —
             </AdminButton>
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminButton
@@ -380,9 +374,8 @@ function insertTable() {
             >
                 <Icon name="table-delete" width="17" height="17" />
             </AdminButton>
+            <span class="tiptap-toolbar-separator" />
         </div>
-
-        <span class="tiptap-toolbar-separator" />
 
         <div class="tiptap-toolbar-group">
             <AdminButton

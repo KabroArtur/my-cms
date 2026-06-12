@@ -228,11 +228,12 @@ function fillLanguageForm(language) {
     languageForm.sort_order = language?.sort_order ?? 0;
 }
 
-async function setDefaultLanguage(language) {
-    if (!language || language.is_default) {
-        return;
-    }
+let isSwitchingLanguage = false;
 
+async function setDefaultLanguage(language) {
+    if (!language || language.is_default || isSwitchingLanguage) return;
+
+    isSwitchingLanguage = true;
     errorMessage.value = "";
 
     try {
@@ -248,14 +249,20 @@ async function setDefaultLanguage(language) {
         });
 
         notifySuccess(`Главный язык переключен на ${language.native_name}.`);
+
         await loadSettings();
     } catch (error) {
-        errorMessage.value =
+        const msg =
             error.response?.data?.message ??
             Object.values(error.response?.data?.errors ?? {})?.flat?.()[0] ??
             "Не удалось изменить язык по умолчанию.";
-        notifyError(errorMessage.value);
+
+        errorMessage.value = msg;
+        notifyError(msg);
+
         console.error(error);
+    } finally {
+        isSwitchingLanguage = false;
     }
 }
 
@@ -828,6 +835,44 @@ function measureLanguageWidth(language) {
                                 />
                             </div>
                         </div>
+
+                        <div class="settings-cache-card palette">
+                            <div class="admin-stack__head mb">
+                                <h3 class="title-tooltip">
+                                    Оформление админки
+                                    <Icon
+                                        name="info"
+                                        width="16"
+                                        height="16"
+                                    /><span
+                                        >Определяет цветовую схему и внешний вид
+                                        административной панели.</span
+                                    >
+                                </h3>
+                            </div>
+                            <div class="page-meta-grid">
+                                <AdminSelect
+                                    class="mode"
+                                    data-label="Режим темы админки:"
+                                    v-model="form.admin_theme_mode"
+                                    :options="options.admin_theme_modes"
+                                />
+
+                                <AdminSelect
+                                    class="palette light"
+                                    data-label="Палитра для светлой темы:"
+                                    v-model="form.admin_light_palette"
+                                    :options="options.admin_light_palettes"
+                                />
+
+                                <AdminSelect
+                                    class="palette dark"
+                                    data-label="Палитра для темной темы:"
+                                    v-model="form.admin_dark_palette"
+                                    :options="options.admin_dark_palettes"
+                                />
+                            </div>
+                        </div>
                     </section>
 
                     <section
@@ -916,34 +961,6 @@ function measureLanguageWidth(language) {
                                         form.media_default_insert_variant =
                                             $event
                                     "
-                                />
-                            </div>
-                        </div>
-
-                        <div class="settings-cache-card">
-                            <div class="admin-stack__head mb">
-                                <h3>Оформление админки</h3>
-                            </div>
-                            <div class="page-meta-grid">
-                                <AdminSelect
-                                    class="mode"
-                                    data-label="Режим темы админки:"
-                                    v-model="form.admin_theme_mode"
-                                    :options="options.admin_theme_modes"
-                                />
-
-                                <AdminSelect
-                                    class="palette light"
-                                    data-label="Палитра для светлой темы:"
-                                    v-model="form.admin_light_palette"
-                                    :options="options.admin_light_palettes"
-                                />
-
-                                <AdminSelect
-                                    class="palette dark"
-                                    data-label="Палитра для темной темы:"
-                                    v-model="form.admin_dark_palette"
-                                    :options="options.admin_dark_palettes"
                                 />
                             </div>
                         </div>
@@ -1278,6 +1295,19 @@ function measureLanguageWidth(language) {
                                 </label>
                                 <div class="flex-end">
                                     <AdminButton
+                                        v-if="editingLanguageId"
+                                        type="button"
+                                        @click="resetLanguageForm"
+                                        class="button-danger"
+                                    >
+                                        <Icon
+                                            name="cancel"
+                                            width="18"
+                                            height="18"
+                                        />
+                                        Отменить редактирование
+                                    </AdminButton>
+                                    <AdminButton
                                         type="button"
                                         @click="submitLanguageForm"
                                     >
@@ -1296,19 +1326,6 @@ function measureLanguageWidth(language) {
                                                 ? "Сохранить язык"
                                                 : "Добавить язык"
                                         }}
-                                    </AdminButton>
-                                    <AdminButton
-                                        v-if="editingLanguageId"
-                                        type="button"
-                                        @click="resetLanguageForm"
-                                        class="button-danger"
-                                    >
-                                        <Icon
-                                            name="cancel"
-                                            width="18"
-                                            height="18"
-                                        />
-                                        Отменить редактирование
                                     </AdminButton>
                                 </div>
                             </div>

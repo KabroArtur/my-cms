@@ -96,6 +96,8 @@ async function submitRename(folder) {
 function toggleMenu(folderId) {
     activeMenuId.value = activeMenuId.value === folderId ? null : folderId;
 }
+
+const isRoot = computed(() => !props.currentFolder);
 </script>
 
 <template>
@@ -104,6 +106,7 @@ function toggleMenu(folderId) {
             <button
                 type="button"
                 class="media-folders__home"
+                :disabled="isRoot"
                 @click="emit('open-root')"
                 title="Корень медиатеки"
             >

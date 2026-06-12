@@ -320,22 +320,24 @@ onMounted(loadPlugins);
                     </div>
 
                     <div class="admin-modal__body admin-stack">
-                        <p class="muted text-center">
+                        <p class="muted text-center mt-16">
                             Если оба флага выключены, удалится только запись об
                             установке, а данные и файлы останутся.
                         </p>
+                        <div class="checkbox">
+                            <label class="admin-checkbox">
+                                <input v-model="dropData" type="checkbox" />
+                                <span
+                                    >Удалить данные плагина (таблицы и
+                                    права)</span
+                                >
+                            </label>
 
-                        <label class="admin-checkbox">
-                            <input v-model="dropData" type="checkbox" />
-                            <span
-                                >Удалить данные плагина (таблицы и права)</span
-                            >
-                        </label>
-
-                        <label class="admin-checkbox">
-                            <input v-model="removeFiles" type="checkbox" />
-                            <span>Удалить файлы плагина с диска</span>
-                        </label>
+                            <label class="admin-checkbox">
+                                <input v-model="removeFiles" type="checkbox" />
+                                <span>Удалить файлы плагина с диска</span>
+                            </label>
+                        </div>
 
                         <div class="admin-actions-row">
                             <AdminButton

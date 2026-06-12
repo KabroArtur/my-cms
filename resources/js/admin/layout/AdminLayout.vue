@@ -495,6 +495,10 @@ onMounted(async () => {
 onBeforeUnmount(() => {
     document.removeEventListener("click", handleDocumentClick);
 });
+
+watch(sidebarOpen, (isOpen) => {
+    document.body.classList.toggle("no-scroll", isOpen);
+});
 </script>
 
 <template>

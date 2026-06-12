@@ -840,21 +840,37 @@ const toggleContentMode = () => {
                     </section>
                 </AdminCard>
 
-                <AdminCard>
-                    <section class="page-editor-section">
-                        <div class="page-editor-section__header">
-                            <div>
-                                <h2 class="title-tooltip-down">
-                                    Контент
-                                    <Icon name="info" width="16" height="16" />
-                                    <strong>
-                                        Основное содержимое страницы. Панель
-                                        инструментов остаётся рядом с
-                                        редактором.</strong
-                                    >
-                                </h2>
-                            </div>
+                <AdminCard class="additional">
+                    <div class="page-editor-section__header">
+                        <div>
+                            <h2 class="title-tooltip-down">
+                                Контент
+                                <Icon name="info" width="16" height="16" />
+                                <strong>
+                                    Основное содержимое страницы. Панель
+                                    инструментов остаётся рядом с
+                                    редактором.</strong
+                                >
+                            </h2>
+                        </div>
 
+                        <div class="page-editor__header">
+                            <button
+                                type="button"
+                                class="button-base button-secondary"
+                                :class="{
+                                    'is-active': contentMode === 'source',
+                                }"
+                                @click.stop="toggleContentMode"
+                            >
+                                <Icon name="code" width="20" height="20" />
+
+                                <span v-if="contentMode === 'source'">
+                                    Код
+                                </span>
+
+                                <span v-else>Текстовый редактор</span>
+                            </button>
                             <button
                                 type="button"
                                 class="button-link content-toggle"
@@ -869,102 +885,74 @@ const toggleContentMode = () => {
                                 />
                             </button>
                         </div>
-                        <transition name="content">
-                            <div
-                                v-show="contentVisible"
-                                class="page-editor__label page-editor-content-field"
-                            >
-                                <div class="page-editor-content-field__head">
-                                    <div
-                                        class="page-editor-content-field__title"
+                    </div>
+                    <transition name="content">
+                        <div
+                            v-show="contentVisible"
+                            class="page-editor__label page-editor-content-field"
+                        >
+                            <div class="page-editor-content-field__head">
+                                <div class="page-editor-content-field__title">
+                                    <p
+                                        v-if="contentMode === 'source'"
+                                        class="title-tooltip"
                                     >
-                                        <p class="title-tooltip">
-                                            Содержимое страницы
-                                            <Icon
-                                                v-if="contentMode === 'source'"
-                                                name="info"
-                                                width="16"
-                                                height="16"
-                                            />
-                                            <span>
-                                                Режим исходного кода редактирует
-                                                содержимое напрямую как
-                                                HTML-разметку.</span
-                                            >
-                                        </p>
-                                    </div>
-
-                                    <div class="page-editor-content-mode">
-                                        <button
-                                            type="button"
-                                            class="button-base button-secondary"
-                                            :class="{
-                                                'is-active':
-                                                    contentMode === 'source',
-                                            }"
-                                            @click.stop="toggleContentMode"
+                                        Содержимое страницы
+                                        <Icon
+                                            name="info"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        <span>
+                                            Режим исходного кода редактирует
+                                            содержимое напрямую как
+                                            HTML-разметку.</span
                                         >
-                                            <Icon
-                                                name="code"
-                                                width="20"
-                                                height="20"
-                                            />
-
-                                            <span
-                                                v-if="contentMode === 'source'"
-                                            >
-                                                Код
-                                            </span>
-
-                                            <span v-else>
-                                                Текстовый редактор
-                                            </span>
-                                        </button>
-                                    </div>
+                                    </p>
                                 </div>
-
-                                <template v-if="contentMode === 'visual'">
-                                    <PageContentToolbar
-                                        :editor="contentEditor"
-                                        :heading-levels="headingLevels"
-                                        @open-media="openContentMediaModal"
-                                    />
-                                    <EditorContent
-                                        :editor="contentEditor"
-                                        class="admin-editor tiptap-editor"
-                                    />
-
-                                    <MediaLibraryModal
-                                        :open="contentMediaModalOpen"
-                                        title="Вставить медиа в контент"
-                                        :multiple="true"
-                                        :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
-                                        :allow-upload="true"
-                                        @close="contentMediaModalOpen = false"
-                                        @select="handleContentMediaInsert"
-                                    />
-                                </template>
-
-                                <template v-else>
-                                    <textarea
-                                        v-model="form.content"
-                                        class="admin-textarea page-editor-source"
-                                        rows="16"
-                                        spellcheck="false"
-                                        placeholder="<p>HTML, inline script и любая разметка страницы.</p>"
-                                    ></textarea>
-                                </template>
                             </div>
-                        </transition>
 
-                        <p v-show="!contentVisible" class="page-editor__info">
-                            Блок контента скрыт. Его можно снова открыть кнопкой
-                            в заголовке секции.
-                        </p>
-                    </section>
+                            <template v-if="contentMode === 'visual'">
+                                <PageContentToolbar
+                                    :editor="contentEditor"
+                                    :heading-levels="headingLevels"
+                                    @open-media="openContentMediaModal"
+                                />
+                                <EditorContent
+                                    :editor="contentEditor"
+                                    class="admin-editor tiptap-editor"
+                                />
+
+                                <MediaLibraryModal
+                                    :open="contentMediaModalOpen"
+                                    title="Вставить медиа в контент"
+                                    :multiple="true"
+                                    :accept="DEFAULT_MEDIA_LIBRARY_ACCEPT"
+                                    :allow-upload="true"
+                                    @close="contentMediaModalOpen = false"
+                                    @select="handleContentMediaInsert"
+                                />
+                            </template>
+
+                            <template v-else>
+                                <textarea
+                                    v-model="form.content"
+                                    class="admin-textarea page-editor-source"
+                                    rows="16"
+                                    spellcheck="false"
+                                    placeholder="<p>HTML, inline script и любая разметка страницы.</p>"
+                                ></textarea>
+                            </template>
+                        </div>
+                    </transition>
+
+                    <p v-show="!contentVisible" class="page-editor__info mt-16">
+                        Блок контента скрыт. Его можно снова открыть кнопкой в
+                        заголовке секции.
+                    </p>
                 </AdminCard>
 
-                <AdminCard>
+                <AdminCard class="additional">
                     <section class="page-editor-section">
                         <div class="page-editor-section__header">
                             <div>
@@ -979,45 +967,44 @@ const toggleContentMode = () => {
                                     >
                                 </h2>
                             </div>
-                            <button
-                                type="button"
-                                class="button-link content-toggle"
-                                @click="
-                                    additionalFieldsVisible =
-                                        !additionalFieldsVisible
-                                "
-                            >
-                                <Icon
-                                    name="arrow-down"
-                                    width="20"
-                                    height="20"
-                                    class="content-toggle__icon"
-                                    :class="{
-                                        'is-open': additionalFieldsVisible,
-                                    }"
-                                />
-                            </button>
+                            <div class="page-editor__header">
+                                <RouterLink
+                                    v-if="canManageAdditionalFields"
+                                    :to="{ name: 'content-structure' }"
+                                    class="button-base button-secondary"
+                                >
+                                    <Icon
+                                        name="structure"
+                                        width="18"
+                                        height="18"
+                                    />
+                                    <span>Настроить структуру</span>
+                                </RouterLink>
+                                <button
+                                    type="button"
+                                    class="button-link content-toggle"
+                                    @click="
+                                        additionalFieldsVisible =
+                                            !additionalFieldsVisible
+                                    "
+                                >
+                                    <Icon
+                                        name="arrow-down"
+                                        width="20"
+                                        height="20"
+                                        class="content-toggle__icon"
+                                        :class="{
+                                            'is-open': additionalFieldsVisible,
+                                        }"
+                                    />
+                                </button>
+                            </div>
                         </div>
                         <transition name="content">
                             <div
                                 v-show="additionalFieldsVisible"
                                 class="page-editor"
                             >
-                                <div class="page-editor__header-end">
-                                    <RouterLink
-                                        v-if="canManageAdditionalFields"
-                                        :to="{ name: 'content-structure' }"
-                                        class="button-base"
-                                    >
-                                        <Icon
-                                            name="structure"
-                                            width="18"
-                                            height="18"
-                                        />
-                                        Настроить структуру
-                                    </RouterLink>
-                                </div>
-
                                 <p
                                     v-if="additionalFieldGroups.length === 0"
                                     class="text-center muted"
@@ -1247,7 +1234,7 @@ const toggleContentMode = () => {
                 </AdminCard>
 
                 <AdminCard>
-                    <section class="page-editor-section">
+                    <section class="page-editor-section seo">
                         <div class="page-editor-section__header">
                             <div>
                                 <h2 class="title-tooltip-down">

@@ -1271,9 +1271,7 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                     class="admin-modal__dialog admin-modal__dialog--wide media-library-modal"
                     @click.stop
                 >
-                    <div
-                        class="admin-modal__header media-library-modal__header"
-                    >
+                    <div class="admin-modal__header">
                         <div>
                             <h2 class="title-tooltip-down">
                                 {{ title }}

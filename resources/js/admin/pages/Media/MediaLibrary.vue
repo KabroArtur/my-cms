@@ -2506,7 +2506,7 @@ const isRoot = computed(() => breadcrumbs.value.length === 0);
                                     />
                                 </label>
 
-                                <div class="cell-actions">
+                                <div class="cell-actions save">
                                     <button
                                         type="button"
                                         class="button-base button-danger"
@@ -2567,12 +2567,13 @@ const isRoot = computed(() => breadcrumbs.value.length === 0);
                                             savingDetails || transforming
                                         "
                                         title="Сохранить изменения"
+                                        class="save"
                                     >
                                         <Icon
                                             name="save"
                                             width="18"
                                             height="18"
-                                        />
+                                        />Сохранить изменения
                                     </AdminButton>
                                 </div>
                             </form>

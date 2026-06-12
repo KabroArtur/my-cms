@@ -81,8 +81,9 @@ select:-webkit-autofill:focus {
 }
 
 ::selection {
-    color: var(--admin-color-text);
-    background: color-mix(in srgb, var(--admin-color-high) 70%, transparent);
+    color: var(--admin-color-text-accent);
+    text-shadow: 0.3px 0.3px 0.3px var(--admin-color-text-shadow);
+    background: color-mix(in srgb, var(--admin-color-primary) 75%, transparent);
 }
 
 .eyebrow {
@@ -222,10 +223,6 @@ select:-webkit-autofill:focus {
     padding-bottom: 14px;
 }
 
-.admin-modal .admin-checkbox {
-    margin-left: 65px;
-}
-
 .admin-checkbox {
     position: relative;
     display: inline-flex;
@@ -336,6 +333,7 @@ select:-webkit-autofill:focus {
 
 .admin-actions-row {
     display: flex;
+    align-items: center;
     justify-content: center;
     gap: var(--admin-space-2);
     flex-wrap: wrap;
