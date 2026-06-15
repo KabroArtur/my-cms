@@ -552,7 +552,7 @@ const trashColumns = computed(() => {
         </template>
 
         <div class="admin-page-grid">
-            <AdminCard>
+            <AdminCard class="pages">
                 <div class="admin-page-head">
                     <div
                         class="admin-tabs"

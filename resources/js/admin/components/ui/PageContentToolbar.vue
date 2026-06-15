@@ -186,15 +186,17 @@ function insertTable() {
             </AdminButton>
 
             <AdminButton
+                class="width"
                 :class="toolbarButtonClass(editor?.isActive('strike'))"
                 type="button"
                 title="Зачеркивание"
                 @click="editor?.chain().focus().toggleStrike().run()"
             >
-                <Icon name="text-cross" width="26" height="26" />
+                <Icon name="text-cross" width="30" height="30" />
             </AdminButton>
 
             <AdminButton
+                class="width"
                 :class="toolbarButtonClass(editor?.isActive('highlight'))"
                 type="button"
                 title="Подсветка"
@@ -204,6 +206,7 @@ function insertTable() {
             </AdminButton>
 
             <AdminButton
+                class="width"
                 :class="toolbarButtonClass(editor?.isActive('link'))"
                 type="button"
                 title="Ссылка"
@@ -231,15 +234,17 @@ function insertTable() {
             </AdminButton>
 
             <AdminButton
+                class="width"
                 :class="toolbarButtonClass(editor?.isActive('code'))"
                 type="button"
                 title="Код"
                 @click="editor?.chain().focus().toggleCode().run()"
             >
-                <Icon name="embed" width="18" height="18" />
+                <Icon name="embed" width="22" height="22" />
             </AdminButton>
 
             <AdminButton
+                class="width"
                 :class="toolbarButtonClass(editor?.isActive('codeBlock'))"
                 type="button"
                 title="Блок кода"

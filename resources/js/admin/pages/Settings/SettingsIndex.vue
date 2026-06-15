@@ -785,16 +785,6 @@ function measureLanguageWidth(language) {
                                 </label>
 
                                 <AdminSelect
-                                    class="data"
-                                    data-label="Формат даты:"
-                                    :model-value="form.date_format"
-                                    :options="options.date_formats"
-                                    @update:modelValue="
-                                        form.date_format = $event
-                                    "
-                                />
-
-                                <AdminSelect
                                     data-label="Формат времени:"
                                     :model-value="form.time_format"
                                     :options="options.time_formats"
@@ -802,6 +792,15 @@ function measureLanguageWidth(language) {
                                         form.time_format = $event
                                     "
                                     class="time"
+                                />
+                                <AdminSelect
+                                    data-label="Формат даты:"
+                                    :model-value="form.date_format"
+                                    :options="options.date_formats"
+                                    @update:modelValue="
+                                        form.date_format = $event
+                                    "
+                                    class="data"
                                 />
                             </div>
                         </div>

@@ -658,7 +658,7 @@
 .media-library-page__editor-stage-shell {
     display: grid;
     place-items: center;
-    min-height: 480px;
+    min-height: 410px;
     padding: 20px;
     border: 1px solid var(--admin-color-border);
     border-radius: var(--admin-radius-md);
@@ -1264,6 +1264,7 @@
 
 .page-meta-grid {
     display: grid;
+    align-items: start;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--admin-space-4);
 
@@ -1314,7 +1315,7 @@
 .admin-select-custom.field .admin-select-trigger,
 .admin-form-label.label .admin-input,
 .admin-form-label.rows .admin-input {
-    padding-left: 64px;
+    padding-left: 65px;
 }
 
 .admin-form-label.locale .admin-input,
@@ -1391,9 +1392,12 @@
 }
 
 .admin-select-custom.time .admin-select-trigger,
-.date .admin-input,
 .admin-select-custom.name-folder .admin-select-trigger {
     padding-left: 161px;
+}
+
+.date .admin-input {
+    padding-left: 167px;
 }
 
 .admin-input.log,
@@ -1681,13 +1685,17 @@
         border-radius: var(--admin-radius-xs);
         padding: 4px 8px;
         height: 34px;
-        width: 34px;
+        width: 36px;
         min-height: 34px;
-
         svg.icon {
             fill: var(--admin-color-text);
             filter: none;
         }
+    }
+
+    button.width {
+        max-width: 36px;
+        padding-inline: 0;
     }
 
     .admin-select-custom .admin-select-trigger {
@@ -1710,7 +1718,7 @@
     }
 
     .admin-select-custom.title .admin-select-trigger {
-        width: 112px;
+        width: 114px;
     }
 
     .admin-select-custom.paragraph .admin-select-trigger {
@@ -3295,7 +3303,7 @@
     }
 }
 
-@media (max-width: 1526px) {
+@media (max-width: 1576px) {
     .admin-filter-bar {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

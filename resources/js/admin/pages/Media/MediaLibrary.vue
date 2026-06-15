@@ -1809,7 +1809,7 @@ const isRoot = computed(() => breadcrumbs.value.length === 0);
                         v-if="!loading && visibleFolders.length === 0"
                         class="media-library-page__empty-state"
                     >
-                        <h4>В текущем разделе пока нет папок</h4>
+                        <h4>В текущем разделе пока нет папок.</h4>
                         <p>
                             Создайте первую папку, чтобы разложить файлы по
                             структуре.

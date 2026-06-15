@@ -29,6 +29,10 @@ textarea {
     outline: none;
 }
 
+strong {
+    font-weight: 700;
+}
+
 input:-webkit-autofill,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
@@ -162,7 +166,8 @@ select:-webkit-autofill:focus {
             left: 12px;
             top: 50%;
             transform: translateY(-50%);
-            font-weight: 550;
+            font-size: 17px;
+            font-weight: 700;
             color: var(--admin-color-text-muted);
             pointer-events: none;
             z-index: 9;
@@ -304,6 +309,8 @@ select:-webkit-autofill:focus {
 .admin-select,
 .admin-textarea {
     font: inherit;
+    font-size: 17px;
+    font-weight: 500;
     color: var(--admin-color-text);
     min-height: 42px;
     width: 100%;
@@ -474,7 +481,7 @@ p.title-tooltip {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 550;
     line-height: 1;
     color: var(--admin-color-text);

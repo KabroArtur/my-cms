@@ -69,17 +69,16 @@
     display: flex;
     align-items: center;
     gap: 2px;
-    font-family: "Cormorant Garamond", serif;
     text-transform: uppercase;
     font-size: 28px;
     font-weight: 500;
     line-height: 1;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     text-decoration: none;
-    color: var(--admin-color-text);
-    transition: 0.25s ease;
     text-shadow: 0 1px 0 var(--admin-color-shadow);
+    color: var(--admin-color-text);
     outline: none;
+    transition: 0.3s ease;
 
     &:hover {
         transform: scale(1.05);
@@ -87,10 +86,10 @@
     }
 
     span {
-        font-family: "Inter", sans-serif;
+        font-size: 32px;
+        font-weight: 400;
+        text-shadow: 0 1px 6px var(--admin-color-shadow);
         color: var(--admin-color-primary);
-        font-size: 30px;
-        text-shadow: 0 0 4px var(--admin-color-shadow);
     }
 }
 
@@ -475,6 +474,10 @@
     .admin-sidebar__session {
         align-items: stretch;
     }
+}
+
+.admin-scroll {
+    overflow-x: auto;
 }
 
 .admin-table {

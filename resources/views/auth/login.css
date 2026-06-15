@@ -99,23 +99,20 @@ select:-webkit-autofill:focus {
     align-items: center;
     justify-content: center;
     gap: 2px;
-    font-family: "Cormorant Garamond", serif;
     text-transform: uppercase;
     font-size: 28px;
     font-weight: 500;
     line-height: 1;
-    letter-spacing: 2px;
-    text-decoration: none;
-    color: var(--login-color-text);
-    transition: 0.25s ease;
+    letter-spacing: 1.5px;
     text-shadow: 0 1px 0 var(--login-color-shadow);
+    outline: none;
 }
 
 .login-card__head h1 span {
-    font-family: "Inter", sans-serif;
+    font-size: 32px;
+    font-weight: 400;
+    text-shadow: 0 1px 6px var(--login-color-shadow);
     color: var(--login-accent);
-    font-size: 30px;
-    text-shadow: 0 0 4px var(--login-color-shadow);
 }
 
 .login-form {
@@ -126,15 +123,16 @@ select:-webkit-autofill:focus {
 
 .login-field input[type="text"],
 .login-field input[type="password"] {
-    width: 100%;
-    border: 1.2px solid var(--login-border);
-    border-radius: var(--login-radius-sm);
-    padding: 10px 14px;
+    font-family: inherit;
     font-size: 16px;
     line-height: 1;
     color: var(--login-text);
+    width: 100%;
+    padding: 10px 14px;
     outline: none;
     background: var(--login-surface);
+    border: 1.2px solid var(--login-border);
+    border-radius: var(--login-radius-sm);
     transition: border-color 0.3s ease;
 }
 
@@ -168,15 +166,16 @@ select:-webkit-autofill:focus {
 }
 
 .login-submit {
-    border: 1px solid var(--login-accent);
-    border-radius: var(--login-radius-sm);
-    background: var(--login-accent);
-    padding: 11px 14px;
+    font-family: inherit;
     font-size: 15px;
     font-weight: 550;
     color: var(--login-surface);
     text-shadow: 0.5px 0.5px 0.5px var(--login-text);
+    padding: 11px 14px;
     cursor: pointer;
+    border: 1px solid var(--login-accent);
+    border-radius: var(--login-radius-sm);
+    background: var(--login-accent);
     transition: filter 0.3s ease;
 }
 
