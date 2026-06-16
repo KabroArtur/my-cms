@@ -1806,7 +1806,7 @@ const isSearching = computed(() => normalizedSearch.value !== "");
                                             />
                                         </label>
 
-                                        <div class="admin-actions-row flex-end">
+                                        <div class="flex-end">
                                             <button
                                                 type="button"
                                                 class="button-base button-secondary"

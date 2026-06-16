@@ -1050,6 +1050,15 @@
     line-height: 1;
     width: 28px;
     height: 32px;
+
+    svg {
+        transition: transform 0.3s ease;
+    }
+
+    &:hover svg,
+    &:focus-visible svg {
+        transform: scale(1.2);
+    }
 }
 
 .media-folders__menu {
@@ -2642,7 +2651,7 @@ body:has(.admin-modal) {
     left: 0;
     z-index: 10;
     width: 100%;
-    max-height: 162px;
+    max-height: 161px;
     overflow-y: auto;
     border: 1px solid var(--admin-color-border);
     border-top: none;
