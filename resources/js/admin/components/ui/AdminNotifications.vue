@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useAdminNotifications } from "../../composables/useAdminNotifications";
+import Icon from "../../components/ui/Icon.vue";
 
 const { notifications } = useAdminNotifications();
 const now = ref(Date.now());
@@ -50,7 +51,14 @@ onBeforeUnmount(() => {
                 :class="`is-${notification.tone}`"
             >
                 <div class="admin-notification__body">
-                    <p>{{ notification.message }}</p>
+                    <div class="admin-notification__message">
+                        <Icon
+                            :name="notification.tone"
+                            width="22"
+                            height="22"
+                        />{{ notification.message }}
+                    </div>
+
                     <span
                         v-if="notification.duration > 0"
                         class="admin-notification__progress"

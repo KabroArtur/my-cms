@@ -545,23 +545,60 @@ async function submitFolderModal() {
     }
 }
 
-async function deleteFolder(folder) {
-    const confirmed = window.confirm(`Удалить папку "${folder.name}"?`);
+const openConfirmModal = (options) =>
+    new Promise((resolve) => {
+        confirmModal.value = {
+            open: true,
+            resolve,
+            ...options,
+        };
+    });
 
-    if (!confirmed) {
-        return;
-    }
+const confirmModal = ref({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Подтвердить",
+    confirmVariant: "primary",
+    loading: false,
+    resolve: null,
+});
+
+function closeConfirmModal() {
+    confirmModal.value.resolve?.(false);
+
+    confirmModal.value.open = false;
+    confirmModal.value.resolve = null;
+}
+
+function confirmModalAction() {
+    confirmModal.value.resolve?.(true);
+
+    confirmModal.value.open = false;
+    confirmModal.value.resolve = null;
+}
+
+async function deleteFolder(folder) {
+    const confirmed = await openConfirmModal({
+        title: "Удаление папки",
+        message: `Удалить папку <strong>"${folder.name}"</strong>?`,
+        confirmText: "Удалить",
+        confirmVariant: "danger",
+    });
+
+    if (!confirmed) return;
 
     try {
         await deleteMediaFolder(folder.id);
+
         pushToast("Папка удалена.");
+
         await loadLibrary(currentFolderId.value);
     } catch (error) {
         pushToast(
             error.response?.data?.message ?? "Не удалось удалить папку.",
             "error",
         );
-        console.error(error);
     }
 }
 
@@ -669,11 +706,14 @@ async function saveFileDetails() {
 }
 
 async function deleteFile(file) {
-    const confirmed = window.confirm(`Удалить файл "${file.original_name}"?`);
+    const confirmed = await openConfirmModal({
+        title: "Удаление файла",
+        message: `Удалить файл <strong>"${file.original_name}"</strong>?`,
+        confirmText: "Удалить",
+        confirmVariant: "danger",
+    });
 
-    if (!confirmed) {
-        return;
-    }
+    if (!confirmed) return;
 
     try {
         await deleteMediaFile(file.id);
@@ -683,13 +723,13 @@ async function deleteFile(file) {
         }
 
         await loadLibrary(currentFolderId.value);
+
         pushToast("Файл удалён.");
     } catch (error) {
         pushToast(
             error.response?.data?.message ?? "Не удалось удалить файл.",
             "error",
         );
-        console.error(error);
     }
 }
 
@@ -2693,4 +2733,54 @@ const isRoot = computed(() => breadcrumbs.value.length === 0);
             </div>
         </transition>
     </AdminPage>
+    <Teleport to="body">
+        <transition name="modal">
+            <div
+                v-if="confirmModal.open"
+                class="admin-modal"
+                @click.self="closeConfirmModal"
+            >
+                <div class="admin-modal__dialog admin-modal__dialog--sm">
+                    <div class="admin-modal__header">
+                        <h2>{{ confirmModal.title }}</h2>
+
+                        <button
+                            type="button"
+                            class="button-base button-close"
+                            @click="closeConfirmModal"
+                        >
+                            <Icon name="close" width="22" height="22" />
+                        </button>
+                    </div>
+
+                    <div class="admin-modal__body">
+                        <p class="text-center" v-html="confirmModal.message" />
+
+                        <div class="admin-actions-row admin-modal__footer">
+                            <button
+                                type="button"
+                                class="button-base button-secondary"
+                                @click="closeConfirmModal"
+                            >
+                                Отмена
+                            </button>
+
+                            <AdminButton
+                                type="button"
+                                :variant="confirmModal.confirmVariant"
+                                :disabled="confirmModal.loading"
+                                @click="confirmModalAction"
+                            >
+                                {{
+                                    confirmModal.loading
+                                        ? "Удаление..."
+                                        : confirmModal.confirmText
+                                }}
+                            </AdminButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+    </Teleport>
 </template>
